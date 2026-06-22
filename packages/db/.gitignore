@@ -1,0 +1,5 @@
+# Embedded-postgres ephemeral test cluster + connection handoff file.
+# These are created by test/global-setup.ts and torn down after the suite;
+# they must never be committed.
+.pgtmp/
+.pgtmp.json

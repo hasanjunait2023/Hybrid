@@ -1,13 +1,218 @@
-/* @hybrid/ui token contract (Phase 0 SKELETON).
- * Frontend engineer (Slice 3) fills the full token set from docs/DESIGN.md.
- * Tenant theme settings override --color-primary / --color-accent per request
- * (injected as inline style on the storefront <html> by _sites/[tenant]/layout).
+/* @hybrid/ui — Bazaar Modern design system (theme "Doreja").
+ *
+ * Single source of token truth (docs/DESIGN.md §3). Authored as CSS custom
+ * properties, mapped into Tailwind by @hybrid/config/tailwind/preset.mjs.
+ * Light-first; dark mode is intentionally out of scope (reads low-trust for COD).
+ *
+ * Tenant theme settings override --color-primary / --color-accent per request:
+ * the storefront layout injects them as an inline style on <html> from
+ * tenant_theme_settings.settings.colors. Everything else stays constant.
  */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --color-primary: #1d4ed8; /* Indigo 700 */
-  --color-accent: #f59e0b; /* Marigold 500 */
-  --color-bg: #fbfaf8;
-  --color-surface: #ffffff;
-  --color-text: #1a1814;
-  --font-bangla: "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+  /* ---- Color: brand ---- */
+  --color-primary: #1d4ed8; /* Indigo 700 — CTA, links, focus */
+  --color-primary-hover: #1e40af; /* Indigo 800 */
+  --color-primary-active: #1e3a8a; /* Indigo 900 */
+  --color-primary-weak: #eff4ff; /* indigo tint surface */
+
+  --color-accent: #f59e0b; /* Marigold 500 — sale tags, ratings */
+  --color-accent-hover: #d97706; /* Marigold 600 */
+  --color-accent-weak: #fef3c7; /* marigold tint (sale badge bg) */
+
+  /* ---- Color: neutrals (warm-tinted, NOT pure gray) ---- */
+  --color-bg: #fbfaf8; /* warm paper */
+  --color-surface: #ffffff; /* cards, sheets, inputs */
+  --color-surface-2: #f4f2ee; /* subtle raised/zebra */
+  --color-border: #e7e3dc; /* hairline borders (warm) */
+  --color-border-strong: #d6d1c7; /* dividers, input borders */
+
+  --color-text: #1a1814; /* near-black warm ink */
+  --color-text-muted: #6b6459; /* secondary text */
+  --color-text-subtle: #9a9286; /* placeholders, disabled */
+  --color-text-on-primary: #ffffff;
+
+  /* ---- Color: semantic ---- */
+  --color-success: #15803d;
+  --color-success-weak: #e7f4ec;
+  --color-cod: #047857; /* dedicated COD trust green */
+  --color-cod-weak: #e6f4ef;
+  --color-warning: #b45309;
+  --color-warning-weak: #fbeedc;
+  --color-danger: #b91c1c;
+  --color-danger-weak: #fbe9e9;
+  --color-info: #1d4ed8;
+
+  /* ---- Typography: families (font vars set by next/font in app/fonts.ts) ---- */
+  --font-bangla: var(--font-hind-siliguri), "Noto Sans Bengali", system-ui, sans-serif;
+  --font-latin: var(--font-inter-tight), var(--font-hind-siliguri), system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  --font-display: var(--font-hind-siliguri), sans-serif;
+
+  /* ---- Typography: fluid scale ---- */
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.78rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.1875rem;
+  --text-xl: clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem);
+  --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+  --text-3xl: clamp(1.875rem, 1.5rem + 1.8vw, 2.75rem);
+  --text-4xl: clamp(2.25rem, 1.7rem + 2.8vw, 3.75rem);
+
+  /* ---- Line-height (Bangla needs more than Latin) ---- */
+  --leading-bangla-tight: 1.45;
+  --leading-bangla: 1.7;
+  --leading-latin: 1.5;
+  --leading-none: 1.1;
+
+  /* ---- Spacing: 4px base ---- */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-section: clamp(2.5rem, 1.5rem + 5vw, 5rem);
+
+  /* ---- Radius ---- */
+  --radius-sm: 6px;
+  --radius-md: 10px; /* DEFAULT (buttons, cards) */
+  --radius-lg: 14px; /* product cards, sheets */
+  --radius-xl: 20px; /* hero panels */
+  --radius-full: 9999px;
+
+  /* ---- Shadow (cheap, layered, warm) ---- */
+  --shadow-xs: 0 1px 2px rgba(26, 24, 20, 0.06);
+  --shadow-sm: 0 1px 3px rgba(26, 24, 20, 0.08), 0 1px 2px rgba(26, 24, 20, 0.04);
+  --shadow-md: 0 4px 12px rgba(26, 24, 20, 0.08);
+  --shadow-lg: 0 10px 28px rgba(26, 24, 20, 0.1);
+  --shadow-focus: 0 0 0 3px rgba(29, 78, 216, 0.35);
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-instant: 100ms;
+  --dur-fast: 180ms;
+  --dur-base: 260ms;
+  --dur-slow: 400ms;
+
+  /* ---- Z-index ---- */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 1000;
+  --z-overlay: 1100;
+  --z-modal: 1200;
+  --z-toast: 1300;
+  --z-tooltip: 1400;
+
+  /* ---- shadcn/ui compatibility layer (DESIGN §7.1) ----
+   * Point shadcn's vars at our tokens so any shadcn primitive inherits the
+   * Bazaar Modern look (warm neutrals, indigo, 10px radius) instead of the
+   * default cold-gray Vercel demo aesthetic. */
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-text-on-primary);
+  --secondary: var(--color-surface-2);
+  --secondary-foreground: var(--color-text);
+  --muted: var(--color-surface-2);
+  --muted-foreground: var(--color-text-muted);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-text);
+  --destructive: var(--color-danger);
+  --destructive-foreground: var(--color-text-on-primary);
+  --border: var(--color-border);
+  --input: var(--color-border-strong);
+  --ring: var(--color-primary);
+  --radius: 10px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    /* Bangla is the default. */
+    font-family: var(--font-bangla);
+    font-size: var(--text-base);
+    line-height: var(--leading-bangla);
+    letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Latin-locale documents swap the working body font (DESIGN §4.5). */
+  :lang(en) body {
+    font-family: var(--font-latin);
+    line-height: var(--leading-latin);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    line-height: var(--leading-bangla-tight);
+    letter-spacing: 0;
+    font-weight: 700;
+  }
+
+  /* Always-visible focus ring (DESIGN §7.4). Never bare outline:none. */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: var(--radius-sm);
+  }
+}
+
+@layer components {
+  /* Bangla type helpers (DESIGN §4.3). */
+  .bn-body {
+    font-family: var(--font-bangla);
+    line-height: var(--leading-bangla);
+    letter-spacing: 0;
+  }
+
+  .bn-heading {
+    font-family: var(--font-bangla);
+    line-height: var(--leading-bangla-tight);
+    letter-spacing: 0;
+    font-weight: 700;
+  }
+
+  /* Column-aligned numerals for admin tables/amounts (DESIGN §4.4). */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,18 +1,32 @@
-// @hybrid/ui — shared storefront/admin primitives + theme tokens.
-//
-// Phase 0 SKELETON: placeholder export so apps/web imports resolve. The
-// frontend engineer (Slice 3) fills this with shadcn primitives and storefront
-// sections (hero, featured_products, product_grid, product card) driven by the
-// CSS-variable token contract documented in ./globals.css and docs/DESIGN.md.
+// @hybrid/ui — Bazaar Modern design system (theme "Doreja").
+// shadcn-token-aligned primitives + storefront sections, driven by the
+// CSS-variable token contract in ./globals.css (docs/DESIGN.md).
 
 export const UI_PACKAGE = "@hybrid/ui" as const;
 
-// Placeholder building block proving the package resolves and types flow.
-export interface ThemeTokens {
-  primary: string;
-  accent: string;
-}
+// Helpers
+export { cn } from "./lib/cn";
+export { toBnDigits, formatBdtBangla, formatBdtLatin } from "./lib/format";
 
-export function cn(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(" ");
-}
+// Primitives
+export { Button } from "./components/Button";
+export { Badge } from "./components/Badge";
+export {
+  CheckIcon,
+  PhoneIcon,
+  SearchIcon,
+  CartIcon,
+  ChatIcon,
+  TruckIcon,
+  ShieldIcon,
+} from "./components/icons";
+
+// Storefront sections
+export { StoreHeader } from "./components/storefront/StoreHeader";
+export { Hero } from "./components/storefront/Hero";
+export { ProductCard } from "./components/storefront/ProductCard";
+export { ProductGrid } from "./components/storefront/ProductGrid";
+export { TrustBand } from "./components/storefront/TrustBand";
+export { StoreFooter } from "./components/storefront/StoreFooter";
+export { StickyActionBar } from "./components/storefront/StickyActionBar";
+export type { StorefrontProduct, StoreIdentity } from "./components/storefront/types";

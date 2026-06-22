@@ -1,9 +1,10 @@
 {
   "project": "Hybrid",
   "chartered": "2026-06-23",
-  "phase": "BUILD",
+  "phase": "SHIP",
   "active_milestone": "M1",
   "awaiting_gate": null,
+  "autonomous": true,
   "last_updated": "2026-06-23",
-  "notes": "GATE 1 approved. BUILD: backend-engineer on Slice 0+1 (skeleton + @hybrid/db + sql + migrate + seed + RLS tests + CI + middleware) first to land contracts; then frontend-engineer on Slice 2+3. Blueprint: docs/architecture/phase0-blueprint.md. Design: docs/DESIGN.md."
+  "notes": "AUTONOMOUS. GATE 2 self-approved (QA PASS, security SAFE, review fixed). SHIP: devops-deployer (Phase-0 milestone commit, no remote/cloud yet) + docs-dx (CLAUDE.md/README/ARCHITECTURE/CHANGELOG + DX) in parallel. Then RETRO → LOOP to M2 (Phase 1: products/orders/COD+bKash/Steadfast/signup). Tech debt in BACKLOG."
 }

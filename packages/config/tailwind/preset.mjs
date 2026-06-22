@@ -1,18 +1,10 @@
-// Shared Tailwind preset STUB for Hybrid.
+// Shared Tailwind preset for Hybrid — "Bazaar Modern" design system.
 //
-// The full design-token mapping (colors, fonts, radius, shadows, motion)
-// is owned by docs/DESIGN.md and will be filled in by the frontend engineer
-// (Slice 3). This stub exists so apps/web and @hybrid/ui can `presets: [hybridPreset]`
-// today and have the token surface land later without import churn.
-//
-// Token contract (CSS custom properties, defined in @hybrid/ui globals.css):
-//   --color-primary / -hover / -active / -weak   (Indigo #1D4ED8 family)
-//   --color-accent  / -hover / -weak             (Marigold #F59E0B family)
-//   --color-bg / -surface / -surface-2 / -border / -border-strong
-//   --color-text / -muted / -subtle / -on-primary
-//   --color-success|cod|warning|danger (+ -weak)
-//   --font-bangla | -latin | -display | -mono
-//   --radius-sm|md|lg|xl|full  --shadow-xs..lg  --dur-* / --ease-*
+// Maps the CSS custom properties defined in @hybrid/ui globals.css (the token
+// contract, owned by docs/DESIGN.md §3) onto Tailwind's theme so utilities
+// (bg-primary, text-cod, rounded-lg, shadow-md, ...) resolve to our tokens.
+// Tenant accent is overridden per-request as an inline --color-primary on
+// <html>, so utilities like `bg-primary` track the active tenant automatically.
 
 /** @type {import('tailwindcss').Config} */
 const preset = {
@@ -32,15 +24,19 @@ const preset = {
           weak: "var(--color-accent-weak)",
         },
         bg: "var(--color-bg)",
-        surface: { DEFAULT: "var(--color-surface)", 2: "var(--color-surface-2)" },
+        surface: {
+          DEFAULT: "var(--color-surface)",
+          2: "var(--color-surface-2)",
+        },
         border: {
           DEFAULT: "var(--color-border)",
           strong: "var(--color-border-strong)",
         },
-        text: {
+        ink: {
           DEFAULT: "var(--color-text)",
           muted: "var(--color-text-muted)",
           subtle: "var(--color-text-subtle)",
+          "on-primary": "var(--color-text-on-primary)",
         },
         success: { DEFAULT: "var(--color-success)", weak: "var(--color-success-weak)" },
         cod: { DEFAULT: "var(--color-cod)", weak: "var(--color-cod-weak)" },
@@ -53,12 +49,73 @@ const preset = {
         display: ["var(--font-display)"],
         mono: ["var(--font-mono)"],
       },
+      fontSize: {
+        "2xs": "var(--text-2xs)",
+        xs: "var(--text-xs)",
+        sm: "var(--text-sm)",
+        base: "var(--text-base)",
+        lg: "var(--text-lg)",
+        xl: "var(--text-xl)",
+        "2xl": "var(--text-2xl)",
+        "3xl": "var(--text-3xl)",
+        "4xl": "var(--text-4xl)",
+      },
+      lineHeight: {
+        "bangla-tight": "var(--leading-bangla-tight)",
+        bangla: "var(--leading-bangla)",
+        latin: "var(--leading-latin)",
+        none: "var(--leading-none)",
+      },
+      spacing: {
+        section: "var(--space-section)",
+      },
       borderRadius: {
         sm: "var(--radius-sm)",
         md: "var(--radius-md)",
         lg: "var(--radius-lg)",
         xl: "var(--radius-xl)",
         full: "var(--radius-full)",
+      },
+      boxShadow: {
+        xs: "var(--shadow-xs)",
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        focus: "var(--shadow-focus)",
+      },
+      transitionTimingFunction: {
+        "out-soft": "var(--ease-out)",
+        "in-soft": "var(--ease-in)",
+        move: "var(--ease-in-out)",
+      },
+      transitionDuration: {
+        instant: "100ms",
+        fast: "180ms",
+        base: "260ms",
+        slow: "400ms",
+      },
+      zIndex: {
+        base: "0",
+        sticky: "10",
+        dropdown: "1000",
+        overlay: "1100",
+        modal: "1200",
+        toast: "1300",
+        tooltip: "1400",
+      },
+      maxWidth: {
+        storefront: "1200px",
+        admin: "1280px",
+        marketing: "1120px",
+      },
+      keyframes: {
+        "pulse-scale": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.18)" },
+        },
+      },
+      animation: {
+        "pulse-scale": "pulse-scale 300ms var(--ease-out)",
       },
     },
   },

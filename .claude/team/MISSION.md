@@ -37,3 +37,4 @@ App marketplace/SDK; multi-vendor marketplace; accounting/ERP; multi-currency at
 - 2026-06-23: Phase-1 first courier = **Steadfast**. Adapter interface stays generic for the others.
 - 2026-06-23: Root domain = **myhybrid.com** (placeholder, `NEXT_PUBLIC_ROOT_DOMAIN`), swap later.
 - (pending) bKash product tier for checkout + SaaS billing — decide at Phase 1.
+- 2026-06-23: **AUTONOMOUS MODE authorized by founder.** CEO self-approves GATE 1 + GATE 2 (no human block), loops M1→M5 continuously, makes sensible default calls on deferred items (bKash tier, courier already=Steadfast, pricing placeholders), and records every gate decision in DECISIONS.md + pushes a notification. Founder can interrupt/override anytime. Local-first project → loop driven by in-session /loop + ScheduleWakeup (not cloud cron). Bias: keep the founder's goal sacred, cut speculative scope, run the harden gauntlet before every self-approved gate.

@@ -22,6 +22,7 @@
     "@hybrid/config": "workspace:*",
     "@types/node": "^22.10.7",
     "dotenv": "^16.4.7",
+    "embedded-postgres": "16.14.0-beta.17",
     "eslint": "^9.18.0",
     "kysely": "^0.27.5",
     "kysely-codegen": "^0.18.5",

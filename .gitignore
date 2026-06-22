@@ -31,5 +31,14 @@ pnpm-debug.log*
 # test / coverage
 coverage/
 
+# embedded-postgres ephemeral test cluster (safety net; also in packages/db/.gitignore)
+.pgtmp/
+.pgtmp.json
+**/.pgtmp/
+**/.pgtmp.json
+
 # docker volumes (if ever bound locally)
 .pgdata/
+
+# agent runtime locks
+.claude/scheduled_tasks.lock

@@ -17,3 +17,11 @@
 
 ## Follow-ups / tech debt (captured at RETRO)
 - (none yet)
+
+## HARDEN blockers (M1)
+- [ ] SECURITY HIGH: apps/web/lib/auth/session.ts parseDevCookie must verify HMAC signature + refuse production (forgeable dev session cookie). Fix before GATE 2.
+
+## Tech debt (M1 → fix early M2)
+- [ ] vitest globalSetup EBUSY teardown flake (Windows): force-kill embedded PG + retry rmdir + pre-run .pgtmp sweep so gate exit code is reliable locally. — source M1 QA
+- [ ] ioredis: add .on('error') handler to silence "Unhandled error event" spam under Redis outage (degradation already works). — source M1 QA
+- [ ] Phase-1 seams to honor: Supabase Auth swap behind getSession(); Upstash custom cache handler for revalidateTag across instances; de-hardcode app_runtime_login password + DEV_SESSION_SECRET fail-fast already done; host-header normalize/allowlist before internet exposure; theme-color Zod validation when theme editor ships. — source M1 security
