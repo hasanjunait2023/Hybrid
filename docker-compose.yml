@@ -1,0 +1,35 @@
+# Local-first infra: Postgres 16 + Redis 7.
+# SQL in packages/db/sql is auto-applied on first boot in lexical order
+# (00_roles -> 01_schema -> 02_policies -> 03_seed -> 04_grant_login).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hybrid-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hybrid
+    ports:
+      - "5432:5432"
+    volumes:
+      - hybrid_pgdata:/var/lib/postgresql/data
+      - ./packages/db/sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hybrid"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: hybrid-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  hybrid_pgdata:

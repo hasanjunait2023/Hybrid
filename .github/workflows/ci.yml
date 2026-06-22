@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hybrid
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hybrid"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      # Runtime conn (non-superuser, RLS forced) — created by db:migrate (00_roles + 04_grant).
+      DATABASE_URL: postgres://app_runtime_login:app_runtime_local_pw@localhost:5432/hybrid
+      # Direct/superuser conn for migrate + seed + type gen.
+      DIRECT_URL: postgres://postgres:postgres@localhost:5432/hybrid
+      REDIS_URL: redis://localhost:6379
+      NEXT_PUBLIC_ROOT_DOMAIN: lvh.me
+      DEV_SESSION_SECRET: ci-test-secret
+      APP_ENCRYPTION_KEY: ci-test-encryption-key
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Apply 00,01,02,04 as superuser, then 03 seed. CI starts from empty DB,
+      # so migrate creates roles/schema/policies/grant before seeding.
+      - name: Migrate
+        run: pnpm --filter @hybrid/db db:migrate
+
+      - name: Seed
+        run: pnpm --filter @hybrid/db db:seed
+
+      # Generate types and fail on drift (kysely-codegen vs committed src/types.ts).
+      - name: Generate types (drift check)
+        run: |
+          pnpm --filter @hybrid/db db:gen
+          git diff --exit-code packages/db/src/types.ts
+
+      # THE GATE: RLS isolation suite must pass on every PR.
+      - name: RLS test suite
+        run: pnpm --filter @hybrid/db test
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck

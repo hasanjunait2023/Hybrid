@@ -1,0 +1,23 @@
+{
+  "name": "hybrid",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter @hybrid/db db:migrate",
+    "db:seed": "pnpm --filter @hybrid/db db:seed",
+    "db:gen": "pnpm --filter @hybrid/db db:gen"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.3"
+  }
+}

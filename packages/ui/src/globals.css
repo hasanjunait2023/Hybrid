@@ -1,0 +1,13 @@
+/* @hybrid/ui token contract (Phase 0 SKELETON).
+ * Frontend engineer (Slice 3) fills the full token set from docs/DESIGN.md.
+ * Tenant theme settings override --color-primary / --color-accent per request
+ * (injected as inline style on the storefront <html> by _sites/[tenant]/layout).
+ */
+:root {
+  --color-primary: #1d4ed8; /* Indigo 700 */
+  --color-accent: #f59e0b; /* Marigold 500 */
+  --color-bg: #fbfaf8;
+  --color-surface: #ffffff;
+  --color-text: #1a1814;
+  --font-bangla: "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+}
