@@ -295,6 +295,12 @@ See `docs/DESIGN.md` for the full spec. Key decisions for every UI task:
 
 ## Known issues / tech debt (non-blocking, logged at GATE 2)
 
+0. **`pnpm approve-builds` on fresh install** — On a clean machine, pnpm may prompt to approve
+   the `@embedded-postgres/windows-x64` (or linux/darwin) native binary build. The
+   `package.json` `pnpm.onlyBuiltDependencies` field pre-approves it, so `pnpm install` should
+   proceed without a prompt. If you see the prompt anyway, run `pnpm approve-builds` and select
+   the `@embedded-postgres/*` entry for your platform, then rerun `pnpm install`.
+
 1. **Windows EBUSY teardown flake** — On Windows, `vitest` `globalSetup` teardown may fail with
    `EBUSY: resource busy or locked` when removing the embedded-postgres data directory
    (`.pgtmp`). The 5 tests still run and pass; only the exit code may flip to non-zero on

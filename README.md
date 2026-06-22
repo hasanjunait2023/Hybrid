@@ -28,6 +28,10 @@ cd hybrid
 pnpm install
 ```
 
+`pnpm install` downloads the `embedded-postgres` native binary for your platform as part of
+the install. The `package.json` `pnpm.onlyBuiltDependencies` field pre-approves this download
+so no interactive prompt is required.
+
 ### 2. Set up environment
 
 ```bash
