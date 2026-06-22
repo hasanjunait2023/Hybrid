@@ -13,7 +13,10 @@ class IoRedisClient implements CacheClient {
   private readonly redis: Redis;
 
   constructor(url: string) {
-    this.redis = new Redis(url, { lazyConnect: false, maxRetriesPerRequest: 2 });
+    // lazyConnect: connect on first command, not at construction, so a Redis
+    // outage surfaces as a catchable command error (handled in resolve.ts)
+    // rather than an unhandled connection error at import time.
+    this.redis = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 2 });
   }
 
   async get(key: string): Promise<string | null> {

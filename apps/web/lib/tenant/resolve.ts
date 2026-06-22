@@ -25,30 +25,52 @@ function key(host: string): string {
 }
 
 export async function resolveTenantByHost(host: string): Promise<ResolvedTenant | null> {
-  const cache = getCache();
-  const cached = await cache.get(key(host));
+  // Cache is a best-effort accelerator: a Redis outage must NOT 500 the
+  // storefront, so reads/writes are wrapped and fall through to the DB lookup.
+  const cached = await cacheGet(key(host));
   if (cached === MISS_SENTINEL) return null;
   if (cached) return JSON.parse(cached) as ResolvedTenant;
 
+  // Only resolve a tenant whose store is actually live. A verified domain on a
+  // suspended/trial/cancelled tenant must hit store-not-found (the storefront
+  // layout requires status='active'), and must not be cached as a valid hit.
   const rows = await asPlatformAdmin((tx) =>
     tx<{ id: string; slug: string }[]>`
       select t.id, t.slug
       from tenant_domain d
       join tenant t on t.id = d.tenant_id
-      where d.domain = ${host} and d.verified = true
+      where d.domain = ${host} and d.verified = true and t.status = 'active'
       limit 1
     `,
   );
 
   const tenant = rows[0] ?? null;
   if (!tenant) {
-    await cache.set(key(host), MISS_SENTINEL, TTL_MISS_SECONDS);
+    await cacheSet(key(host), MISS_SENTINEL, TTL_MISS_SECONDS);
     return null;
   }
 
   const resolved: ResolvedTenant = { id: tenant.id, slug: tenant.slug };
-  await cache.set(key(host), JSON.stringify(resolved), TTL_HIT_SECONDS);
+  await cacheSet(key(host), JSON.stringify(resolved), TTL_HIT_SECONDS);
   return resolved;
+}
+
+// Cache failures degrade to "miss" / no-op so the DB remains the source of
+// truth. We don't log per-request to avoid noise under a sustained outage.
+async function cacheGet(k: string): Promise<string | null> {
+  try {
+    return await getCache().get(k);
+  } catch {
+    return null;
+  }
+}
+
+async function cacheSet(k: string, value: string, ttlSeconds: number): Promise<void> {
+  try {
+    await getCache().set(k, value, ttlSeconds);
+  } catch {
+    // best-effort; ignore
+  }
 }
 
 // Called when a domain is added/verified/removed (Phase 2).

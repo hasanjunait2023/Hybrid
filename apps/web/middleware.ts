@@ -9,9 +9,23 @@ export const config = {
   matcher: ["/((?!api/|_next/|_static/|[\\w-]+\\.\\w+).*)"],
 };
 
+// Auth paths must resolve on the admin host without the /admin prefix, so the
+// admin layout's relative redirect to /dev-login?as=... lands on the real route.
+function isAuthPath(pathname: string): boolean {
+  return pathname === "/dev-login" || pathname.startsWith("/dev-login/");
+}
+
 export default async function middleware(req: NextRequest): Promise<NextResponse> {
   const url = req.nextUrl;
   const host = (req.headers.get("host") ?? "").split(":")[0] ?? "";
+
+  // /_sites/* is an INTERNAL rewrite target only. A request that arrives with
+  // /_sites in the path did not come from our host->tenant rewrite (which adds
+  // it server-side), so it's a direct hit attempting tenant enumeration. Block
+  // it on every host before any other routing.
+  if (url.pathname === "/_sites" || url.pathname.startsWith("/_sites/")) {
+    return NextResponse.rewrite(new URL("/store-not-found", req.url));
+  }
 
   const isRoot = host === ROOT || host === `www.${ROOT}`;
   const sub = host.endsWith(`.${ROOT}`) ? host.slice(0, -(ROOT.length + 1)) : null;
@@ -21,6 +35,8 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
     return NextResponse.rewrite(new URL(`/platform${url.pathname}`, req.url));
   }
   if (sub === "admin") {
+    // Auth routes pass through untouched; everything else is the admin app.
+    if (isAuthPath(url.pathname)) return NextResponse.next();
     return NextResponse.rewrite(new URL(`/admin${url.pathname}`, req.url));
   }
 
