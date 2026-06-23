@@ -1,10 +1,10 @@
 {
   "project": "Hybrid",
   "chartered": "2026-06-23",
-  "phase": "HARDEN",
+  "phase": "SHIP",
   "active_milestone": "M2",
   "awaiting_gate": null,
   "autonomous": true,
   "last_updated": "2026-06-23",
-  "notes": "AUTONOMOUS. M2/Phase 1. BUILD COMPLETE: Wave0 (payments/couriers/crypto pkgs + commerce core) 9b2d391, Wave1 (catalog/orders/customers/dashboard/auth-provision) 0ab5e99, Wave2 (checkout COD+bKash/courier-wire/settings/sms) 4975b16, Wave3 (platform/billing/marketing+signup, tenant-liveness fix) 6bde8db. All green: typecheck 5/5, lint 5/5, db 51/51, web build OK. NOW HARDEN: parallel gauntlet (ceo-code-reviewer+qa-engineer+security-officer) on Phase-1 diff vs phase-0 tag 4f72e4d → fix blockers → self-approve GATE2 → ship. Blueprint docs/architecture/phase1-blueprint.md."
+  "notes": "AUTONOMOUS. M2/Phase 1. BUILD+HARDEN COMPLETE, GATE2 self-approved. Commits: Wave0 9b2d391, Wave1 0ab5e99, Wave2 4975b16, Wave3 6bde8db, HARDEN fixes 031f925. Gauntlet cleared (2 blockers+4 majors+1 HIGH+3 med all fixed+re-verified). Final green: typecheck 5/5, lint 5/5, db 63/63 (10 files), web build OK. NOW SHIP (local-first, NO push): devops-deployer milestone tag phase-1 + health gate + deploy-seam doc; docs-dx CHANGELOG/README/ARCHITECTURE/CLAUDE.md → Phase 1. Then RETRO → LOOP M3 (Phase 2). Deferrals (account/infra-gated): bKash live, Steadfast live, SMS live, Supabase cloud auth, Bangla-UTF8 render verify."
 }
