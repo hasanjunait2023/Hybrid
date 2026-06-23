@@ -1,0 +1,4 @@
+# Tenant-uploaded product images (LocalBlobStore, dev/P1). Opaque URLs are
+# stored in product_image.url; the binaries are not committed.
+*
+!.gitignore

@@ -253,6 +253,11 @@ Starts Next.js on port 3000. `*.lvh.me` resolves to `127.0.0.1` in all browsers 
 | `tenant:{id}` | Any edit to the tenant's data |
 | `tenant:{id}:products` | Product list/add/edit/delete |
 | `tenant:{id}:product:{pid}` | Individual product edit |
+| `tenant:{id}:collections` | Collection create/edit/delete |
+| `tenant:{id}:orders` | Order create (incl. manual) / status change |
+| `tenant:{id}:order:{oid}` | Individual order mutation |
+| `tenant:{id}:customers` | Customer note/tags edit; new order (counters) |
+| `tenant:{id}:dashboard` | Dashboard metrics (also `revalidate: 60s`); order/product mutations |
 | `tenant:{id}:theme` | Theme settings update |
 | `tenant:{id}:page:{slug}` | Store page edit |
 | `tenant:{id}:navigation` | Nav change |

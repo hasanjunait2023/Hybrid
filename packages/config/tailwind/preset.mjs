@@ -42,6 +42,22 @@ const preset = {
         cod: { DEFAULT: "var(--color-cod)", weak: "var(--color-cod-weak)" },
         warning: { DEFAULT: "var(--color-warning)", weak: "var(--color-warning-weak)" },
         danger: { DEFAULT: "var(--color-danger)", weak: "var(--color-danger-weak)" },
+        // Phase-1 lifecycle status tokens (DESIGN §P0) — one color per state.
+        st: {
+          pending: { DEFAULT: "var(--color-st-pending)", weak: "var(--color-st-pending-weak)" },
+          confirmed: { DEFAULT: "var(--color-st-confirmed)", weak: "var(--color-st-confirmed-weak)" },
+          packed: { DEFAULT: "var(--color-st-packed)", weak: "var(--color-st-packed-weak)" },
+          shipped: { DEFAULT: "var(--color-st-shipped)", weak: "var(--color-st-shipped-weak)" },
+          delivered: { DEFAULT: "var(--color-st-delivered)", weak: "var(--color-st-delivered-weak)" },
+          returned: { DEFAULT: "var(--color-st-returned)", weak: "var(--color-st-returned-weak)" },
+          cancelled: { DEFAULT: "var(--color-st-cancelled)", weak: "var(--color-st-cancelled-weak)" },
+        },
+        // bKash brand pink (DESIGN §P0) — single-purpose payment accent.
+        bkash: {
+          DEFAULT: "var(--color-bkash)",
+          weak: "var(--color-bkash-weak)",
+          text: "var(--color-bkash-text)",
+        },
       },
       fontFamily: {
         bangla: ["var(--font-bangla)"],

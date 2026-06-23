@@ -1,38 +1,62 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { getActiveTenantId, getAdminProduct } from "@/lib/admin/data";
-import { EditProductForm } from "./EditProductForm";
+import { getActiveTenantId } from "@/lib/admin/data";
+import { getProductFull, listCollections } from "@/lib/admin/catalog";
+import { ProductForm, type ProductFormData } from "../../ProductForm";
 
+// Edit a product (DESIGN §P4) — full options/variant-matrix/images/collections.
+// Server-loads the record under the user's tenant (RLS); the ProductForm posts
+// updateProduct, which revalidates the storefront tags (admin edit → storefront
+// update loop, the P0 thesis).
 interface EditProductPageProps {
   params: Promise<{ id: string }>;
 }
 
-// Edit a product + its primary variant (blueprint §7). Server-loads the record
-// under the user's tenant (RLS), renders the client form that posts the
-// updateProduct Server Action.
 export default async function EditProductPage({ params }: EditProductPageProps) {
   const { id } = await params;
 
   const session = await getSession();
   if (!session) redirect("/dev-login?as=owner-a");
   const tenantId = await getActiveTenantId(session.userId);
-  if (!tenantId) redirect("/platform"); // membership-less (e.g. platform admin)
+  if (!tenantId) redirect("/platform");
 
-  const product = await getAdminProduct(tenantId, session.userId, id);
+  const [product, collections] = await Promise.all([
+    getProductFull(tenantId, session.userId, id),
+    listCollections(tenantId, session.userId),
+  ]);
   if (!product) notFound();
 
+  const initial: ProductFormData = {
+    id: product.id,
+    title: product.title,
+    description: product.description ?? "",
+    status: (product.status as ProductFormData["status"]) ?? "draft",
+    options: product.options,
+    variants: product.variants.map((v) => ({
+      id: v.id,
+      options: v.options,
+      title: v.title,
+      sku: v.sku,
+      price: v.price,
+      inventory: v.inventory,
+      isActive: v.isActive,
+    })),
+    imageUrls: product.images.map((i) => i.url),
+    collectionIds: product.collectionIds,
+  };
+
   return (
-    <div>
-      <div className="mb-5">
-        <a
-          href="/admin/products"
-          className="text-sm font-medium text-ink-muted hover:text-primary"
-        >
-          ← পণ্য তালিকা
+    <div lang="en" className="space-y-4">
+      <div className="flex items-center gap-3">
+        <a href="/admin/products" className="text-sm font-medium text-ink-muted hover:text-primary">
+          ← পণ্য
         </a>
-        <h1 className="mt-2 text-2xl font-bold text-ink">{product.title}</h1>
+        <h1 className="truncate text-xl font-bold text-ink">{product.title}</h1>
       </div>
-      <EditProductForm product={product} />
+      <ProductForm
+        initial={initial}
+        collections={collections.map((c) => ({ id: c.id, title: c.title }))}
+      />
     </div>
   );
 }

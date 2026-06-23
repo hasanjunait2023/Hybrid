@@ -46,6 +46,37 @@
   --color-danger-weak: #fbe9e9;
   --color-info: #1d4ed8;
 
+  /* ---- Phase-1: order / shipment lifecycle status colors (DESIGN §P0) ----
+   * One color per state, rendered as a chip (weak bg + strong text + dot/icon).
+   * Reuse semantic hues where possible; new hues only where the lifecycle needs
+   * a distinct read (shipped = motion teal, returned = amber-brown). */
+  --color-st-pending: #b45309; /* = warning */
+  --color-st-pending-weak: #fbeedc;
+  --color-st-confirmed: #1d4ed8; /* = primary */
+  --color-st-confirmed-weak: #eff4ff;
+  --color-st-packed: #b7791f; /* darker marigold for text contrast */
+  --color-st-packed-weak: #fef3c7;
+  --color-st-shipped: #0e7490; /* cyan-700 — "on the road" */
+  --color-st-shipped-weak: #e0f2f7;
+  --color-st-delivered: #15803d; /* = success */
+  --color-st-delivered-weak: #e7f4ec;
+  --color-st-returned: #92400e; /* amber-800 — reversed, distinct from cancelled */
+  --color-st-returned-weak: #fbeedc;
+  --color-st-cancelled: #b91c1c; /* = danger */
+  --color-st-cancelled-weak: #fbe9e9;
+
+  /* ---- Phase-1: bKash brand pink (DESIGN §P0). SINGLE PURPOSE — only the
+   * bKash payment option / payment-method chip / settings bKash row. Never a
+   * CTA, never the Hybrid brand, never on marketing. */
+  --color-bkash: #e2136e;
+  --color-bkash-weak: #fce7f0;
+  --color-bkash-text: #a30e51;
+
+  /* ---- Phase-1: dashboard / data-dense rhythm (DESIGN §P0) ---- */
+  --space-cell-y: 0.5rem;
+  --space-cell-x: 0.75rem;
+  --metric-gap: 0.75rem;
+
   /* ---- Typography: families (font vars set by next/font in app/fonts.ts) ---- */
   --font-bangla: var(--font-hind-siliguri), "Noto Sans Bengali", system-ui, sans-serif;
   --font-latin: var(--font-inter-tight), var(--font-hind-siliguri), system-ui, sans-serif;

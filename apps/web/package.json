@@ -13,6 +13,9 @@
   "dependencies": {
     "@hybrid/db": "workspace:*",
     "@hybrid/ui": "workspace:*",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.47.10",
+    "bangladesh-location-data": "^1.0.6",
     "ioredis": "^5.4.2",
     "next": "^15.1.4",
     "react": "^19.0.0",

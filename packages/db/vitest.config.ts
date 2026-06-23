@@ -9,6 +9,10 @@ export default defineConfig({
       // self-symlink for @hybrid/db, so alias it to the package source. This is
       // test-only wiring; the apps/web source keeps its real @hybrid/db import.
       "@hybrid/db": fileURLToPath(new URL("./src/index.ts", import.meta.url)),
+      // The admin dashboard helper imports "next/cache" (unstable_cache /
+      // revalidateTag). That module only resolves inside the Next app; the admin
+      // integration suite stubs it to a passthrough so the data path is testable.
+      "next/cache": fileURLToPath(new URL("./test/next-cache-stub.ts", import.meta.url)),
     },
   },
   test: {

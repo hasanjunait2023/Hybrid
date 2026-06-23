@@ -77,3 +77,9 @@
 - Dispatched: Wave 0 foundation (parallel BE) — S-CRYPTO + S-PAY-PKG + S-COUR-PKG (pure packages bundle) and S-COMMERCE-CORE (lib/commerce + integration tests). Publishes contracts for Waves 1-3.
 - Outcome: Wave 0 building. Then Waves 1→3, harden, self-approve GATE 2, ship.
 - Commit policy reminder: subagents commit locally only (no push) under autonomy; founder push on request.
+
+## 2026-06-23 — BUILD Wave 0 — M2
+- Done: @hybrid/payments (21 tests +2 sandbox-gated), @hybrid/couriers (16), @hybrid/db crypto (8 incl GCM tamper), lib/commerce placeOrder+customer (6 integration incl oversell race=exactly-one-wins, server-side pricing, cross-tenant RLS). All green. Committed.
+- Resolved tech debt: Windows EBUSY root-caused = Defender scanning in-repo .pgtmp → PGTMP_DIR env override (point at %TEMP%); CI/Linux default unchanged. Fixed APP_ENCRYPTION_KEY (was 24-byte invalid → valid base64 32-byte dev key).
+- Contracts published: sealCredentials/openCredentials; PaymentProvider(BkashProvider/CodProvider)+mapBkashState; CourierAdapter(SteadfastProvider)+mapSteadfastStatus; placeOrder(input):{orderId,orderNumber,paymentId,bkashRequired}; upsertCustomerByPhone(tx,...). shipping_address jsonb shape {recipient,phone,division,district,thana,line}.
+- Next: Wave 1 (admin domain catalog/orders/customers/dashboard + auth-provision + shared lib/location), then Wave 2 (checkout/courier-wire/settings/sms), Wave 3 (platform/billing/marketing).
