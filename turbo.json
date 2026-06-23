@@ -7,7 +7,12 @@
     "NEXT_PUBLIC_ROOT_DOMAIN",
     "NODE_ENV",
     "APP_ENCRYPTION_KEY",
-    "DEV_SESSION_SECRET"
+    "DEV_SESSION_SECRET",
+    "AUTH_PROVIDER",
+    "CRON_SECRET",
+    "SMS_LIVE",
+    "SMS_API_KEY",
+    "BLOB_DRIVER"
   ],
   "tasks": {
     "build": {

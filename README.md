@@ -162,6 +162,24 @@ The 63 tests pass; only the teardown step (deleting the embedded-postgres data d
 may fail with `EBUSY` on Windows. The test results are valid. Simply rerun or ignore the
 non-zero exit code in local development. CI (Linux) is unaffected.
 
+If the error repeats across runs, an orphan embedded-postgres process may be holding the
+data directory. Kill it with:
+```
+taskkill /F /IM postgres.exe 2>nul; taskkill /F /IM initdb.exe 2>nul
+```
+Then rerun. The data directory is in the repo at `packages/db/.pgtmp` — you can also
+delete it manually between runs.
+
+**`APP_ENCRYPTION_KEY` is invalid on startup:**
+The key in `.env.example` is a valid 32-byte base64 key for local dev. If you generated
+your own, ensure it is exactly 32 decoded bytes: `openssl rand -base64 32` produces the
+right format.
+
+**Billing sweep or courier sync returns 401:**
+These endpoints require `CRON_SECRET` to be set. For local testing, add
+`CRON_SECRET=dev-cron-secret` to `.env.local` and pass the same value as a
+`Authorization: Bearer dev-cron-secret` header.
+
 **`DEV_SESSION_SECRET is not set` error:**
 Ensure `.env.local` exists and was copied from `.env.example`. The file must contain
 `DEV_SESSION_SECRET=dev-only-change-me` (or any non-empty string for local dev).
