@@ -90,3 +90,46 @@ before any deploy. Pre-deploy gate = `typecheck` + `lint` + `build` + RLS gate, 
 Vercel deployments are immutable + atomic: rollback = **promote the previous deployment**
 in the Vercel dashboard/CLI (instant, no rebuild). DB migrations are forward-only — never
 auto-run destructive migrations on deploy; gate them separately behind `DIRECT_URL`.
+
+---
+
+## 7. Phase 1 (M2) deploy delta
+
+Phase 1 (sellable MVP) adds payments, couriers, SMS, billing, and real auth seams.
+The base seam in §1–§6 is unchanged; the items below are **new** for a real deploy.
+Tagged locally as `phase-1` (commit `031f925`). Nothing has been pushed or deployed.
+
+### New required env vars (beyond §1)
+
+| Var | Purpose | Notes |
+|-----|---------|-------|
+| `APP_ENCRYPTION_KEY` | AES-256-GCM sealing of gateway/courier credentials | **Base64 32-byte** key. Fail-fast at startup (`packages/db/src/crypto.ts`). Already listed in §1; now load-bearing — payment/courier accounts won't seal without it. |
+| `CRON_SECRET` | Auth for internal cron routes | Guards `/api/internal/billing-sweep` and `/api/internal/courier-sync` via constant-time compare. Set as a Vercel env var; pass as bearer/secret from the cron scheduler. |
+| `AUTH_PROVIDER` | Selects the auth backend | Phase 1 ships the HMAC dev-cookie seam (`getSession()`). Set to the Supabase provider when cloud auth lands; callers are unchanged. |
+| `BKASH_*` (sandbox) | bKash checkout credentials | `BKASH_BASE_URL`, `BKASH_APP_KEY`, `BKASH_APP_SECRET`, `BKASH_USERNAME`, `BKASH_PASSWORD` (names per `.env.example`). **Sandbox** values for now; live needs a merchant account (see below). Callback: `/api/bkash/callback`. |
+| `STEADFAST_*` | Steadfast courier API | `STEADFAST_API_KEY`, `STEADFAST_SECRET`, `STEADFAST_BASE_URL`. Consume the encrypted per-tenant credentials path where applicable; platform-level keys via env. |
+| `SMS_*` | Transactional SMS (order/courier notifications) | Provider base URL + key per `.env.example`. |
+| `NEXT_PUBLIC_ROOT_DOMAIN` | host→tenant routing apex | Already in §1; reconfirmed required (middleware depends on it). |
+| `REDIS_URL` | host→tenant cache + sessions | Already in §1; Upstash in cloud. |
+| `DATABASE_URL` / `DIRECT_URL` | runtime (RLS) / superuser conns | Already in §1; unchanged. |
+
+Real values are never committed — `.env.example` holds dev placeholders/sandbox stubs only;
+CI sets test-only fixtures inline in `.github/workflows/ci.yml`.
+
+### Still pending before multi-instance production
+
+- **Upstash ISR cache handler** (§3b) is still NOT built. `revalidateTag()` is in-memory
+  per-instance on Vercel; the admin-edit → storefront freshness guarantee needs the
+  Upstash-backed `cacheHandler` before going multi-instance. This is the one known
+  cross-instance correctness gap.
+
+### Live integrations deferred (need merchant/provider accounts)
+
+These run against **sandbox/dev** in Phase 1 and require real accounts before production:
+
+- **bKash live** — needs a live bKash merchant account + production app credentials
+  (Phase-0→1 open decision on bKash product tier is still open).
+- **Steadfast live** — needs a live Steadfast merchant API key.
+- **SMS live** — needs a live SMS provider account + sender ID.
+- **Supabase cloud auth** — `getSession()` is a clean seam; swap the HMAC dev cookie for
+  the Supabase Auth lookup when the cloud project is provisioned (`AUTH_PROVIDER`).
