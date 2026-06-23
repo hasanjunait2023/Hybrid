@@ -31,15 +31,19 @@ export async function resolveTenantByHost(host: string): Promise<ResolvedTenant 
   if (cached === MISS_SENTINEL) return null;
   if (cached) return JSON.parse(cached) as ResolvedTenant;
 
-  // Only resolve a tenant whose store is actually live. A verified domain on a
-  // suspended/trial/cancelled tenant must hit store-not-found (the storefront
-  // layout requires status='active'), and must not be cached as a valid hit.
+  // Only resolve a tenant whose store is actually live. The store is LIVE for
+  // active/trial/past_due (trial sellers' subdomains must work during the
+  // 14-day trial and the 3-day past_due grace — see lib/billing/status.ts) and
+  // goes dark only when suspended/cancelled, which must hit store-not-found and
+  // must not be cached as a valid hit. The billing sweep busts the domain cache
+  // on suspension so a previously-cached live hit doesn't outlive going dark.
   const rows = await asPlatformAdmin((tx) =>
     tx<{ id: string; slug: string }[]>`
       select t.id, t.slug
       from tenant_domain d
       join tenant t on t.id = d.tenant_id
-      where d.domain = ${host} and d.verified = true and t.status = 'active'
+      where d.domain = ${host} and d.verified = true
+        and t.status in ('active', 'trial', 'past_due')
       limit 1
     `,
   );

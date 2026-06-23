@@ -56,7 +56,8 @@ async function resolveTenantId(slug: string): Promise<string | null> {
         tx<{ id: string }[]>`
           select t.id
           from tenant t
-          where t.slug = ${slug} and t.status = 'active'
+          where t.slug = ${slug}
+            and t.status in ('active', 'trial', 'past_due')
           limit 1
         `,
       );

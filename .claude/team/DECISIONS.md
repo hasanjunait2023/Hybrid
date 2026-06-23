@@ -89,3 +89,15 @@
 - Contracts: provisionTenant({userId,storeName,slug,plan?}):{tenantId,slug} + createAppUser + SlugTakenError; StatusBadge/StatusStepper in @hybrid/ui; lib/location getCascade; lib/storage getBlobStore.
 - Notes/flags: Windows embedded-PG is WIN1252 (can't store Bangla in test DB → verify Bangla render on UTF-8 Docker/Supabase/Linux CI); cod_status derived (cod_amount>0 && unpaid) until shipment exists (Wave 2); middleware supabase token-refresh deferred to middleware owner before live Supabase cutover.
 - Next: Wave 2 — S-CHECKOUT+S-SMS (storefront checkout/cart/bkash callback/sms), S-SETTINGS+S-COURIER-WIRE (encrypted creds settings, sendToCourier/courier-sync/COD list).
+
+## 2026-06-23 — BUILD Wave 2 VERIFIED + COMMITTED — M2
+- Combined two-agent tree (checkout+sms, settings+courier-wire) verified GREEN: typecheck 5/5, lint 5/5, db suite 40/40 (courier-wire 7, provision 3, rls 5, crypto 8, + checkout/commerce/customer), Next build OK (all routes: /admin/cod, /admin/settings/{courier,payments,store}, /_sites/[tenant]/products/[slug], /api/bkash/callback, /api/internal/courier-sync). Seams stitched: SendToCourierButton in order detail, COD+Settings in AdminNav.
+- Stale typecheck errors from pre-compaction (TS2307 @/ leak, TS2345 SealedSecret→JSONValue) were ALREADY fixed by the agents (tsconfig @/* path map + toJsonRecord(... as unknown as Record) cast). Re-verify against tree confirmed both resolved.
+- Ops: C: drive full crisis RESOLVED (was 184K free → now 6.6G). Dropped PGTMP_DIR/TMPDIR redirect-to-D: (it broke embedded-pg temp path on Windows); default Windows temp works with space freed.
+- Committed locally 4975b16 (no push). LOOP → Wave 3.
+
+## 2026-06-23 — BUILD Wave 3 (dispatched) — M2
+- Dispatched 2 parallel agents, strict file-ownership, NEITHER commits (CEO verifies combined + commits):
+  - Agent A (backend) S-PLATFORM+S-BILLING: app/(platform)/** super-admin (tenant directory/suspend/impersonate via asPlatformAdmin), lib/billing/status.ts evaluateTenantBilling (trialing→past_due 3d grace→suspended), /api/internal/billing-sweep (CRON_SECRET), lib/platform/**. db test for billing transitions.
+  - Agent B (frontend) S-MARKETING: app/(marketing)/** Bengali landing + signup page+action calling provisionTenant (Wave-1 contract) → live subdomain, success→admin.
+- Contracts in play: provisionTenant({userId,storeName,slug,plan?}):{tenantId,slug}+SlugTakenError; resolve.ts requires tenant.status='active' (billing enforcement is free at storefront). Golden Rule enforced; no stubs; Bengali+mobile-first.
