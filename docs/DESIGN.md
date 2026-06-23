@@ -484,3 +484,357 @@ Design choices made specifically to hit storefront product/collection **< 1.5s o
 | 2026-06-23 | Bangla numerals on storefront, Latin in admin | Buyers read prices/phones natively in Bangla; operators are faster/safer with Latin IDs and tabular alignment |
 | 2026-06-23 | Light-only for Phase 0/1 (no dark default) | Dark mode reads as lower-trust for COD commerce in BD; revisit for admin later |
 | 2026-06-23 | 2-col mobile product grid, sticky bottom action bar | BD storefront norm; 1-col reads empty, 3-col cramped at 360px; bottom bar anchors COD conversion |
+| 2026-06-23 | Phase-1 status token set + state→color map | Order/payment/COD state machines need stable semantic colors reused everywhere (badges, steppers, dashboard); defined once, mapped from DB enums |
+| 2026-06-23 | bKash-pink as single-purpose accent (`--color-bkash`) only on the bKash payment option | bKash brand-recognition raises trust on the payment step; confined so it never competes with indigo primary or reads as the Hybrid brand color |
+| 2026-06-23 | Manual Order Entry = keyboard-first single-column "fast lane" form | F-commerce killer feature; sellers retype Messenger/phone orders all day — speed (Tab-through, phone-autofill of returning customers, Enter-to-add-line) is the whole value |
+| 2026-06-23 | Admin nav = bottom tab bar on mobile, sidebar ≥ lg | Sellers are mobile-only and one-thumbed; bottom tabs match the device, sidebar only appears where there's room |
+
+---
+
+# Phase 1 Surfaces
+
+> Extends the Bazaar Modern system (§0–§10) to every Phase-1 screen. **Reuses the existing tokens** — the only additions are the status color set, `--color-bkash`, and a few component-scoped spacings, all in §P0. Everything else (radius, shadow, type scale, Bangla rules, motion, the 44px tap-target floor, light-only) carries over unchanged. Where a surface is operator-facing (admin / super-admin) it follows the §4.4 numeral split: **Latin + tabular-nums**. Where it's buyer-facing (checkout, success, marketing) it's **Bangla numerals**.
+
+## P0. New tokens (the only additions)
+
+These are the genuinely-new tokens Phase 1 needs. Append to `:root` in §3.1 and map into Tailwind (§3.2). Nothing else in §3 changes.
+
+```css
+:root {
+  /* ---- Phase-1: order / shipment lifecycle status colors ----
+     One color per state. Each is rendered as a chip: weak bg + strong text + dot/icon.
+     These intentionally reuse the semantic hues from §3.1 so the system stays small;
+     new entries only where the lifecycle needs a distinct read. */
+
+  /* pending / awaiting action — warning family (§3.1) */
+  --color-st-pending:        #B45309;  /* = --color-warning */
+  --color-st-pending-weak:   #FBEEDC;
+
+  /* confirmed — indigo: acknowledged, "official", in the system */
+  --color-st-confirmed:      #1D4ED8;  /* = --color-primary */
+  --color-st-confirmed-weak: #EFF4FF;
+
+  /* packed — marigold: physical prep, "in the shop" warmth, distinct from confirmed */
+  --color-st-packed:         #B7791F;  /* darker marigold for text contrast on weak */
+  --color-st-packed-weak:    #FEF3C7;
+
+  /* shipped / in-transit — teal-cyan: "on the road", NEW hue (no existing token reads as motion) */
+  --color-st-shipped:        #0E7490;  /* cyan-700 */
+  --color-st-shipped-weak:   #E0F2F7;
+
+  /* delivered / paid / success — success family (§3.1) */
+  --color-st-delivered:      #15803D;  /* = --color-success */
+  --color-st-delivered-weak: #E7F4EC;
+
+  /* returned — amber-brown: completed-but-reversed, distinct from cancelled red */
+  --color-st-returned:       #92400E;  /* amber-800 */
+  --color-st-returned-weak:  #FBEEDC;
+
+  /* cancelled / failed — danger family (§3.1) */
+  --color-st-cancelled:      #B91C1C;  /* = --color-danger */
+  --color-st-cancelled-weak: #FBE9E9;
+
+  /* ---- Phase-1: payment-method accent — bKash brand pink ----
+     SINGLE PURPOSE. Only the bKash payment option / bKash payment-status chip.
+     NEVER a CTA color, never the Hybrid brand, never on marketing. */
+  --color-bkash:        #E2136E;  /* bKash brand magenta */
+  --color-bkash-weak:   #FCE7F0;
+  --color-bkash-text:   #A30E51;  /* darker for AA text on weak bg */
+
+  /* ---- Phase-1: dashboard / data-dense rhythm ----
+     Admin runs tighter than storefront. These give a compact scale without
+     touching the storefront's comfortable spacing. */
+  --space-cell-y:  0.5rem;    /* 8 — table cell vertical pad (compact) */
+  --space-cell-x:  0.75rem;   /* 12 — table cell horizontal pad */
+  --metric-gap:    0.75rem;   /* gap between dashboard metric cards on mobile */
+}
+```
+
+```ts
+// tailwind.config.ts → theme.extend.colors (add to existing block, do not replace)
+st: {
+  pending:   { DEFAULT: "var(--color-st-pending)",   weak: "var(--color-st-pending-weak)" },
+  confirmed: { DEFAULT: "var(--color-st-confirmed)", weak: "var(--color-st-confirmed-weak)" },
+  packed:    { DEFAULT: "var(--color-st-packed)",    weak: "var(--color-st-packed-weak)" },
+  shipped:   { DEFAULT: "var(--color-st-shipped)",   weak: "var(--color-st-shipped-weak)" },
+  delivered: { DEFAULT: "var(--color-st-delivered)", weak: "var(--color-st-delivered-weak)" },
+  returned:  { DEFAULT: "var(--color-st-returned)",  weak: "var(--color-st-returned-weak)" },
+  cancelled: { DEFAULT: "var(--color-st-cancelled)", weak: "var(--color-st-cancelled-weak)" },
+},
+bkash: { DEFAULT: "var(--color-bkash)", weak: "var(--color-bkash-weak)", text: "var(--color-bkash-text)" },
+```
+
+### P0.1 Status → color map (DB enum → token) — the single source
+
+Three independent DB fields drive three independent chips. **Never collapse them into one badge** — a seller needs to see "delivered but COD not yet collected" at a glance. Render each as: `weak` bg + `DEFAULT`-colored text + leading 8px dot (or icon) + Bangla/English label. Always color **+ icon + text** (§7.4), never color alone.
+
+**`order_fulfillment_status`** (the lifecycle stepper drives off this):
+
+| enum | token | label (বাং / EN) | icon |
+|---|---|---|---|
+| `pending` | `st-pending` | অপেক্ষমাণ / Pending | clock |
+| `confirmed` | `st-confirmed` | নিশ্চিত / Confirmed | check |
+| `packed` | `st-packed` | প্যাকড / Packed | box |
+| `shipped` / `in_transit` | `st-shipped` | পাঠানো হয়েছে / Shipped | truck |
+| `delivered` | `st-delivered` | ডেলিভার্ড / Delivered | check-circle |
+| `returned` | `st-returned` | ফেরত / Returned | undo |
+| `cancelled` | `st-cancelled` | বাতিল / Cancelled | x-circle |
+
+**`payment_status`**:
+
+| enum | token | label | note |
+|---|---|---|---|
+| `unpaid` | `st-pending` | বকেয়া / Unpaid | COD default until collected |
+| `pending` | `st-pending` | প্রসেসিং / Processing | bKash create→execute window |
+| `paid` | `st-delivered` (success) | পরিশোধিত / Paid | |
+| `failed` | `st-cancelled` | ব্যর্থ / Failed | bKash execute failed |
+| `refunded` | `st-returned` | রিফান্ড / Refunded | |
+
+**`cod_status`** (COD-specific; uses the dedicated COD-green from §3.1 for the "this is cash-safe" read):
+
+| enum | token | label |
+|---|---|---|
+| `not_applicable` | (no chip) | — (prepaid order) |
+| `pending` | `st-pending` | সংগ্রহ বাকি / To collect |
+| `collected` | `cod` (`--color-cod`) | সংগৃহীত / Collected |
+| `remitted` | `cod` | জমা হয়েছে / Remitted |
+| `discrepancy` | `st-cancelled` | গরমিল / Mismatch |
+
+**Payment-method chip** (which rail): COD → `cod` green pill "ক্যাশ অন ডেলিভারি"; bKash → `bkash` pink pill with the bKash glyph. This is the **only** place pink appears in admin.
+
+Reusable component: `<StatusBadge kind="fulfillment|payment|cod|method" value={enum} />` — one component, reads the map above. Build it once; every list, detail, dashboard, and stepper consumes it.
+
+---
+
+## P1. Mobile checkout flow (HIGHEST PRIORITY)
+
+Buyer-facing, Bengali-first, Bangla numerals, must complete on a low-end Android over 3G. Design at **360px**. This is where COD trust is won or lost — it inherits the storefront trust treatment, not a generic checkout.
+
+### P1.1 Page shell
+- Single column, `--color-bg` (warm paper). Max content width `480px`, centered ≥ sm.
+- **Top:** slim sticky header — back chevron + "চেকআউট" title + a small COD-green trust line under it: "🔒 নিরাপদ অর্ডার · ক্যাশ অন ডেলিভারি". Reuse the §6.1 Row-1 trust strip treatment (`--color-cod-weak` bg). Trust must be visible on the money screen.
+- **No** logins, no account creation, no coupon-hunting above the fold. Friction kills COD conversion.
+
+### P1.2 Field order (deliberate — phone first, minimum fields)
+The whole form is **one scroll, one column**, big inputs (44px+), Bangla labels above each field (never placeholder-only — placeholders vanish and hurt low-literacy users):
+
+1. **ফোন নম্বর** (phone) — `inputmode="tel"`, `type="tel"`, autofocus. **First field on purpose:** it's the COD identity key (customer upsert by `(tenant, phone)` per research §4) and the seller's lifeline. On blur, if a returning customer matches, soft-fill name/address (with a "আপনার আগের তথ্য" chip they can edit). Accepts Bangla or Latin digits, normalizes to Latin (§4.4).
+2. **নাম** (full name) — `autocomplete="name"`.
+3. **ঠিকানা — বিভাগ → জেলা → থানা** (cascading, see P1.3).
+4. **বিস্তারিত ঠিকানা** (street/house/area) — textarea, 2 rows.
+5. **পেমেন্ট মাধ্যম** (payment method, see P1.4) — COD default.
+6. (optional) **নোট** — collapsed "✎ অর্ডার নোট যোগ করুন" link that expands; not shown by default.
+
+That's **5 required inputs**. Anything more must justify itself. No email (BD buyers don't reliably have/check it; phone is the channel).
+
+### P1.3 Division → District → Thana cascading selects
+- Powered by `bangladesh-location-data` (research §5): `divisions_bn`, `districts_bn[divisionValue]`, `upazilas_bn[districtValue]`. **Render Bangla option text and Bangla labels**; store the canonical value to `customer_address.division/district/thana`.
+- **Mobile pattern:** each select is a **bottom sheet** (§7.3), not a native `<select>` dropdown — a searchable sheet with a Bangla filter input at top (64 districts is too many to scroll blind). Trigger looks like an input: label above, chosen value + chevron inside, 44px tall.
+- **Cascade rules:** District disabled until Division chosen; Thana disabled until District chosen. Changing a parent clears children. Disabled state uses `--color-text-subtle` on `--color-surface-2` (§7.2). Each sheet shows a count ("৬৪টি জেলা") and supports type-to-filter (filter matches Bangla and Latin transliteration).
+- Selecting a Thana may surface a delivery-fee line in the summary (Inside Dhaka vs Outside, the universal BD split) — show it the instant thana resolves so the buyer sees the real total before committing.
+
+### P1.4 Payment method — COD is the loudest, bKash is the alternative
+Two large radio-cards stacked, full width, each 64px+ tall, `--radius-lg`. Selected = 2px ring in the option's accent + weak bg; unselected = `--color-surface` + `--color-border`.
+
+- **COD (DEFAULT, selected, listed first, visually loudest):**
+  - Border/ring `--color-cod`, bg `--color-cod-weak` when selected. Big COD-green check icon, title **"ক্যাশ অন ডেলিভারি"** (`body-strong`), subtitle "পণ্য হাতে পেয়ে টাকা দিন" (pay-on-receipt — the trust promise spelled out).
+  - A small COD-green reassurance line under it: "✓ অগ্রিম টাকা লাগবে না". This sentence is the conversion lever for first-time COD buyers — keep it.
+- **bKash (alternative, second):**
+  - This is the **only** place `--color-bkash` pink appears in the buyer flow. Selected ring/accent = `--color-bkash`, bg `--color-bkash-weak`, bKash logo glyph, title "বিকাশ", subtitle "এখনই পেমেন্ট করুন". 
+  - On select + confirm, opens the **tokenized bKash popup/iframe** (research §1) — do not build a custom card form. While the popup is open, the sticky bar shows a "বিকাশ পেমেন্ট চলছে…" pending state (spinner on `transform`).
+- The bKash pink **never** bleeds onto the Confirm button — the Confirm bar stays indigo primary regardless of method. Pink is the rail, indigo is the action.
+
+### P1.5 Order summary
+- A `--color-surface` card, `--radius-lg`, hairline border, above the sticky bar. Each line: item thumbnail (40px) + name (line-clamp-1) + qty ×, price right-aligned (Bangla digits, `tnum`).
+- Totals block: সাবটোটাল, ডেলিভারি চার্জ (resolves from thana), and **সর্বমোট** in `price` scale (`--text-2xl`, weight 700, ink) — the grand total is the second-loudest thing on the page after the Confirm button.
+- Editable qty steppers (− / value / +), 44px targets. Remove = trash icon with undo toast.
+
+### P1.6 The sticky Confirm bar
+- Reuses §6.1 #8 / §6.3 sticky-bar pattern. Fixed bottom, `--z-sticky`, `--color-surface` with top hairline + `--shadow-lg` (lifts off content).
+- **Left:** "সর্বমোট" micro-label + grand total (Bangla digits, `tnum`, `--text-lg` weight 700).
+- **Right (fills remaining width):** primary button, indigo, 52px tall, weight 600 — **"অর্ডার করুন"** for COD, or **"বিকাশে পেমেন্ট করুন"** when bKash is selected (label reflects the action). One primary action, always.
+- Disabled (incomplete required fields) → §7.2 disabled style; on tap of a disabled bar, scroll to + shake (transform) the first invalid field.
+- Submit shows inline button spinner; never a full-page blocker (3G — keep the page interactive).
+
+### P1.7 Order success / track page
+- Buyer-facing celebration + reassurance, Bengala numerals throughout.
+- **Hero confirmation:** big COD-green check (the one moment of delight, scale-in on `transform`, §8), "অর্ডার কনফার্ম হয়েছে!" (`h1`), order number in `--font-mono`-ish prominent line "অর্ডার #ABC123" (order numbers stay Latin/alphanumeric even buyer-side — they're IDs the buyer reads back to the seller on the phone).
+- **What happens next** card: 1) "আমরা আপনাকে কল করে কনফার্ম করব" 2) "৳ টাকা ডেলিভারিতে দিন" (for COD) 3) courier + ETA when shipped. Sets expectations = fewer "where's my order" calls.
+- **Live status stepper** (the same P3.2 stepper, read-only horizontal) showing current `order_fulfillment_status`. Updates as the courier syncs (research §2).
+- **Track later:** "ফোন নম্বর দিয়ে অর্ডার খুঁজুন" — phone-based lookup, no account needed.
+- Prominent **store contact** (tappable `tel:` + Messenger/WhatsApp) — the COD buyer's safety net.
+
+---
+
+## P2. Admin shell + dashboard
+
+Operator-facing → **Latin numerals, `tabular-nums`, `--font-mono` for amounts/IDs** (§4.4). Calm and compact (§2 differentiation rule): marigold nearly absent, indigo only for the single primary action, status colors carry the meaning.
+
+### P2.1 Shell / navigation (mobile-only sellers — this is the default device)
+- **Mobile (base–md): bottom tab bar**, `--z-sticky`, `--color-surface` + top hairline, 5 tabs max, each 44px+, icon + tiny Bangla label: **হোম** (dashboard) · **অর্ডার** · **পণ্য** · **গ্রাহক** · **আরও** (sheet: customers-overflow, settings, marketing, switch store, logout). Active tab = indigo icon + label + 2px top indicator. This matches the one-thumb reality better than a hamburger.
+- **Desktop (≥ lg): fixed left sidebar** (`240px`, `--color-surface`, hairline right). Same items as a vertical list, active = `--color-primary-weak` row + indigo text + left indicator bar. Collapses to icon-rail at lg, full at xl.
+- **Top bar (all sizes):** store switcher (left), page title (center on mobile), and a single context action (right) — e.g. "+ নতুন অর্ডার" on the orders screen. One primary action per screen (§2).
+- Content max-width `1280px` (§6.2).
+
+### P2.2 Store switcher
+- A `--color-surface` button in the top bar: store avatar (initial in indigo-weak circle) + store name + chevron. Opens a sheet (mobile) / dropdown (desktop) listing the seller's stores with avatars + a "+ নতুন স্টোর" row. Current store = check + `--color-primary-weak`. Sellers with one store still see it (sets the multi-store mental model early).
+
+### P2.3 Dashboard — data-dense but calm
+Vertical scroll, mobile-first. Hierarchy top→bottom = **what needs action** before **vanity metrics**.
+
+1. **Greeting + date** — "সুপ্রভাত, রেশমি" + today's date. Light, sets context.
+2. **Metric cards** — a 2-col grid on mobile (`--metric-gap`), 4-col ≥ md. Each card: `--color-surface`, `--radius-lg`, hairline, `--shadow-xs`. Tiny muted Bangla label on top, **big Latin number** (`--text-2xl`/`3xl`, weight 700, `tabular-nums`) below, a small delta or sub-line under that. Order by operational urgency:
+   - **আজকের অর্ডার** (today's orders) — count; sub-line "vs গতকাল +N".
+   - **আজকের বিক্রি** (today's revenue) — `৳` + amount, `--font-mono` tabular.
+   - **COD বকেয়া** (COD pending) — amount in **`st-pending`** color (this is money owed to the seller; make it pop, not alarming). Tappable → filtered orders.
+   - **কম স্টক** (low stock) — count in **`warning`**; tappable → filtered products. 0 = muted/calm, not green-celebrated.
+   - These four are the seller's morning glance. Keep it to four; resist a metric wall.
+3. **Action needed strip** (only if non-zero): a single `--color-warning-weak` banner — "৩টি অর্ডার কনফার্ম করা বাকি →". The one nudge.
+4. **Recent orders** — compact list (not a wide table on mobile): each row = order # (mono) · customer name · time-ago · grand total (right, mono tnum) · `<StatusBadge kind="fulfillment">`. Tap → order detail. "সব অর্ডার দেখুন →" footer link.
+- **Calm rule:** no charts on the Phase-1 dashboard unless they earn it; a sparkline on revenue is the maximum. Numbers + status chips do the work. No marigold here.
+
+---
+
+## P3. Orders
+
+Operator-facing (Latin numerals, mono amounts). The orders area is where the F-commerce seller lives — optimize for **triage speed** and **manual entry speed**.
+
+### P3.1 Orders list + status filters
+- **Filter row** (sticky under top bar): horizontal-scroll pills (`--radius-full`, §6.3 chip style) — সব · অপেক্ষমাণ · নিশ্চিত · প্যাকড · পাঠানো · ডেলিভার্ড · ফেরত/বাতিল. Active pill = `--color-primary` solid; each pill shows a count badge. A secondary "COD বকেয়া" / "পেমেন্ট ব্যর্থ" filter set for money triage.
+- **Search:** by phone or order # (phone first — sellers search by the number the buyer gives on the call).
+- **Rows (mobile = stacked cards, not a squished table, §7.5):** order # (mono) + time-ago top-right · customer name + phone · grand total (mono, prominent) · three chips in a row: `fulfillment` · `payment` · `cod`. Left edge: a 3px color bar in the fulfillment status color for scan-ability down the list.
+- **Desktop ≥ md:** real table — zebra (§7.5), columns: ☐ · Order# · Customer · Phone · Total (right, mono tnum) · Fulfillment · Payment · COD · Date · ⋯. Sticky header. Bulk-select → bulk actions (confirm, "Steadfast-এ পাঠান", print).
+- **Per-row / bulk primary action is contextual to status:** pending→"নিশ্চিত করুন", confirmed→"প্যাক করুন", packed→"কুরিয়ারে পাঠান" (creates Steadfast consignment, research §2). The list *is* the pipeline control surface.
+
+### P3.2 Status pipeline stepper (the visual spine, reused on order-detail and buyer success page)
+- Horizontal stepper: **pending → confirmed → packed → shipped → delivered**, with **returned / cancelled** as a terminal off-ramp shown in red only when active.
+- Each node: a dot/icon + Bangla label under it; connector line between. Completed steps = filled in that step's status color, current = filled + ring (`--shadow-focus`-style halo in the step color), upcoming = `--color-border` outline + `--color-text-subtle` label.
+- On a **returned/cancelled** order, the line after the last reached step turns `st-cancelled`/`st-returned` and the off-ramp node replaces "delivered". Color + icon + label (§7.4) so it's unmistakable.
+- Mobile: if it overflows 360px, it becomes a **vertical** stepper (nodes stacked, connectors vertical) — never shrink labels below 12.5px.
+- This is a presentational component fed by `order_fulfillment_status`; one stepper, three placements (order-detail header, buyer success page, optionally dashboard recent-order hover).
+
+### P3.3 Order detail
+- **Header:** order # (mono, big) + the P3.2 stepper + the contextual primary action button (status-driven, as P3.1). Created-at, channel (storefront / "ম্যানুয়াল").
+- **Two-column ≥ lg, stacked on mobile:**
+  - **Left/main:** line items (thumbnail · name · variant · qty · unit price · line total, all mono tnum) → totals block (subtotal, delivery, **grand total** emphasized) → payment block (method chip, `payment_status`, `cod_status`, trxID mono if bKash) → courier block (consignment ID, tracking code, live status, "ট্র্যাক করুন" link once shipped).
+  - **Right/aside:** customer card (name, phone with `tel:` + Messenger/WhatsApp tap, "৩টি আগের অর্ডার" link to customer detail), shipping address (the resolved division/district/thana + detail), order notes/timeline (status-change audit log, newest first).
+- **Actions:** print invoice / packing slip (P3.5), edit (pre-ship only), cancel (destructive confirm, §7.2), resend SMS.
+
+### P3.4 Manual Order Entry — the F-commerce killer feature (design for SPEED)
+The seller is retyping an order spoken over a phone call or pasted from Messenger. Every saved second × hundreds of orders/month = the product's value. **Keyboard-first, single column, no wizard, no step pages.**
+
+- **Entry point:** "+ নতুন অর্ডার" is the orders-screen primary action; also a global FAB on mobile. Opens **full-screen on mobile, wide centered sheet on desktop** — not a cramped modal.
+- **Layout (top→bottom, all Tab-reachable in order):**
+  1. **ফোন নম্বর** — first field, autofocus. On entry of a known number → **instant inline fill** of name + last address (a dismissible "আগের গ্রাহক — রেশমি, মিরপুর" chip). This single behavior removes most typing for repeat buyers; it's the heart of the feature.
+  2. **নাম** (auto-filled if returning).
+  3. **পণ্য যোগ করুন** — a **type-ahead product search** (by name or SKU). Selecting adds a line; if the product has variants, an inline compact variant picker (size/color chips) appears in the line. **Enter adds the line and refocuses the search** so the seller can rattle off "3 items" without touching the mouse. Each line: name · variant · qty stepper (or type a number) · auto price (editable for haggled/manual price) · line total · ✕.
+  4. **ঠিকানা** — same Division→District→Thana cascade as checkout (P1.3), but operator-tuned: type-to-filter is keyboard-default (the sheet opens with the filter focused), and the field accepts paste of a full address blob with a "ঠিকানা আলাদা করুন" parse helper for Messenger copy-paste.
+  5. **পেমেন্ট** — COD default radio (compact inline, not the big buyer cards); bKash/"পরিশোধিত"/"বকেয়া" quick toggle. Manual orders are usually COD-confirmed-on-call, so COD-confirmed is the one-tap default.
+  6. **ডেলিভারি চার্জ** — auto from thana, editable.
+- **Persistent summary + sticky save bar** (bottom): running grand total (mono) + **"অর্ডার তৈরি করুন"** primary, and a **"তৈরি করে আরেকটি"** secondary (save + reset + refocus phone) — sellers process orders in batches; this keeps them in flow.
+- **Speed affordances:** full Tab order, `Enter` = add product line, `Ctrl/Cmd+Enter` = save order, numeric `inputmode` on qty/price, no required field beyond phone + ≥1 line + address, optimistic save with toast + undo. **No animations that delay input.** This screen is judged in milliseconds.
+
+### P3.5 Printable invoice / packing slip
+- A print-only layout (`@media print`), A4 + 80mm thermal-friendly variant. **Black ink on white, no warm-paper bg, no shadows** (printer reality). Latin numerals, mono for IDs/amounts (alignment).
+- **Invoice:** store header (name, logo, phone, address) · "ইনভয়েস" + order # + date · bill-to (customer, phone, full resolved address) · line-item table (item/variant/qty/price/total) · totals · payment method + COD-amount-due loud ("ডেলিভারিতে সংগ্রহ: ৳N") · thank-you + return policy line.
+- **Packing slip / courier label:** big recipient block (name, phone, address — the courier reads this), **COD amount very large** (the single most error-prone field — make it unmissable), order # + Steadfast tracking code (mono + optional barcode/QR of tracking_code), item checklist with checkboxes for the packer. Optimize the label so a thumb-typing seller can print, peel, stick.
+- Bangla for human-readable address/name (the courier reads Bangla); IDs/amounts Latin.
+
+---
+
+## P4. Products / variants admin
+
+Operator-facing. Product form is the second-most-used admin screen; make variant entry not painful.
+
+- **List:** thumbnail · name · status chip (active=`success`, draft=`st-pending`, archived=muted) · price (mono) · total inventory (mono, `warning` if low, `danger` if 0) · ⋯. Mobile = stacked cards with thumbnail-left. Search + status filter pills (§P3.1 pattern).
+- **Product form (single column ≤ md, main+aside ≥ lg):**
+  - **Main:** নাম · বিবরণ (rich-ish but simple) · **ছবি** (upload + reorder) · **দাম** · **ভ্যারিয়েন্ট** (matrix).
+  - **Aside ≥ lg:** স্ট্যাটাস (active/draft/archived select), কালেকশন, organization. On mobile these sit below as labeled sections.
+- **Image upload + reorder:** drag-grid of square thumbs (`--radius-md`), first image = "কভার" badge (marigold — allowed accent, it's a highlight). Drag to reorder (pointer + a long-press handle for touch); each thumb has a remove ✕ and "কভার করুন" on hover/long-press. Upload tile (dashed `--color-border-strong`, "+ ছবি যোগ করুন") with progress on the tile, not a blocking modal. Lazy-thumbnail, client-resize before upload (3G upload budget).
+- **Variant matrix (the painful part — make it fast):**
+  - Define **options** first: option name (e.g. সাইজ) + value chips (S, M, L, …), add a second option (রং) the same way. The grid is the cartesian product.
+  - **Table:** one row per combination — variant label (S / লাল) · **দাম** · **স্টক** · **SKU** (mono) · image-link · active toggle. All numeric cells are `inputmode`-numeric, mono, `tabular-nums`, **Tab/Enter to move down a column** (bulk price/stock entry without the mouse — same speed ethos as P3.4).
+  - **Bulk helpers above the grid:** "সব দামে প্রয়োগ করুন ৳___", "সব স্টকে ___", auto-generate SKU pattern. Sellers commonly price all variants the same; one-click fill saves dozens of taps.
+  - Mobile: matrix collapses to a stacked list, one card per variant (label header + price/stock/SKU fields). Never a horizontally-scrolling table the seller has to swipe — too error-prone for inventory.
+- **Collections:** simple — name, optional image, product multi-select (search + checklist). Manual + (later) rule-based; Phase 1 manual is fine.
+
+---
+
+## P5. Customers
+
+Operator-facing. The seller's relationship memory — repeat COD buyers are the business.
+
+- **List:** name · phone (mono, tappable) · orders count · total spent (mono `৳`) · last-order time-ago · tags. Search by name/phone. Sort by spend / recency. Mobile = stacked cards.
+- **Detail:**
+  - **Header:** name, phone (`tel:` + Messenger/WhatsApp), avatar (initial), and **trust signals at a glance**: total orders, total spent, **COD reliability** (delivered vs returned ratio — a quiet but critical signal; a high return rate flags a risky COD buyer). Show returned-rate as a small `warning`/`danger` chip when notable — this is real F-commerce money protection.
+  - **Order history:** the P3.1 row pattern, scoped to this customer, with the status chips.
+  - **Addresses:** saved division/district/thana + detail cards; default marked; reused to pre-fill manual orders (ties back to P3.4).
+  - **Notes / tags:** free-text notes (newest first) + tag chips (e.g. "ভালো গ্রাহক", "ফেরত দেয়", "হোলসেল"). Tags are filterable in the list. Tags use neutral `--color-surface-2` chips except semantic ones (risk tag = `danger-weak`).
+
+---
+
+## P6. Settings
+
+Operator-facing. Grouped, calm, one section per concern. Mobile = a list of section rows → detail; desktop = left settings-nav + right panel.
+
+- **পেমেন্ট:**
+  - **COD** — enable toggle (on by default — it's the market default), inside/outside-Dhaka delivery-charge fields (mono, ৳). 
+  - **বিকাশ** — enable toggle; when on, fields for app_key / app_secret / username / password (masked, `--font-mono`) + a **"সংযোগ পরীক্ষা করুন"** test button (grant-token smoke test, research §1). The bKash row header is the **only** admin place `--color-bkash` pink appears (a small bKash glyph), echoing the buyer flow. Sandbox/production mode switch with a clear `warning` chip when in sandbox.
+- **কুরিয়ার (Steadfast):** enable toggle, Api-Key / Secret-Key (masked mono), "ব্যালেন্স দেখুন" button (`get_balance`, research §2), default delivery-charge mapping. A `warning` note that live courier needs a real merchant account (no sandbox) — honest, sets expectations.
+- **স্টোর প্রোফাইল:** store name, logo, hotline phone, address, social links (Facebook first), subdomain (shown, mono) + custom-domain attach (Phase-1 may stub the SSL step — show status chip). Default language, BDT formatting preview.
+- **Pattern:** each settings section is a `--color-surface` card, hairline, with a clear sticky "সেভ করুন" only when dirty (disabled until changed). Secrets are write-masked (show last 4). Destructive (disable bKash mid-flow, delete store) = confirm dialog.
+
+---
+
+## P7. Super-admin (platform owner — Junait)
+
+Per §2: **utilitarian, data-dense, compact**. Latin numerals, `--font-mono` for IDs, status colors do the talking, marigold absent. This is a power-user tool — denser than tenant admin is correct.
+
+- **Layout:** fixed sidebar (Tenants · Billing · Plans · System), full-bleed content with `1440px` table cap (§6.2). No bottom-tab mobile treatment needed — owner tool, desktop-assumed, but stays responsive (cards < md as a fallback).
+- **Tenant directory table (the core screen):** dense zebra table (`--space-cell-y`/`-x`), sticky header, columns:
+  - ☐ · **Tenant** (store name + subdomain, subdomain in mono muted) · **Owner** (name/phone) · **Plan** (chip: trial/starter/growth/pro) · **Status** (`active`=`success`, `trialing`=`st-confirmed`/info, `past_due`=`warning`, `suspended`=`danger` — color+text) · **MRR ৳** (mono tnum, right) · **Orders 30d** (mono) · **Created** · **⋯**.
+  - Filters: status, plan, search by store/owner/phone. Sort any numeric column.
+- **Row actions (⋯):** view tenant, impersonate (audit-logged), suspend/reactivate (destructive confirm), change plan, extend trial. Suspend uses `danger` and a typed-confirm for safety.
+- **Tenant detail:** identity + owner + plan/subscription state + usage (orders, products, storage vs plan caps with `warning` when near cap) + billing history (manual bKash records per research §1) + audit log. Utilitarian stacked cards, mono everywhere it's an ID or amount.
+- **Status badges everywhere** use the §P0.1 map; subscription states map: `trialing`→st-confirmed, `active`→success, `past_due`→warning, `suspended`/`cancelled`→danger.
+
+---
+
+## P8. Marketing site + signup
+
+Buyer-of-the-product facing (the *seller* is the customer here). Per §2 Marketing surface: **persuasive, confident, Bengali, spacious, full palette + marigold for energy**, BDT pricing, social proof. This is the showroom — it gets the air and warmth the admin doesn't.
+
+### P8.1 Landing (Bengali, conversion-focused)
+- **Hero:** big Bangla headline (`display`/`--text-4xl`, 700) — the value prop in plain seller language: "১০ মিনিটে নিজের অনলাইন দোকান — বাংলায়, বিকাশে, ক্যাশ অন ডেলিভারিতে।" Sub-line, then **two CTAs**: primary indigo "ফ্রি শুরু করুন" + secondary "ডেমো দেখুন". A real product screenshot (the storefront) beside/under it — show, don't tell. Spacious, `--space-section` rhythm.
+- **Trust band** (not a generic 3-icon feature grid — §9 bans that): the differentiators as a bento/editorial composition — "ক্যাশ অন ডেলিভারি + কুরিয়ার মিলিয়ে দেখুন", "বাংলায় পুরো দোকান", "বিকাশে পেমেন্ট", "Messenger-এর অর্ডার আর হারাবে না". Marigold accents allowed for energy.
+- **How it works:** 3 steps (সাইন আপ → পণ্য যোগ করুন → শেয়ার করুন), illustrated with real UI, not stock icons.
+- **Social proof:** seller testimonials/logos, "X+ দোকান চলছে" counter (Bangla digits — buyer-facing). F-commerce sellers trust peers.
+- **Pricing:** the PRD tiers as cards in **৳ / BDT, Bangla numerals** — ফ্রি (১৪ দিন) · স্টার্টার ৳৪৯৯ · গ্রোথ ৳১,৯৯৯ · প্রো ৳৪,৯৯৯+. Recommended tier (স্টার্টার) gets a marigold "জনপ্রিয়" ribbon + indigo emphasis. Monthly/yearly toggle. Each card: price (loud), what's included (checklist), CTA. "বিকাশে পেমেন্ট" noted (removes the card-payment barrier — a real differentiator).
+- **FAQ + final CTA band** (indigo panel, single "ফ্রি শুরু করুন"). Footer: contact, Facebook-first socials, policies, "Powered by Hybrid" reinforcement.
+- Performance: marketing still respects §10 — one eager hero asset, lazy below, no carousels.
+
+### P8.2 Signup → store-name → provisioning flow
+A short, confidence-building wizard. Bengali, big inputs, trust copy at each step.
+
+1. **সাইন আপ:** phone + email (both, phone matters in BD per research §3) + password, or OTP. One screen, minimal. Trust line: "ক্রেডিট কার্ড লাগবে না · ১৪ দিন ফ্রি".
+2. **দোকানের নাম:** store name input → **live subdomain preview** ("`reshmis-shop`.hybrid.com.bd" updating as they type, mono, with availability check ✓/✕). This is the magic moment — show the real URL forming. Validates/normalizes to a slug.
+3. **প্রোভিশনিং:** a brief, honest progress screen (research §3: tenant + domain + owner-member + 14-day trial subscription created via the provisioning Server Action) — "আপনার দোকান তৈরি হচ্ছে…" with real sub-steps ticking (✓ দোকান তৈরি · ✓ ঠিকানা সেট · ✓ ট্রায়াল চালু). Compositor-safe spinner/check animations (§8). Then a celebratory hand-off → straight into the admin dashboard (P2.3) with a "প্রথম পণ্য যোগ করুন" nudge (activation KPI: live store + ≥1 product in 24h).
+- **Anti-slop:** this flow is the first impression of product quality — Hind Siliguri, warm neutrals, indigo, real progress (not a fake spinner), zero foreign-template feel. It must feel like the §9 screenshot test: "this is real, local, and I can trust it with my business."
+
+---
+
+## P9. Phase-1 anti-slop / consistency additions
+
+On top of §9, every Phase-1 surface must also pass:
+
+- [ ] **Numeral split honored per surface:** buyer (checkout, success, marketing) = Bangla digits; operator (admin, super-admin, invoices) = Latin + `tabular-nums`. Never mixed within a surface.
+- [ ] **Status = the §P0.1 map, via `<StatusBadge>`** — never an ad-hoc color. The three lifecycle fields render as three independent chips, never collapsed.
+- [ ] **bKash pink (`--color-bkash`) appears ONLY** on: the buyer bKash payment option, the admin payment-method chip, and the settings bKash row. Never a CTA, never the brand, never on marketing.
+- [ ] **COD is the loudest payment option** on checkout, with the COD-green trust treatment + "অগ্রিম টাকা লাগবে না" reassurance. The Confirm action stays indigo regardless of method.
+- [ ] **One primary action per admin screen** (§2); the action is **status-contextual** on orders.
+- [ ] **Manual order entry is keyboard-first** (Tab order, Enter-adds-line, returning-customer autofill, "create & another"). It is judged in milliseconds — no input-delaying motion.
+- [ ] **Admin tables collapse to stacked cards < md** (§7.5); variant matrix and invoices never force horizontal swiping for data entry.
+- [ ] **Stepper uses color + icon + label** for every state, with a clear returned/cancelled off-ramp.
+- [ ] **Mobile admin nav = bottom tabs**, every control ≥ 44px, dialogs = bottom sheets (§7.3).
+- [ ] **Print layouts are black-on-white**, COD amount unmissable, tracking code mono/scannable.
+- [ ] **Provisioning shows real progress**, lands the seller on "add first product" (activation KPI).

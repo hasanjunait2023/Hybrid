@@ -1,0 +1,39 @@
+# Hybrid — Phase 1 Architecture Blueprint (APPROVED at GATE 1, 2026-06-23, autonomous)
+
+Builds ONLY on Phase-0 contracts (withTenant/asPlatformAdmin, getSession() seam, cache tags, middleware route groups, unstable_cache+revalidateTag). Canonical SQL not edited (all P1 tables exist). Honors docs/research/phase1-brief.md.
+
+## GATE-1 decisions (CEO autonomous defaults)
+1. bKash Tokenized Checkout (sandbox-real) for storefront; manual record for SaaS billing. 2. Signup provisions subscription status=trialing, plan_id=starter, trial_ends_at=now()+14d (starter-level trial for activation). 3. Grace = 3 days past_due before suspend. 4. Auth: dev-login default local; Supabase provider behind getSession seam, activated when AUTH_PROVIDER=supabase + Docker/cloud. 5. NEXT_PUBLIC_ROOT_DOMAIN=myhybrid.com (lvh.me dev). 6. Low-stock threshold ≤5.
+
+## New packages
+### @hybrid/db crypto (packages/db/src/crypto.ts) — AES-256-GCM, APP_ENCRYPTION_KEY(base64 32b, fail-fast). SealedSecret{v,alg,iv,ct,tag} json envelope in jsonb. sealCredentials(map)/openCredentials(sealed)/isSealed(). Guards payment_account.credentials + courier_account.credentials. Pure util; callers run inside withTenant. Test: round-trip + tamper(GCM)+wrong-key.
+### @hybrid/payments (packages/payments) — PURE (no Next/DB/env; fetch injectable). PaymentProvider{provider; createPayment; executePayment; queryPayment; refund?}. PaymentState=pending|success|failed|cancelled|refunded. BkashProvider Tokenized: grant(/tokenized/checkout/token/grant headers user/pass body app_key/secret → id_token cache 3600s injectable tokenStore→Redis bkash:token:{tenant}) → create(/create Authorization id_token X-App-Key body mode:"0001" payerReference:phone callbackURL amount currency BDT intent sale merchantInvoiceNumber=payment.id → paymentID,bkashURL) → execute(/execute {paymentID}→trxID,transactionStatus) → query(/payment/status safety net) → refund(/payment/refund docs-stub). codes.ts statusCode 0000/Completed→success. base by creds.mode sandbox|live. CodProvider: createPayment instant confirmed (payment_status unpaid, cod_amount=total), execute/query no-op, creds optional. Tests: bkash.test.ts REAL sandbox grant→create→execute→query (gated BKASH_SANDBOX=1, success wallet 01770618575 PIN12121 OTP123456, fail 01823074817); state-machine unit (stub fetch); cod.
+### @hybrid/couriers (packages/couriers) — PURE. CourierAdapter{createConsignment(input,creds):{consignmentId,trackingCode,raw}; getStatus(cid,creds):{status,raw}; getBalance(creds)}. SteadfastProvider base https://portal.steadfast.com.bd/api/v1 headers Api-Key/Secret-Key. create→POST/create_order{invoice,recipient_name,recipient_phone,recipient_address,cod_amount int,note}→consignment.{consignment_id,tracking_code}. status→GET/status_by_cid/{id}. balance→GET/get_balance. statusMap.ts: pending/in_review→created/confirmed; hold/delivered_approval_pending→in_transit/in_transit; delivered/partial_delivered→delivered/delivered; cancelled→cancelled/returned; unknown*→in_transit. NO sandbox → contract-test request shape + map (stub fetch) 100% local; live deferred to merchant creds. Flag: no COD-remittance API (Phase-2 reconciliation).
+
+## apps/web shared cores
+- lib/commerce/customer.ts upsertCustomerByPhone(tx,tenantId,{phone,name,email}) via customer_phone_uniq on conflict do update.
+- lib/commerce/placeOrder.ts — THE idempotent withTenant txn (checkout + manual share it): (1)customer upsert (2)address upsert (3)per item atomic inventory decrement `update product_variant set inventory_quantity=inventory_quantity-${q} where id=${v} and track_inventory and inventory_quantity>=${q} returning id` 0rows→throw INSUFFICIENT_STOCK→ROLLBACK (4)INSERT orders (order_number trigger; grand_total server-computed from variant prices) (5)order_item price snapshot from DB (6)INSERT payment id=idempotency=merchantInvoiceNumber (7)increment customer counters + usage_counter. COD: payment cod, payment_status unpaid, cod_amount=total, confirmed→SMS post-commit. bKash: payment pending → post-commit BkashProvider.createPayment→bkashURL→popup→/api/bkash/callback execute→success. Idempotency: webhook_event unique(provider,external_id=paymentID) ON CONFLICT DO NOTHING (process iff insert wins); payment_txn_uniq blocks dup trxID; prices server-side.
+- lib/storage/index.ts BlobStore{put,remove}: LocalBlobStore→public/uploads/{tenant}/{uuid} (gitignored, mime+size+filename sanitize) P1; SupabaseBlobStore swap by BLOB_DRIVER P2. URLs opaque in product_image.url.
+- lib/location/index.ts re-export bangladesh-location-data divisions/districts/upazilas _bn/_en + getCascade(). Pickers write division/district/thana text.
+- lib/sms/index.ts SmsAdapter.send(to,msg):{ok,messageId} sms.net.bd GET/POST api.sms.net.bd/sendsms (unicode). templates.ts Bengali. Sent AFTER commit, caught+logged, non-blocking. Gated SMS_LIVE=1.
+- lib/auth/provision.ts asPlatformAdmin: INSERT tenant(slug,status trial,plan starter,trial_ends_at+14d)+tenant_domain({slug}.{ROOT} subdomain verified primary)+tenant_member owner+subscription(trialing,+14d,billing manual). slug unique→Bengali error.
+- lib/billing/status.ts evaluateTenantBilling: trialing→past_due(3d grace)→suspended. /api/internal/billing-sweep (CRON_SECRET) flips tenant.status suspended+invalidateDomainCache. Storefront enforcement FREE — resolve.ts already requires status='active'.
+
+## Auth Supabase provider (behind getSession seam)
+session.ts keep HMAC dev-login (default AUTH_PROVIDER=dev); add supabase branch (@supabase/ssr createServerClient.auth.getUser()) same Session{userId,tenantId} shape. app_user.id=auth.users.id. New bookend packages/db/sql/05_auth.sql: trigger on_auth_user_created (security definer) inserts app_user ONLY. Middleware supabase token refresh only on supabase branch → dev never breaks. Live deferred to Docker/cloud.
+
+## Slices → waves (BE=backend-engineer, FE=frontend-engineer)
+WAVE 0 (BE, parallel, publishes contracts): S-CRYPTO(@hybrid/db crypto), S-PAY-PKG(@hybrid/payments), S-COUR-PKG(@hybrid/couriers), S-COMMERCE-CORE(lib/commerce + atomic decrement + integration tests).
+WAVE 1 (BE+FE parallel): S-CATALOG(products/variants/images BlobStore/collections), S-ORDERS(list/detail/manual entry/status machine/invoice; consumes placeOrder), S-CUSTOMERS(consumes upsert), S-DASHBOARD, S-AUTH-PROVISION(getSession supabase branch+provision.ts+05_auth.sql).
+WAVE 2 (depends W0): S-CHECKOUT(GATE slice; consumes commerce-core+payments; checkout form+cart island+location pickers+/api/bkash/callback), S-COURIER-WIRE(sendToCourier+/api/internal/courier-sync+COD list), S-SETTINGS(payments/courier/store, encrypted creds), S-SMS.
+WAVE 3 (depends provision): S-PLATFORM(super-admin directory/suspend/impersonate), S-BILLING(manual+grace+sweep), S-MARKETING(Bengali landing+signup).
+Build order W0→(W1 ∥ W2 once pkgs land)→W3. New cache tags :orders/:order:{id}/:customers/:collections/:dashboard/:cod — one PR extends CLAUDE.md tag table.
+
+## Sacred invariants
+RLS via withTenant on every tenant query; idempotency on payments/webhooks/inventory (atomic decrement, webhook_event unique, payment_txn_uniq, server-side prices); secrets AES-256-GCM never logged/rendered; mobile-first + Bengali-first acceptance criteria; CI = RLS suite + per-slice embedded-pg integration suites + bKash sandbox (network-gated) + provider unit/contract tests.
+
+## Live now vs deferred
+LIVE NOW: bKash sandbox e2e; crypto/state-machine/status-map/contract tests; COD checkout; provisioning; full admin/storefront on dev-login. DEFERRED (real code, awaiting founder accounts): bKash prod (2-4wk onboarding), Steadfast live (merchant acct, no sandbox), SMS live (masking 6-7d), Supabase live (Docker/cloud).
+
+## Phase-1 DoD
+New seller self-signs up → live subdomain → adds products → takes COD AND bKash(sandbox) order → ships via Steadfast(creds permitting) → manual billing tracked → RLS + all suites green, no stubs.

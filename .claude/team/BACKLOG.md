@@ -4,22 +4,18 @@
 > Status: `todo` | `active` | `blocked` | `done`
 
 ## Active milestone
-- [ ] M1: Phase 0 — Foundation / Infra Spine (multi-tenant render + hard isolation) — status: active
+- [ ] M2: Phase 1 — MVP Wedge (products/orders/COD+bKash/Steadfast courier, sellable) — status: active
 
 ## Queue (priority order)
-- [ ] M2: Phase 1 — MVP Wedge (products/orders/COD+bKash/1 courier, sellable) — status: todo
 - [ ] M3: Phase 2 — Custom domains + themes + customizer + COD reconciliation — status: todo
 - [ ] M4: Phase 3 — Funnel builder + self-serve bKash billing — status: todo
 - [ ] M5: Phase 4 — Full editor, upsells, A/B, scale hardening — status: todo
 
 ## Done
-<!-- moved here on completion, with date -->
-
-## Follow-ups / tech debt (captured at RETRO)
-- (none yet)
+- [x] M1: Phase 0 — Foundation / Infra Spine — DONE 2026-06-23 (commit phase-0 tag 4f72e4d; DoD a/b/c/d all met; RLS 5/5).
 
 ## HARDEN blockers (M1)
-- [ ] SECURITY HIGH: apps/web/lib/auth/session.ts parseDevCookie must verify HMAC signature + refuse production (forgeable dev session cookie). Fix before GATE 2.
+- [x] SECURITY HIGH: parseDevCookie HMAC verify + prod refuse — FIXED (constant-time verify, getSession prod-guard, secret fail-fast).
 
 ## Tech debt (M1 → fix early M2)
 - [ ] vitest globalSetup EBUSY teardown flake (Windows): force-kill embedded PG + retry rmdir + pre-run .pgtmp sweep so gate exit code is reliable locally. — source M1 QA

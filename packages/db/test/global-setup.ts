@@ -27,7 +27,14 @@ import { dirname, join } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(here, "..");
 const SQL_DIR = join(PKG_ROOT, "sql");
-const DATA_DIR = join(PKG_ROOT, ".pgtmp");
+// PGTMP_DIR lets the data dir live outside the repo tree — useful on Windows
+// where antivirus real-time scanning of the rapidly created/deleted in-repo
+// .pgtmp causes the known EBUSY / "could not open file base/..." initdb flake.
+// Defaults to the in-package .pgtmp (unchanged for CI/Linux). The handoff file
+// always stays at PKG_ROOT so setup.ts finds it without extra wiring.
+const DATA_DIR = process.env.PGTMP_DIR
+  ? process.env.PGTMP_DIR
+  : join(PKG_ROOT, ".pgtmp");
 const HANDOFF = join(PKG_ROOT, ".pgtmp.json");
 
 // Embedded-postgres superuser. The blueprint's "postgres" superuser maps to

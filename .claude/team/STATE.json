@@ -1,10 +1,10 @@
 {
   "project": "Hybrid",
   "chartered": "2026-06-23",
-  "phase": "SHIP",
-  "active_milestone": "M1",
+  "phase": "BUILD",
+  "active_milestone": "M2",
   "awaiting_gate": null,
   "autonomous": true,
   "last_updated": "2026-06-23",
-  "notes": "AUTONOMOUS. GATE 2 self-approved (QA PASS, security SAFE, review fixed). SHIP: devops-deployer (Phase-0 milestone commit, no remote/cloud yet) + docs-dx (CLAUDE.md/README/ARCHITECTURE/CHANGELOG + DX) in parallel. Then RETRO → LOOP to M2 (Phase 1: products/orders/COD+bKash/Steadfast/signup). Tech debt in BACKLOG."
+  "notes": "AUTONOMOUS. M2/Phase 1 GATE1 self-approved. BUILD Wave 0 (foundation): pure packages @hybrid/payments+@hybrid/couriers+@hybrid/db crypto, and lib/commerce core. Then Wave1 (catalog/orders/customers/dashboard/auth-provision), Wave2 (checkout/courier-wire/settings/sms), Wave3 (platform/billing/marketing) → harden → self-approve GATE2 → ship. Blueprint docs/architecture/phase1-blueprint.md; design DESIGN.md #Phase 1 Surfaces; brief docs/research/phase1-brief.md."
 }
