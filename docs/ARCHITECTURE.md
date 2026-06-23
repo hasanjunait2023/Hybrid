@@ -1,7 +1,7 @@
 # Hybrid — Architecture Reference
 
-Concise reference for Phase 0. Read `docs/architecture/phase0-blueprint.md` for the full
-approved blueprint and decision rationale. Read `docs/PRD.md` for product context.
+Concise reference, current as of Phase 1. Read `docs/architecture/phase1-blueprint.md` for the
+full approved Phase 1 blueprint and decision rationale. Read `docs/PRD.md` for product context.
 
 ---
 
@@ -128,13 +128,19 @@ No rebuild required. ISR on-demand revalidation is the mechanism.
 | `tenant:{id}` | All tenant data (broad bust) |
 | `tenant:{id}:products` | Product list |
 | `tenant:{id}:product:{pid}` | Individual product |
+| `tenant:{id}:collections` | Collection list |
+| `tenant:{id}:orders` | Order list / status changes |
+| `tenant:{id}:order:{oid}` | Individual order |
+| `tenant:{id}:customers` | Customer list / counters |
+| `tenant:{id}:dashboard` | Dashboard metrics (also revalidates on product/order mutations) |
+| `tenant:{id}:cod` | COD collection list |
 | `tenant:{id}:theme` | Theme settings |
 | `tenant:{id}:page:{slug}` | Store page content |
 | `tenant:{id}:navigation` | Navigation |
 | `tenant-slug:{slug}` | Slug to ID resolution |
 
 Production note: `unstable_cache` is per-instance on Vercel. Replace with the Upstash
-cache handler before deploying to production (Phase 1 task; the cache is isolated to
+cache handler before deploying to production (Phase 2 task; the cache is isolated to
 `lib/storefront/data.ts` — one file change).
 
 ---
@@ -143,17 +149,30 @@ cache handler before deploying to production (Phase 1 task; the cache is isolate
 
 ```
 apps/web
-  depends on: @hybrid/db (withTenant, asPlatformAdmin, types)
+  depends on: @hybrid/db (withTenant, asPlatformAdmin, crypto, types)
+              @hybrid/payments (BkashProvider, CodProvider — Phase 1)
+              @hybrid/couriers (SteadfastProvider — Phase 1)
               @hybrid/ui (storefront components, tokens)
               @hybrid/config (ESLint, tsconfig, Tailwind preset)
 
 packages/db   (@hybrid/db)
-  owns: postgres.js connections, withTenant, SQL files, migrate, types
-  exports: withTenant, asPlatformAdmin, adminSql, generated types
+  owns: postgres.js connections, withTenant, SQL files, migrate, crypto (AES-256-GCM), types
+  exports: withTenant, asPlatformAdmin, adminSql, sealCredentials, openCredentials, generated types
   does NOT export: client.ts (the raw postgres.js handle)
+
+packages/payments  (@hybrid/payments)
+  owns: BkashProvider (Tokenized Checkout), CodProvider
+  pure — no Next.js, no DB, no env imports; fetch is injectable for testing
+  exports: BkashProvider, CodProvider, PaymentState, PaymentProvider interface
+
+packages/couriers  (@hybrid/couriers)
+  owns: SteadfastProvider (create consignment, get status, get balance), statusMap
+  pure — no Next.js, no DB, no env imports; fetch is injectable for testing
+  exports: SteadfastProvider, CourierAdapter interface, statusMap
 
 packages/ui   (@hybrid/ui)
   owns: design tokens (globals.css), Doreja storefront sections, shared primitives
+  added Phase 1: StatusBadge, StatusStepper, safeUrl
   no db dependency
 
 packages/config  (@hybrid/config)
@@ -163,27 +182,102 @@ packages/config  (@hybrid/config)
 
 ---
 
+## Phase 1 data flows
+
+### Checkout (COD or bKash) — one atomic `withTenant` transaction
+
+```
+Storefront checkout form (POST to Server Action)
+  1. upsertCustomerByPhone()          — insert or update customer record
+  2. address upsert                   — insert or reuse shipping address
+  3. per-item inventory decrement     — atomic: UPDATE ... WHERE inventory_quantity >= qty RETURNING id
+                                        0 rows → throw INSUFFICIENT_STOCK → ROLLBACK (no oversell)
+  4. INSERT orders                    — order_number assigned by per-tenant DB trigger
+  5. INSERT order_items               — prices copied from DB variant records (never client-supplied)
+  6. INSERT payment                   — payment.id = idempotency key / merchantInvoiceNumber
+  7. increment customer counters
+
+  COD path: payment_status=unpaid, cod_amount=total → commit → SMS post-commit (non-blocking)
+  bKash path: payment_status=pending → commit → BkashProvider.createPayment() → return bkashURL
+
+/api/bkash/callback  (server-side, after bKash popup)
+  1. INSERT webhook_event (provider, external_id=paymentID) ON CONFLICT DO NOTHING
+     → only the winning insert executes; duplicate webhooks are discarded
+  2. BkashProvider.executePayment() → trxID, amount
+  3. Verify amount paisa-exact vs payment.grand_total → mismatch → set failed, return
+  4. UPDATE payment status=success, trxID stored
+  5. UPDATE order status=confirmed
+```
+
+### bKash callback server-side verification (payment integrity, hardening commit 031f925)
+
+The amount returned by bKash `execute` is compared against the amount stored at order creation
+(computed server-side from DB variant prices). Client-supplied amounts are never trusted. A
+mismatch sets `payment_status = failed` and never triggers order confirmation.
+
+### Billing state machine
+
+```
+provisioning → subscription: trialing, trial_ends_at = now() + 14d, tenant.status = active
+
+/api/internal/billing-sweep (CRON_SECRET, run by cron)
+  evaluateTenantBilling(subscription, now):
+    trialing  + period_end < now  → past_due  (tenant stays active — 3-day grace)
+    past_due  + period_end + 3d < now → suspended → tenant.status = suspended
+    active    + period_end < now  → past_due
+    suspended / cancelled / expired → no-op
+
+  On suspend: tenant.status = suspended, subscription.status = expired,
+              invalidateDomainCache() flushes the Redis host cache
+```
+
+Storefront enforcement is free — `resolveTenantByHost()` already requires `tenant.status = 'active'`.
+Suspended tenants get a 404, not another tenant's data.
+
+### Courier wire (Steadfast)
+
+```
+Admin "Send to Steadfast" button (Server Action)
+  1. openCredentials(tenant courier_account) → {apiKey, secretKey}
+  2. SteadfastProvider.createConsignment(order, creds) → {consignmentId, trackingCode}
+  3. UPDATE order: courier_ref=consignmentId, tracking_code=trackingCode, status=shipped
+
+/api/internal/courier-sync (CRON_SECRET)
+  1. SELECT in-transit orders with courier_ref
+  2. SteadfastProvider.getStatus(cid, creds) per order
+  3. UPDATE order status per statusMap (pending→created, in_transit, delivered, cancelled, etc.)
+```
+
+No COD remittance API exists for Steadfast in Phase 1. The COD collection list in the admin
+shows outstanding amounts; reconciliation is manual until Phase 2.
+
+---
+
 ## Auth seam
 
 `apps/web/lib/auth/session.ts` exports one function: `getSession(): Promise<Session | null>`.
 
-**Phase 0 implementation:** HMAC-SHA256-signed dev cookie (`hybrid_dev_session`).
+**Phase 0/1 default:** HMAC-SHA256-signed dev cookie (`hybrid_dev_session`).
 Set by the `/dev-login?as=owner-a|owner-b|admin` route. Disabled in production
 (`NODE_ENV === 'production'` returns null immediately). Constant-time compare prevents
 timing oracles. `DEV_SESSION_SECRET` must be set.
 
-**Phase 1 swap:** Replace the function body with a Supabase Auth session lookup.
-Callers (`admin layout`, Server Actions) are unchanged. The seam is intentional.
+**Phase 1 Supabase branch:** Set `AUTH_PROVIDER=supabase` to activate the Supabase
+`@supabase/ssr` path. `packages/db/sql/05_auth.sql` adds the `on_auth_user_created` trigger
+that inserts an `app_user` row when Supabase creates an auth user. The seam is dormant until
+a Supabase instance (Docker or cloud) is configured.
+
+**Phase 2+ swap:** Callers (`admin layout`, Server Actions) are unchanged. The `getSession()`
+signature is the stable seam — the body is the only thing that changes.
 
 ---
 
-## Where Phase 1+ plugs in
+## Where Phase 2+ plugs in
 
 | Phase | What plugs in |
 |---|---|
-| Phase 1 | Supabase Auth behind `getSession()` seam; `packages/payments` (bKash/COD adapters); `packages/couriers` (Steadfast adapter); `apps/api` FastAPI workers |
-| Phase 2 | Vercel Domains API + `invalidateDomainCache()`; theme catalog + visual customizer |
-| Phase 3 | Funnel builder (JSON block model); self-serve bKash billing |
+| Phase 2 | Vercel Domains API + `invalidateDomainCache()`; theme catalog + visual customizer; Supabase Storage blob driver; COD reconciliation |
+| Phase 3 | Funnel builder (JSON block model); self-serve bKash billing; plan limits |
 | Phase 4 | Full section editor; multi-step funnels; Upstash cache handler for multi-instance ISR |
 
 ---
@@ -201,8 +295,18 @@ localhost:6379  Redis 7 (docker-compose redis service)           <- REDIS_URL
   store-a.lvh.me:3000  ->  middleware  ->  /_sites/store-a/*
   store-b.lvh.me:3000  ->  middleware  ->  /_sites/store-b/*
   admin.lvh.me:3000    ->  middleware  ->  /admin/*
-  lvh.me:3000          ->  middleware  ->  marketing (no rewrite)
+  app.lvh.me:3000      ->  middleware  ->  /platform/*  (super-admin)
+  lvh.me:3000          ->  middleware  ->  marketing + /signup (no rewrite)
 
-RLS test harness:
+Phase 1 test suite (63 tests):
   embedded-postgres (npm) on a random free port — no Docker or system PG needed
+  pnpm --filter @hybrid/db test
+  Covers: RLS isolation, crypto seal/open, checkout idempotency, billing state machine,
+          payment amount verification, courier wiring, provisioning, tenant liveness
+
+Live-deferred integrations (accounts/infra required):
+  bKash sandbox round-trip  — BKASH_SANDBOX=1 + founder sandbox credentials
+  Steadfast live             — merchant account (no sandbox exists)
+  SMS live send              — SMS_LIVE=1 + sms.net.bd account + sender masking
+  Supabase Auth              — AUTH_PROVIDER=supabase + Docker or cloud instance
 ```

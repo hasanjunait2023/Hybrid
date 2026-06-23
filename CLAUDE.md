@@ -12,7 +12,7 @@ Each seller gets an admin backend, a live themed storefront on a subdomain (late
 and native integration with bKash/Nagad/COD and Bangladesh's courier network (Steadfast, Pathao,
 RedX, Paperfly). Hard tenant isolation is enforced at the database layer via Postgres RLS.
 
-Current status: Phase 0 complete (the multi-tenant spine). Phase 1 (sellable MVP) is next.
+Current status: Phase 1 complete (sellable MVP). Phase 2 (custom domains, theme catalog) is next.
 
 ---
 
@@ -96,22 +96,64 @@ grants). A `NOLOGIN` role cannot open a connection. The fix is two bookend files
 ├── .env.example            every required env var with local defaults
 ├── tsconfig.base.json      strict, bundler resolution, @hybrid/* path aliases
 ├── apps/
-│   ├── web/                Next.js App Router — the only running app in Phase 0
+│   ├── web/                Next.js App Router — storefront + admin + platform + marketing
 │   │   ├── middleware.ts   host → tenant rewrite (node.js runtime)
 │   │   ├── app/
-│   │   │   ├── (marketing)/        marketing site (lvh.me root)
-│   │   │   ├── (platform)/         super-admin (app.lvh.me → /platform)
-│   │   │   ├── (admin)/admin/      tenant admin (admin.lvh.me → /admin)
-│   │   │   ├── _sites/[tenant]/    storefront (store-a.lvh.me → /_sites/store-a)
-│   │   │   ├── dev-login/          HMAC-signed dev session cookie (dev only)
-│   │   │   └── store-not-found/    branded 404 for unknown hosts
+│   │   │   ├── (marketing)/           lvh.me root — Bengali landing + /signup → provisionTenant
+│   │   │   ├── (platform)/platform/   super-admin (app.lvh.me → /platform): tenant directory, suspend/reactivate
+│   │   │   ├── (admin)/admin/         tenant admin (admin.lvh.me → /admin)
+│   │   │   │   ├── products/          full CRUD + variants + image upload
+│   │   │   │   ├── orders/            list, detail, manual entry, print, send-to-courier
+│   │   │   │   ├── customers/         list, detail, notes
+│   │   │   │   ├── collections/       product collections
+│   │   │   │   ├── cod/               COD collection list
+│   │   │   │   └── settings/          store profile, payments (bKash/COD), courier (Steadfast)
+│   │   │   ├── _sites/[tenant]/       storefront (store-a.lvh.me → /_sites/store-a)
+│   │   │   │   ├── products/[slug]/   product detail + AddToCart island
+│   │   │   │   ├── cart/              cart island (client component)
+│   │   │   │   ├── checkout/          COD + bKash checkout, location pickers
+│   │   │   │   └── order/[number]/    order lookup / confirmation
+│   │   │   ├── api/
+│   │   │   │   ├── bkash/callback/    bKash server-side execute + amount verify + replay guard
+│   │   │   │   ├── internal/billing-sweep/  CRON_SECRET gated — billing state machine runner
+│   │   │   │   ├── internal/courier-sync/   CRON_SECRET gated — Steadfast status polling
+│   │   │   │   └── admin/upload/      image upload (mime/size/filename sanitized)
+│   │   │   ├── dev-login/             HMAC-signed dev session cookie (dev only, prod-gated)
+│   │   │   └── store-not-found/       branded 404 for unknown/suspended hosts
 │   │   └── lib/
-│   │       ├── auth/session.ts     getSession() — Phase 0: HMAC dev cookie; Phase 1: Supabase Auth
-│   │       ├── tenant/resolve.ts   resolveTenantByHost() — Redis TTL 1h → DB fallback
-│   │       ├── redis/client.ts     ioredis client (REDIS_URL)
-│   │       ├── storefront/data.ts  getStorefrontProducts(), getTenantContextBySlug() (unstable_cache)
-│   │       └── admin/data.ts       getAdminProducts()
-│   └── api/                FastAPI stub — empty, Phase 1+
+│   │       ├── auth/
+│   │       │   ├── session.ts         getSession() — dev-login default; Supabase seam (AUTH_PROVIDER=supabase)
+│   │       │   └── provision.ts       provisionTenant() — asPlatformAdmin atomic new-tenant insert
+│   │       ├── billing/
+│   │       │   ├── status.ts          evaluateTenantBilling() — trialing→past_due→suspended (pure)
+│   │       │   └── sweep.ts           billing sweep runner (reads/writes via asPlatformAdmin)
+│   │       ├── commerce/
+│   │       │   ├── placeOrder.ts      THE idempotent checkout txn — customer+inventory+order+payment
+│   │       │   └── customer.ts        upsertCustomerByPhone()
+│   │       ├── couriers/
+│   │       │   ├── send.ts            sendToCourier() — openCreds + SteadfastProvider.createConsignment
+│   │       │   ├── steadfast.ts       Steadfast adapter (app-layer thin wrapper over @hybrid/couriers)
+│   │       │   └── sync.ts            courierSync() — polls status + updates order
+│   │       ├── payments/
+│   │       │   ├── bkash.ts           BkashProvider factory (resolves tenant creds + callbackURL)
+│   │       │   ├── callback.ts        handleBkashCallback() — execute + amount verify + replay guard
+│   │       │   └── json.ts            toJsonRecord() helper (SealedSecret → JSONValue)
+│   │       ├── platform/
+│   │       │   ├── auth.ts            platform admin session guard + impersonation
+│   │       │   ├── cache.ts           invalidateDomainCache() — Redis flush on suspend/domain change
+│   │       │   └── data.ts            listTenants(), suspendTenant(), reactivateTenant()
+│   │       ├── sms/
+│   │       │   ├── index.ts           SmsAdapter — sms.net.bd (SMS_LIVE gated)
+│   │       │   ├── notify.ts          notifyOrderPlaced() — Bengali template, post-commit, non-blocking
+│   │       │   └── templates.ts       Bengali SMS templates
+│   │       ├── admin/                 catalog.ts, orders.ts, customers.ts, dashboard.ts, cod.ts, settings.ts
+│   │       ├── location/              re-export bangladesh-location-data (divisions/districts/upazilas)
+│   │       ├── storage/               BlobStore interface — LocalBlobStore (Phase 1); SupabaseBlobStore (Phase 2)
+│   │       ├── tenant/resolve.ts      resolveTenantByHost() — Redis TTL 1h → DB fallback
+│   │       ├── redis/client.ts        ioredis client (REDIS_URL)
+│   │       ├── ratelimit.ts           Upstash rate limiting (signup + checkout)
+│   │       └── storefront/data.ts     getStorefrontProducts(), getTenantContextBySlug() (unstable_cache)
+│   └── api/                FastAPI stub — empty, Phase 2+
 └── packages/
     ├── db/    @hybrid/db
     │   ├── sql/
@@ -119,22 +161,50 @@ grants). A `NOLOGIN` role cannot open a connection. The fix is two bookend files
     │   │   ├── 01_schema.sql       full schema (canonical, do not edit)
     │   │   ├── 02_policies.sql     RLS policies (canonical, do not edit)
     │   │   ├── 03_seed.sql         dev seed: 2 tenants, 6 products, 4 plans
-    │   │   └── 04_grant_login.sql  GRANT app_runtime TO app_runtime_login (runs last)
+    │   │   ├── 04_grant_login.sql  GRANT app_runtime TO app_runtime_login (runs last)
+    │   │   └── 05_auth.sql         on_auth_user_created trigger (Supabase Auth path)
     │   ├── src/
     │   │   ├── client.ts           INTERNAL — sql (app_runtime_login) + adminSql (postgres)
     │   │   ├── withTenant.ts       THE contract — exported as the only tenant data path
-    │   │   ├── migrate.ts          db:migrate (00,01,02,04) and db:seed (03)
+    │   │   ├── crypto.ts           AES-256-GCM credential sealing (sealCredentials/openCredentials)
+    │   │   ├── migrate.ts          db:migrate (00,01,02,04,05) and db:seed (03)
     │   │   ├── types.ts            kysely-codegen output (regenerate with pnpm db:gen)
-    │   │   └── index.ts            public exports: withTenant, asPlatformAdmin, adminSql, types
+    │   │   └── index.ts            public exports: withTenant, asPlatformAdmin, adminSql, crypto, types
     │   └── test/
     │       ├── global-setup.ts     boots embedded-postgres (NO Docker needed); writes .pgtmp.json
     │       ├── setup.ts            per-worker: reads .pgtmp.json → sets env before client.ts imports
-    │       └── rls.test.ts         5-test RLS isolation gate (THE CI gate for every PR)
+    │       ├── rls.test.ts         RLS isolation gate (5 tests)
+    │       ├── crypto.test.ts      AES-256-GCM round-trip + tamper + wrong-key (8 tests)
+    │       ├── commerce.test.ts    atomic inventory decrement, oversell, server-side pricing
+    │       ├── checkout.test.ts    COD + bKash checkout txn, idempotency, replay guard
+    │       ├── payment-verify.test.ts  bKash amount verification (paisa-exact, mismatch→failed)
+    │       ├── provision.test.ts   provisionTenant, slug uniqueness, trial subscription
+    │       ├── resolve.test.ts     tenant liveness (trial serves, suspended returns null)
+    │       ├── admin.test.ts       low-stock aggregation, order cancel guard on paid orders
+    │       ├── billing.test.ts     trialing→past_due→suspended state machine
+    │       └── courier-wire.test.ts  consignment creation, status sync, COD collection
+    ├── payments/  @hybrid/payments     (Phase 1 — pure, no Next/DB)
+    │   └── src/
+    │       ├── bkash/provider.ts   BkashProvider — Tokenized Checkout (grant→create→execute→query)
+    │       ├── bkash/codes.ts      bKash status code mapping (0000/Completed → success)
+    │       ├── bkash/tokenStore.ts token cache interface (Redis bkash:token:{tenant})
+    │       ├── cod/provider.ts     CodProvider — instant confirm, no-op execute/query
+    │       ├── types.ts            PaymentProvider, PaymentState, PaymentResult interfaces
+    │       └── index.ts            public exports
+    ├── couriers/  @hybrid/couriers     (Phase 1 — pure, no Next/DB)
+    │   └── src/
+    │       ├── steadfast.ts        SteadfastProvider — create consignment, get status, get balance
+    │       ├── statusMap.ts        Steadfast status → internal status mapping
+    │       ├── types.ts            CourierAdapter, ConsignmentInput, StatusResult interfaces
+    │       └── index.ts            public exports
     ├── ui/    @hybrid/ui
     │   └── src/
     │       ├── globals.css         all design tokens (CSS custom properties)
+    │       ├── lib/safeUrl.ts      URL scheme guard (blocks javascript: and other non-http/https)
     │       └── components/
     │           ├── storefront/     StoreHeader, Hero, ProductCard, ProductGrid, TrustBand, etc.
+    │           ├── StatusBadge.tsx order/payment/courier status chips
+    │           ├── StatusStepper.tsx order progress stepper
     │           └── Button, Badge, icons
     └── config/ @hybrid/config
         ├── eslint/
@@ -190,21 +260,21 @@ SQL files in `packages/db/sql/` are auto-applied on first boot in lexical order
 Skip this step entirely. The test harness (`test/global-setup.ts`) boots its own ephemeral
 embedded-postgres cluster on a random free port, applies the SQL, and tears down after the suite.
 
-### Step 4 — Run the RLS isolation gate (no Docker needed)
+### Step 4 — Run the full test suite (no Docker needed)
 
 ```bash
 pnpm --filter @hybrid/db test
 ```
 
-This runs five isolation tests against a real Postgres (embedded-postgres, zero system deps):
+This runs 63 tests across 10 test files against a real embedded-postgres (zero system deps).
+All 63 must be green. This is the required CI gate on every PR.
 
-1. Tenant A sees only A's products
-2. Tenant A querying for B's rows returns 0 rows
-3. Cross-tenant INSERT is rejected by RLS WITH CHECK
-4. Platform admin (`asPlatformAdmin`) sees both A and B
-5. `order_number` sequences independently per tenant (A: 1, B: 1, A: 2)
+Test files included: `rls.test.ts` (5), `crypto.test.ts` (8), `commerce.test.ts`,
+`checkout.test.ts`, `payment-verify.test.ts`, `provision.test.ts`, `resolve.test.ts`,
+`admin.test.ts`, `billing.test.ts`, `courier-wire.test.ts`.
 
-All five must be green. This is the required CI gate on every PR.
+The original 5-test RLS gate is still part of the suite (rls.test.ts). The full 63-test run
+supersedes it as the Phase 1 CI gate.
 
 ### Step 5 — Generate TypeScript types (after schema changes)
 
@@ -228,13 +298,24 @@ Starts Next.js on port 3000. `*.lvh.me` resolves to `127.0.0.1` in all browsers 
 
 | URL | What it renders |
 |---|---|
+| `lvh.me:3000` | Bengali marketing landing + signup |
+| `lvh.me:3000/signup` | New tenant signup → provisionTenant → live trial subdomain |
 | `store-a.lvh.me:3000` | Tenant A storefront (indigo accent) |
+| `store-a.lvh.me:3000/products/{slug}` | Product detail page |
+| `store-a.lvh.me:3000/cart` | Cart island |
+| `store-a.lvh.me:3000/checkout` | COD + bKash checkout with Bangladesh location pickers |
+| `store-a.lvh.me:3000/order/{number}` | Order lookup / confirmation |
 | `store-b.lvh.me:3000` | Tenant B storefront (distinct accent — visual proof of isolation) |
 | `admin.lvh.me:3000/dev-login?as=owner-a` | Sets HMAC-signed dev session cookie for owner-a |
 | `admin.lvh.me:3000/admin/products` | Tenant A admin product list |
+| `admin.lvh.me:3000/admin/orders` | Order list |
+| `admin.lvh.me:3000/admin/orders/new` | Manual order entry |
+| `admin.lvh.me:3000/admin/customers` | Customer list |
+| `admin.lvh.me:3000/admin/cod` | COD collection list |
+| `admin.lvh.me:3000/admin/settings` | Store profile, payment gateway, courier settings |
 | `admin.lvh.me:3000/dev-login?as=owner-b` | Switch to owner-b session |
-| `lvh.me:3000` | Marketing site stub |
-| `app.lvh.me:3000` | Platform super-admin stub |
+| `app.lvh.me:3000/dev-login?as=admin` | Platform super-admin session |
+| `app.lvh.me:3000/platform` | Tenant directory (suspend/reactivate/impersonate) |
 | `nope.lvh.me:3000` | Branded "store not found" page |
 
 **Admin edit → storefront update loop:**
@@ -257,7 +338,8 @@ Starts Next.js on port 3000. `*.lvh.me` resolves to `127.0.0.1` in all browsers 
 | `tenant:{id}:orders` | Order create (incl. manual) / status change |
 | `tenant:{id}:order:{oid}` | Individual order mutation |
 | `tenant:{id}:customers` | Customer note/tags edit; new order (counters) |
-| `tenant:{id}:dashboard` | Dashboard metrics (also `revalidate: 60s`); order/product mutations |
+| `tenant:{id}:dashboard` | Dashboard metrics; order/product mutations |
+| `tenant:{id}:cod` | COD collection list (status change on delivery) |
 | `tenant:{id}:theme` | Theme settings update |
 | `tenant:{id}:page:{slug}` | Store page edit |
 | `tenant:{id}:navigation` | Nav change |
@@ -273,12 +355,15 @@ to `lib/storefront/data.ts`, so the handler swap is one file change).
 
 `apps/web/lib/auth/session.ts` exports `getSession(): Promise<Session | null>`.
 
-**Phase 0:** HMAC-signed dev cookie (`hybrid_dev_session`). Set by `/dev-login?as=owner-a|owner-b|admin`.
-The cookie is `{userId}.{hmac-sha256}`. Only valid when `NODE_ENV !== 'production'`.
-Constant-time compare prevents timing oracles. `DEV_SESSION_SECRET` must be set.
+**Default (dev-login):** HMAC-signed dev cookie (`hybrid_dev_session`). Set by
+`/dev-login?as=owner-a|owner-b|admin`. The cookie is `{userId}.{hmac-sha256}`. Constant-time
+compare prevents timing oracles. `DEV_SESSION_SECRET` must be set. **Production-gated** —
+returns null immediately when `NODE_ENV === 'production'`.
 
-**Phase 1:** Replace the body of `getSession()` with a Supabase Auth lookup. Callers are
-unchanged — the seam is intentional.
+**Supabase branch (Phase 1, dormant):** Set `AUTH_PROVIDER=supabase` to activate the
+`@supabase/ssr` path. `packages/db/sql/05_auth.sql` provides the `on_auth_user_created`
+trigger. Requires a Supabase instance (Docker or cloud). Callers are unchanged — the seam is
+intentional.
 
 ---
 
@@ -308,16 +393,24 @@ See `docs/DESIGN.md` for the full spec. Key decisions for every UI task:
 
 1. **Windows EBUSY teardown flake** — On Windows, `vitest` `globalSetup` teardown may fail with
    `EBUSY: resource busy or locked` when removing the embedded-postgres data directory
-   (`.pgtmp`). The 5 tests still run and pass; only the exit code may flip to non-zero on
+   (`.pgtmp`). The 63 tests still run and pass; only the exit code may flip to non-zero on
    Windows. Linux/macOS (CI) is unaffected. If you see a teardown EBUSY error, rerun —
-   the test results themselves are valid. Fix: force-kill the cluster + retry rmdir.
+   the test results themselves are valid.
 
 2. **ioredis `Unhandled error event` log spam** — Under a sustained Redis outage, the ioredis
    client emits noise to the console. The resolve layer already falls through to the DB safely;
-   adding `.on('error', () => {})` on the client silences it. Tracked for Phase 1.
+   adding `.on('error', () => {})` on the client silences it. Tracked for Phase 2.
 
 3. **`unstable_cache` multi-instance caveat** — On Vercel, `unstable_cache` is per-instance
-   (file-system). Add the Upstash cache handler before deploying to production (Phase 1 task).
+   (file-system). Add the Upstash cache handler before deploying to production (Phase 2 task).
+
+4. **Bangla numerals in test output** — The Windows embedded-postgres harness uses WIN1252
+   encoding; Bangla characters cannot be stored in test data. Bangla render works correctly on
+   UTF-8 Postgres (Docker, Linux CI, Supabase). Verify on UTF-8 before any Bangla-text DB field.
+
+5. **Live-deferred integrations** — bKash production, Steadfast live, SMS live, and Supabase
+   Auth are fully implemented but gated behind founder-obtained credentials / environment flags.
+   See CHANGELOG Phase 1 "Known issues / deferred" for details.
 
 ---
 
@@ -325,15 +418,19 @@ See `docs/DESIGN.md` for the full spec. Key decisions for every UI task:
 
 ```
 Phase 0 (DONE) — multi-tenant spine: withTenant RLS layer, host middleware, Doreja storefront, admin→ISR loop
-Phase 1 (next)  — sellable MVP: auth (Supabase), products CRUD, orders, COD checkout, Steadfast courier, SMS
-Phase 2         — custom domains, theme catalog, visual customizer, COD reconciliation
+Phase 1 (DONE) — sellable MVP: products CRUD, orders, COD + bKash(sandbox) checkout, Steadfast courier, SMS, billing, super-admin, signup
+Phase 2 (next)  — custom domains, theme catalog, visual customizer, COD reconciliation, Supabase Storage blob driver
 Phase 3         — funnel builder, self-serve bKash billing, plan limits
 Phase 4         — full section editor, multi-step funnels, scale hardening
 ```
 
-Open Phase-0→1 decisions:
-- bKash product tier for storefront checkout and SaaS billing (decide at Phase 1)
+Open Phase-1→2 decisions:
+- Activate Supabase Auth cloud (requires founder to provision a Supabase project; `AUTH_PROVIDER=supabase`)
+- bKash production credential onboarding (~2–4 week merchant process)
+- Steadfast merchant account (no sandbox; live after account)
+- SMS sender-ID masking approval (sms.net.bd, 6–7 days)
 - Root domain: `myhybrid.com` (placeholder; swap in `NEXT_PUBLIC_ROOT_DOMAIN`)
 
 Source documents: `docs/PRD.md`, `docs/BUILD_CHECKLIST.md`, `docs/architecture/phase0-blueprint.md`,
-`docs/DESIGN.md`, `docs/research/phase0-brief.md`, `.claude/team/DECISIONS.md`.
+`docs/architecture/phase1-blueprint.md`, `docs/DESIGN.md`, `docs/research/phase0-brief.md`,
+`docs/research/phase1-brief.md`, `.claude/team/DECISIONS.md`.

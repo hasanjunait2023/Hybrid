@@ -6,6 +6,148 @@ Versions track phases rather than semver until the first public release.
 
 ---
 
+## [Phase 1] — 2026-06-23
+
+Phase 1 goal: sellable MVP. A new seller can sign up, get a live subdomain, add products, take
+a COD or bKash (sandbox) order, ship via Steadfast, and have their account status tracked.
+No stubs in any shipped path.
+
+Gates: typecheck 5/5, lint 5/5, db suite 63/63, Next.js build clean.
+
+### Added
+
+- **Bengali landing page + self-serve signup.** Sellers arrive at `lvh.me`, fill in store name
+  and a slug, and land on a live `{slug}.myhybrid.com` trial subdomain in one atomic provision
+  transaction. Duplicate slugs produce a friendly Bangla error.
+
+- **Tenant provisioning (`lib/auth/provision.ts`).** `provisionTenant()` runs as
+  `asPlatformAdmin` and atomically inserts the tenant, its subdomain, the owner membership, and
+  a trialing subscription (14-day trial, starter plan) in a single transaction.
+
+- **Products, variants, and images CRUD.** Sellers add products with multiple variants (size,
+  color, SKU, price, inventory) and upload images via the admin. Images land in
+  `public/uploads/{tenant}/` (local blob store; swap to Supabase Storage via `BLOB_DRIVER` in
+  Phase 2). Collections are also available.
+
+- **Orders: list, detail, manual entry, status machine, and printable invoice.** Merchants can
+  create orders manually (walk-in customers) or see orders placed via the storefront. Status
+  transitions are logged. Print layout renders in Bengali numerals.
+
+- **Customers.** Auto-upserted by phone on every order (storefront or manual). Merchant can
+  add notes and view order history per customer.
+
+- **Dashboard with low-stock alerts.** Shows recent orders, revenue, and all variants at or
+  below the stock threshold (5 units).
+
+- **COD + bKash (sandbox) checkout — one idempotent `withTenant` transaction.** The storefront
+  checkout form (with Bangladesh location pickers for division/district/thana) places an order
+  in a single atomic transaction: customer upsert → atomic inventory decrement → order insert →
+  payment record. An oversell attempt fails at the database `RETURNING` guard and rolls back
+  cleanly. bKash flow opens a popup then resolves via `/api/bkash/callback` (server-verified
+  payment amount, paisa-exact; replay-safe via `webhook_event` unique constraint). COD orders
+  are confirmed immediately. SMS notification sent post-commit (log-mode until `SMS_LIVE=1`).
+
+- **Storefront: product detail page, cart, order lookup.** Customers can browse a product
+  detail page, add to cart (client-side island), proceed to checkout, and look up their order
+  by number after placing it.
+
+- **Tenant liveness enforcement.** Storefronts serve for `active`, `trialing`, and `past_due`
+  tenants. Suspended or cancelled tenants get a 404 — no data leaks to the error page.
+
+- **Encrypted gateway and courier credential settings (AES-256-GCM).** Sellers enter bKash
+  API keys and Steadfast API credentials in the admin settings. Credentials are sealed with
+  `APP_ENCRYPTION_KEY` before storage and masked on read — the raw secret is never logged or
+  rendered.
+
+- **Send to courier (Steadfast) + courier sync.** Merchants tap "Send to Steadfast" on an
+  order; the adapter creates a consignment and stores the tracking code. The cron endpoint
+  `/api/internal/courier-sync` (authenticated via `CRON_SECRET`) polls status and updates orders.
+
+- **COD collection list.** Admin view of orders with outstanding cash-on-delivery — what the
+  courier owes the merchant.
+
+- **Platform super-admin.** `app.lvh.me/platform` lists all tenants with status, plan, and
+  trial info. Platform admins can suspend or reactivate a tenant and impersonate an owner for
+  support (dev-login compatible, production-gated).
+
+- **Billing state machine + billing sweep.** Subscriptions transition: trialing → past_due
+  (after 14-day trial) → suspended (after 3-day grace period). The `/api/internal/billing-sweep`
+  cron endpoint (authenticated via `CRON_SECRET`) drives the transitions and suspends tenants.
+  Manual billing record is the Phase 1 model — no live SaaS charge yet.
+
+- **`@hybrid/payments` package.** Pure (no Next/DB imports; fetch injectable). `BkashProvider`
+  implements the Tokenized Checkout flow (grant → create → execute → query); `CodProvider`
+  is a no-op confirming immediately. Payment state machine: pending → success / failed /
+  cancelled / refunded.
+
+- **`@hybrid/couriers` package.** Pure. `SteadfastProvider` wraps the Steadfast v1 API
+  (create consignment, get status, get balance). Status mapped to internal states. No sandbox
+  exists for Steadfast — live dispatch is deferred until a merchant account is available.
+
+- **`@hybrid/db` crypto (`packages/db/src/crypto.ts`).** AES-256-GCM credential sealing used
+  by payment and courier settings. `APP_ENCRYPTION_KEY` is required at startup (fail-fast, no
+  insecure fallback). `SealedSecret` envelope stored as JSONB.
+
+- **Supabase Auth provider seam.** `getSession()` in `lib/auth/session.ts` gains a Supabase
+  branch (activated by `AUTH_PROVIDER=supabase`). Local dev continues to use the HMAC dev-login
+  path. `packages/db/sql/05_auth.sql` adds the `on_auth_user_created` trigger for the Supabase
+  path. The seam is dormant until a Supabase instance (Docker or cloud) is configured.
+
+- **Rate limiting** on signup and checkout via Upstash Redis.
+
+- **`lib/location`** re-exports `bangladesh-location-data` (divisions, districts, upazilas in
+  Bangla and English) for the checkout and manual order location pickers.
+
+- **`lib/sms`** — sms.net.bd adapter with Bengali templates. Sent after commit, non-blocking,
+  caught and logged. Live send gated behind `SMS_LIVE=1`.
+
+### Security (Phase 1 hardening, commit 031f925)
+
+- **bKash payment amount verified server-side.** The amount returned by the bKash Execute
+  response is compared paisa-exact against the order total stored at payment creation. A
+  mismatch sets `payment_status = failed` and never marks the order paid. There is no client-
+  controlled path to the payment amount — prices are computed server-side from DB variant records.
+
+- **Signup account-takeover fix.** `createAppUser` uses a `xmax = 0` check to distinguish
+  insert from conflict. An existing email is refused with a friendly error before any cookie is
+  set. The dev-login cookie branch is now production-gated (never executes in production).
+
+- **`javascript:` scheme blocked in store URLs.** `safeUrl()` in `@hybrid/ui` rejects any URL
+  whose scheme is not `http` or `https`. Admin settings validate URLs with a Zod `https`-only
+  refinement.
+
+- **bKash callback URL derived server-side** from the verified tenant domain — not supplied by
+  the client request.
+
+- **CRON endpoints use constant-time secret comparison** (`CRON_SECRET` checked via
+  `timingSafeEqual`).
+
+- **Cancel blocked on paid orders.** Orders with a completed payment cannot be cancelled
+  through the admin UI in Phase 1 (no automatic refund path; manual process required).
+
+### Known issues / deferred (non-blocking, flagged at GATE 2)
+
+- **bKash live sandbox round-trip** — requires `BKASH_SANDBOX=1` and real sandbox credentials.
+  The adapter and tests are complete; the credentials are founder-gated (2–4 week onboarding).
+
+- **Steadfast live consignment** — no Steadfast sandbox exists. Contract tests pass locally.
+  Live dispatch requires a merchant account.
+
+- **SMS live send** — requires an sms.net.bd account and sender-ID masking approval (6–7 days).
+  All logic is in place; `SMS_LIVE` env gates the real API call.
+
+- **Supabase Auth (cloud)** — dev-login is the default and is production-gated. Supabase
+  provider activates via `AUTH_PROVIDER=supabase` once a Docker or cloud instance is available.
+
+- **Bangla numerals in test output** — the Windows embedded-postgres harness uses WIN1252
+  encoding; Bangla characters cannot be stored in test data. Bangla render is verified on
+  UTF-8 Postgres (Docker / Linux CI / Supabase).
+
+- **`unstable_cache` per-instance on Vercel** — add the Upstash cache handler before
+  multi-instance production deployment (Phase 2 task).
+
+---
+
 ## [Phase 0] — 2026-06-23
 
 Phase 0 goal: prove "admin edit → storefront update" with hard tenant isolation against a real
