@@ -466,6 +466,11 @@ create table payment (
 );
 create index payment_order_idx on payment(order_id);
 create unique index payment_txn_uniq on payment(tenant_id, provider, transaction_id) where transaction_id is not null;
+-- A gateway paymentID (provider_ref) maps to exactly one payment row. The bKash
+-- callback resolves the payment by (provider, provider_ref); without this a lost
+-- create + retry could write two rows and the callback would silently pick one.
+create unique index if not exists payment_provider_ref_uniq
+  on payment(provider, provider_ref) where provider_ref is not null;
 
 -- ============================================================================
 -- 10. TENANT-SCOPED: COURIER & COD RECONCILIATION  (the differentiator)

@@ -221,6 +221,85 @@ describe("admin slice", () => {
     const leaked = await getOrderDetail(TENANT_B, OWNER_B, someAOrderId);
     expect(leaked).toBeNull();
   });
+
+  it("9. dashboard low-stock sums multi-variant tracked inventory without crashing", async () => {
+    // A product with TWO tracked variants would crash the old scalar correlated
+    // subquery ("more than one row returned by a subquery"). Insert one whose
+    // variants sum to > threshold so it is NOT low-stock, proving the aggregate
+    // both runs AND sums correctly across variants.
+    const MULTI = "e0000004-0000-0000-0000-0000000000e4";
+    const MV1 = "f0000004-0000-0000-0000-0000000000f4";
+    const MV2 = "f0000005-0000-0000-0000-0000000000f5";
+    await asPlatformAdmin(async (tx) => {
+      await tx`
+        insert into product (id, tenant_id, title, slug, status)
+        values (${MULTI}, ${TENANT_A}, 'Multi Variant', 'multi-variant', 'active')
+      `;
+      await tx`
+        insert into product_variant (id, tenant_id, product_id, title, sku, price, inventory_quantity, track_inventory) values
+          (${MV1}, ${TENANT_A}, ${MULTI}, 'S', 'MV-S', 100.00, 4, true),
+          (${MV2}, ${TENANT_A}, ${MULTI}, 'M', 'MV-M', 100.00, 9, true)
+      `;
+    });
+
+    // The query must not throw, and the multi-variant product (sum 13 > 5) is not
+    // counted as low-stock.
+    const data = await getDashboard(TENANT_A, OWNER_A);
+    expect(typeof data.lowStockCount).toBe("number");
+
+    // Direct re-check of the corrected aggregate for the multi-variant product.
+    const low = await withTenant(TENANT_A, OWNER_A, (tx) =>
+      tx<{ total: string }[]>`
+        select coalesce(sum(v.inventory_quantity) filter (where v.track_inventory = true), 0) as total
+        from product p
+        left join product_variant v on v.product_id = p.id and v.track_inventory = true
+        where p.id = ${MULTI}
+        group by p.id
+      `,
+    );
+    expect(Number(low[0]!.total)).toBe(13);
+
+    await asPlatformAdmin(async (tx) => {
+      await tx`delete from product_variant where product_id = ${MULTI}`;
+      await tx`delete from product where id = ${MULTI}`;
+    });
+  });
+
+  it("10. cancel of a PAID order is refused (no auto-refund in P1)", async () => {
+    // Place an order, mark it paid, then assert the cancel guard blocks it and
+    // inventory is NOT restored. Mirrors the Server Action's guard via canCancelOrder.
+    const before = await stockOf(VAR_ACTIVE);
+    const result = await placeOrder({
+      tenantId: TENANT_A,
+      userId: OWNER_A,
+      customer: { phone: "01922000003", name: "Paid Order" },
+      shippingAddress: addr(),
+      items: [{ variantId: VAR_ACTIVE, quantity: 2 }],
+      paymentMethod: "bkash",
+      source: "manual",
+    });
+    expect(await stockOf(VAR_ACTIVE)).toBe(before - 2);
+
+    // Mark the order paid (a settled bKash order).
+    await withTenant(TENANT_A, OWNER_A, async (tx) => {
+      await tx`update orders set payment_status = 'paid' where id = ${result.orderId}`;
+    });
+
+    // The guard refuses cancel on a paid order.
+    const paymentStatus = await withTenant(TENANT_A, OWNER_A, async (tx) => {
+      const rows = await tx<{ payment_status: string }[]>`
+        select payment_status from orders where id = ${result.orderId}`;
+      return rows[0]!.payment_status;
+    });
+    expect(paymentStatus).toBe("paid");
+    expect(ordersLib.canCancelOrder(paymentStatus)).toBe(false);
+
+    // Because the cancel is refused, the action never restores inventory.
+    expect(await stockOf(VAR_ACTIVE)).toBe(before - 2);
+
+    // An unpaid order, by contrast, is cancellable.
+    expect(ordersLib.canCancelOrder("unpaid")).toBe(true);
+  });
 });
 
 async function stockOf(variantId: string): Promise<number> {

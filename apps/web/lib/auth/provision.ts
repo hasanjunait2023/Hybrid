@@ -69,9 +69,20 @@ function isUniqueViolation(err: unknown): boolean {
   );
 }
 
+// Result of createAppUser. `created` distinguishes a genuinely new identity from
+// a match against a pre-existing email — the signup path MUST refuse to mint a
+// session for an existing account (else signing up with a victim's email would
+// hand the attacker a session for that pre-existing user = account takeover).
+export interface CreateAppUserResult {
+  userId: string;
+  /** true → this call inserted a new app_user; false → matched an existing one. */
+  created: boolean;
+}
+
 // Create a standalone app_user (the dev signup path, where there is no Supabase
 // auth.users trigger to mirror the identity). Idempotent on email so a retried
-// signup returns the existing user instead of erroring. Returns the user id.
+// signup matches the existing user instead of erroring; the `created` flag lets
+// callers tell new-vs-existing apart (the signup action refuses the latter).
 //
 // NOTE: callers must keep this OUT of provisionTenant's transaction in the dev
 // path is fine — it opens its own asPlatformAdmin txn. Under the Supabase
@@ -80,18 +91,40 @@ export async function createAppUser(input: {
   email: string;
   fullName?: string | null;
   phone?: string | null;
-}): Promise<string> {
+}): Promise<CreateAppUserResult> {
   return asPlatformAdmin(async (tx) => {
-    const rows = await tx<{ id: string }[]>`
+    // xmax = 0 on the returned row iff the row was freshly inserted (no prior
+    // tuple version); a non-zero xmax means the ON CONFLICT update path ran on
+    // an existing row. This is the standard Postgres upsert created-vs-matched
+    // discriminator and avoids a second round-trip.
+    const rows = await tx<{ id: string; created: boolean }[]>`
       insert into app_user (email, full_name, phone)
       values (${input.email}, ${input.fullName ?? null}, ${input.phone ?? null})
       on conflict (email) do update set
         full_name = coalesce(excluded.full_name, app_user.full_name),
         phone = coalesce(excluded.phone, app_user.phone),
         updated_at = now()
-      returning id
+      returning id, (xmax = 0) as created
     `;
-    return rows[0]!.id;
+    const row = rows[0]!;
+    return { userId: row.id, created: row.created };
+  });
+}
+
+// Remove an app_user that was just created for a signup that then failed to
+// provision a tenant (e.g. slug collision). Without this, the orphaned row would
+// make a legitimate retry with the same email look "already used" (createAppUser
+// would report created:false) — wrongly tripping the takeover guard. Only safe
+// to call for a user with NO tenant membership; we scope the delete accordingly.
+export async function deleteOwnerlessUser(userId: string): Promise<void> {
+  await asPlatformAdmin(async (tx) => {
+    await tx`
+      delete from app_user
+       where id = ${userId}
+         and not exists (
+           select 1 from tenant_member where user_id = ${userId}
+         )
+    `;
   });
 }
 

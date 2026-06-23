@@ -11,13 +11,20 @@ import { cookies } from "next/headers";
 import {
   createAppUser,
   provisionTenant,
+  deleteOwnerlessUser,
   SlugTakenError,
 } from "@/lib/auth/provision";
 import { DEV_SESSION_COOKIE, signDevCookie } from "@/lib/auth/session";
+import { rateLimit, clientIpFrom } from "@/lib/ratelimit";
 import { normalizeSlug, suggestSlugs, validateSlug, SLUG_ERROR_BN } from "./slug";
 
 const STORE_NAME_MAX = 60;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Abuse dampener: a single IP may attempt at most SIGNUP_MAX_PER_WINDOW signups
+// per SIGNUP_WINDOW_SECONDS. Fails open if Redis is down (see lib/ratelimit.ts).
+const SIGNUP_MAX_PER_WINDOW = 5;
+const SIGNUP_WINDOW_SECONDS = 60 * 60; // 1 hour
 
 export interface SignupState {
   ok?: boolean;
@@ -79,13 +86,47 @@ export async function signupAction(
     return { ok: false, errors, values };
   }
 
-  try {
-    // (1) Mint the owner identity. Dev provider has no Supabase auth user, so we
-    // create the app_user via the published createAppUser path (idempotent on
-    // email — a retried signup reuses the same user). Under Supabase the trigger
-    // would have created it and signup would skip straight to provisionTenant.
-    const userId = await createAppUser({ email: emailRaw, fullName: storeNameRaw });
+  // Dev signup mints a session cookie and is disabled in production — Supabase
+  // will own prod signup (the seam in lib/auth/session.ts). Mirror getSession /
+  // impersonateTenantOwner: never sign anyone in outside non-prod.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("dev signup is disabled in production");
+  }
 
+  // Per-IP abuse dampener before any DB write. Fails open on a Redis outage.
+  const ip = clientIpFrom(await requestHeaders());
+  const rl = await rateLimit({
+    bucket: "signup",
+    identifier: ip,
+    limit: SIGNUP_MAX_PER_WINDOW,
+    windowSeconds: SIGNUP_WINDOW_SECONDS,
+  });
+  if (!rl.allowed) {
+    return {
+      ok: false,
+      errors: { form: "অনেকবার চেষ্টা করা হয়েছে — কিছুক্ষণ পর আবার চেষ্টা করুন।" },
+      values,
+    };
+  }
+
+  // (1) Mint the owner identity. Dev provider has no Supabase auth user, so we
+  // create the app_user via the published createAppUser path. createAppUser is
+  // idempotent on email and reports created-vs-matched: a pre-existing email
+  // means someone already owns this account, so we REFUSE rather than hand the
+  // caller a session for it (account-takeover guard).
+  const { userId, created } = await createAppUser({
+    email: emailRaw,
+    fullName: storeNameRaw,
+  });
+  if (!created) {
+    return {
+      ok: false,
+      errors: { email: "এই ইমেইল ইতিমধ্যে ব্যবহৃত — লগ ইন করুন।" },
+      values,
+    };
+  }
+
+  try {
     // (2) Atomic platform provisioning: tenant(trial) + {slug}.{ROOT} domain +
     // owner membership + trialing subscription (+14d). Contract-owned. Throws
     // SlugTakenError on collision (caught below).
@@ -106,6 +147,13 @@ export async function signupAction(
     const host = (await getRequestHost()) ?? rootDomain();
     return { ok: true, redirectTo: adminUrl(host) };
   } catch (err: unknown) {
+    // Provisioning failed → the app_user we just minted owns no tenant. Drop the
+    // orphan so a legitimate retry with this email isn't refused as "already
+    // used" (the created-vs-matched takeover guard above).
+    await deleteOwnerlessUser(userId).catch((cleanupErr) =>
+      console.error("[signup] orphan user cleanup failed", cleanupErr),
+    );
+
     if (err instanceof SlugTakenError) {
       return {
         ok: false,
@@ -126,7 +174,12 @@ export async function signupAction(
 
 // Read the incoming Host header so the redirect preserves the dev port.
 async function getRequestHost(): Promise<string | null> {
-  const { headers } = await import("next/headers");
-  const h = await headers();
+  const h = await requestHeaders();
   return h.get("host");
+}
+
+// The incoming request headers (for client-IP extraction in the rate limiter).
+async function requestHeaders(): Promise<Headers> {
+  const { headers } = await import("next/headers");
+  return headers();
 }

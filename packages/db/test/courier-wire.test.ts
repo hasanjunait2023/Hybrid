@@ -18,8 +18,10 @@
 //      a shipment row + flips orders.fulfillment_status to 'shipped'.
 //   4. Double-send is rejected by shipment_consignment_uniq (friendly error).
 //   5. courier-sync (stubbed getStatus) reconciles shipment + order; a
-//      'delivered' status stamps delivered_at + cod_collected, cod_status
-//      'collected'.
+//      'delivered' status stamps delivered_at but COD stays OWED — cod_status
+//      'pending', cod_collected NOT written (remittance is Phase-2).
+//   6. A delivered COD order REMAINS on the COD-pending list (cash still owed
+//      until a remittance reconciliation flips it).
 //
 // Live Steadfast is deferred (no sandbox); the @hybrid/couriers request/response
 // CONTRACT is already covered by that package's own tests. Here we use the REAL
@@ -273,9 +275,11 @@ describe("settings + courier wire", () => {
     ).rejects.toThrow();
   });
 
-  it("5. courier-sync (stubbed delivered) reconciles shipment + order, stamps COD collected", async () => {
+  it("5. courier-sync (stubbed delivered) reconciles shipment + order; COD stays OWED", async () => {
     // The order already has a shipment (status 'created') from test 3. Sync with
-    // a 'delivered' status → shipment delivered, order delivered, COD collected.
+    // a 'delivered' status → shipment delivered, order delivered. Delivery does
+    // NOT mean the courier has remitted the cash, so cod_status stays 'pending'
+    // and cod_collected is never fabricated (remittance reconciliation = Phase-2).
     const provider = new SteadfastProvider({ fetch: makeFakeFetch("delivered") });
     const synced = await syncTenantShipments(TENANT_A, provider, STEADFAST);
     expect(synced).toBe(1);
@@ -296,15 +300,19 @@ describe("settings + courier wire", () => {
       `,
     );
     expect(row[0]!.status).toBe("delivered");
-    expect(row[0]!.cod_status).toBe("collected");
-    expect(Number(row[0]!.cod_collected)).toBe(1000);
+    // COD remains owed: pending, no collected amount fabricated on delivery alone.
+    expect(row[0]!.cod_status).toBe("pending");
+    expect(row[0]!.cod_collected).toBeNull();
     expect(row[0]!.delivered_at).not.toBeNull();
     expect(row[0]!.fulfillment_status).toBe("delivered");
   });
 
-  it("6. COD-pending reflects collection — delivered shipment no longer pending", async () => {
-    // After delivery (test 5), cod_status='collected' → drops off the pending list.
+  it("6. COD-pending still lists the delivered order — cash owed until remittance", async () => {
+    // After delivery (test 5), cod_status is still 'pending' → the order REMAINS
+    // on the seller's "money owed to me" list until a remittance reconciliation.
     const cod = await getCodPending(TENANT_A, OWNER_A);
-    expect(cod.rows.find((r) => r.orderId === ORDER_ID)).toBeUndefined();
+    const owed = cod.rows.find((r) => r.orderId === ORDER_ID);
+    expect(owed).toBeDefined();
+    expect(owed!.codAmount).toBe(1000);
   });
 });

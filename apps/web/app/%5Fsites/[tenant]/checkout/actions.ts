@@ -13,12 +13,13 @@
 //      payment.provider_ref so the callback can resolve it back, and return
 //      { ok, bkashURL } for the client to open the popup.
 import { z } from "zod";
-import { withTenant } from "@hybrid/db";
+import { withTenant, asPlatformAdmin } from "@hybrid/db";
 import { placeOrder, InsufficientStockError } from "@/lib/commerce/placeOrder";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
 import { getEnabledBkash } from "@/lib/payments/bkash";
 import { toJsonRecord } from "@/lib/payments/json";
 import { sendOrderNotifications } from "@/lib/sms/notify";
+import { rateLimit, clientIpFrom } from "@/lib/ratelimit";
 
 const itemSchema = z.object({
   variantId: z.string().uuid(),
@@ -36,9 +37,16 @@ const checkoutSchema = z.object({
   paymentMethod: z.enum(["cod", "bkash"]),
   note: z.string().max(500).optional(),
   items: z.array(itemSchema).min(1).max(50),
-  /** Absolute origin of the storefront, for the bKash callbackURL. */
-  origin: z.string().url(),
+  // NOTE: the bKash callbackURL is derived SERVER-SIDE from the tenant's
+  // verified primary domain + request scheme — never from a client-supplied
+  // origin (open-redirect / phishing aid). Any `origin` the client sends is
+  // ignored; the schema accepts unknown extra keys by default.
 });
+
+// Per-IP / per-phone abuse dampener thresholds for checkout submission. Fails
+// open if Redis is down (see lib/ratelimit.ts).
+const CHECKOUT_MAX_PER_WINDOW = 10;
+const CHECKOUT_WINDOW_SECONDS = 10 * 60; // 10 minutes
 
 export type SubmitCheckoutInput = z.infer<typeof checkoutSchema>;
 
@@ -71,6 +79,22 @@ export async function submitCheckout(
   }
 
   const phone = normalizePhone(input.phone);
+
+  // Abuse dampener: throttle per client IP AND per normalized phone so a single
+  // source can't hammer order creation / SMS. Fails open on a Redis outage.
+  const reqHeaders = await requestHeaders();
+  const ip = clientIpFrom(reqHeaders);
+  for (const identifier of [`ip:${ip}`, `phone:${phone}`]) {
+    const rl = await rateLimit({
+      bucket: "checkout",
+      identifier,
+      limit: CHECKOUT_MAX_PER_WINDOW,
+      windowSeconds: CHECKOUT_WINDOW_SECONDS,
+    });
+    if (!rl.allowed) {
+      return { ok: false, error: "অনেকবার চেষ্টা করা হয়েছে — কিছুক্ষণ পর আবার চেষ্টা করুন।" };
+    }
+  }
 
   let placed;
   try {
@@ -129,6 +153,16 @@ export async function submitCheckout(
     return { ok: false, error: "বিকাশ এই মুহূর্তে উপলব্ধ নয়। ক্যাশ অন ডেলিভারি বেছে নিন।" };
   }
 
+  // Derive the bKash callback origin SERVER-SIDE from the tenant's verified
+  // primary domain + the request scheme — NOT from any client-supplied origin
+  // (that would be an open-redirect / phishing aid: bKash would POST the payment
+  // result to an attacker-chosen host). If the tenant has no verified domain we
+  // refuse rather than fall back to an untrusted value.
+  const callbackOrigin = await resolveCallbackOrigin(ctx.id, reqHeaders);
+  if (!callbackOrigin) {
+    return { ok: false, error: "বিকাশ পেমেন্ট শুরু করা যায়নি। আবার চেষ্টা করুন।" };
+  }
+
   let created;
   try {
     created = await enabled.provider.createPayment(
@@ -137,7 +171,7 @@ export async function submitCheckout(
         currency: "BDT",
         merchantInvoiceNumber: placed.paymentId,
         payerReference: phone,
-        callbackURL: `${input.origin}/api/bkash/callback`,
+        callbackURL: `${callbackOrigin}/api/bkash/callback`,
       },
       enabled.creds,
     );
@@ -167,6 +201,59 @@ export async function submitCheckout(
     bkashURL: created.redirectUrl,
     orderNumber: placed.orderNumber,
   };
+}
+
+// Build the trusted callback origin for this tenant: its verified primary
+// (subdomain) domain + the request scheme. The domain comes from the DB (the
+// same verified tenant_domain rows resolve.ts routes on), never from the client.
+// The scheme is taken from the forwarded proto (https behind Vercel/proxies),
+// defaulting to https in production. Returns null when no verified domain exists.
+async function resolveCallbackOrigin(
+  tenantId: string,
+  headers: Headers,
+): Promise<string | null> {
+  const rows = await asPlatformAdmin((tx) =>
+    tx<{ domain: string }[]>`
+      select domain
+        from tenant_domain
+       where tenant_id = ${tenantId} and verified = true
+       order by is_primary desc, created_at asc
+       limit 1
+    `,
+  );
+  const domain = rows[0]?.domain;
+  if (!domain) return null;
+
+  const proto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const scheme =
+    proto === "https" || proto === "http"
+      ? proto
+      : process.env.NODE_ENV === "production"
+        ? "https"
+        : "http";
+
+  // Preserve a non-default port (dev runs on :3000) ONLY when the request host's
+  // hostname matches our verified domain — i.e. we copy the port, never the host,
+  // from the request. A mismatched/forged host contributes nothing.
+  const reqHost = headers.get("host") ?? "";
+  const reqHostname = reqHost.split(":")[0];
+  const reqPort = reqHost.includes(":") ? `:${reqHost.split(":")[1]}` : "";
+  const port = reqHostname === domain ? reqPort : "";
+  return `${scheme}://${domain}${port}`;
+}
+
+// The incoming request headers (client IP + forwarded proto/scheme). In a real
+// Server Action a request scope always exists; outside one (e.g. the integration
+// suite that calls submitCheckout directly) headers() throws — we degrade to an
+// empty Headers so the limiter buckets under "unknown" and the callback origin
+// falls back to the verified domain + default scheme, rather than crashing.
+async function requestHeaders(): Promise<Headers> {
+  try {
+    const { headers } = await import("next/headers");
+    return await headers();
+  } catch {
+    return new Headers();
+  }
 }
 
 // Read payment.amount (= grand_total) back for the SMS/bKash amount. Avoids

@@ -14,7 +14,7 @@ import { revalidateTag } from "next/cache";
 import { withTenant } from "@hybrid/db";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
-import { canTransition, restoreInventory } from "@/lib/admin/orders";
+import { canTransition, canCancelOrder, restoreInventory } from "@/lib/admin/orders";
 import { findCustomerByPhone, type CustomerPrefill } from "@/lib/admin/customers";
 import { placeOrder, InsufficientStockError } from "@/lib/commerce/placeOrder";
 
@@ -70,14 +70,23 @@ export async function updateOrderStatus(
 
   try {
     await withTenant(auth.tenantId, auth.userId, async (tx) => {
-      const rows = await tx<{ fulfillment_status: string }[]>`
-        select fulfillment_status from orders where id = ${orderId} for update
+      const rows = await tx<{ fulfillment_status: string; payment_status: string }[]>`
+        select fulfillment_status, payment_status from orders where id = ${orderId} for update
       `;
       const current = rows[0]?.fulfillment_status;
+      const paymentStatus = rows[0]?.payment_status;
       if (!current) throw new Error("ORDER_NOT_FOUND");
       // Server-validated transition — the UI offers only valid moves, but never
       // trust the client.
       if (!canTransition(current, to)) throw new Error("INVALID_TRANSITION");
+
+      // Refuse to cancel a PAID order: P1 has no auto-refund, and restoring stock
+      // while leaving the order 'paid' would assert money the seller must still
+      // return. The seller refunds out-of-band first (then the order can sit as a
+      // paid+returned record). Guards against money/inventory drift.
+      if (to === "cancelled" && !canCancelOrder(paymentStatus ?? "")) {
+        throw new Error("CANCEL_PAID_BLOCKED");
+      }
 
       // Cancel/return restore inventory before flipping status (one atomic unit).
       if (to === "cancelled" || to === "returned") {
@@ -98,6 +107,12 @@ export async function updateOrderStatus(
     }
     if (message === "ORDER_NOT_FOUND") {
       return { ok: false, error: "অর্ডার পাওয়া যায়নি।" };
+    }
+    if (message === "CANCEL_PAID_BLOCKED") {
+      return {
+        ok: false,
+        error: "পরিশোধিত অর্ডার বাতিল করা যাবে না — আগে রিফান্ড সম্পন্ন করুন।",
+      };
     }
     console.error("[updateOrderStatus] failed", error);
     return { ok: false, error: "স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে।" };

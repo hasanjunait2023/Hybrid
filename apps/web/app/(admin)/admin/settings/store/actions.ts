@@ -32,14 +32,38 @@ async function authTenant(): Promise<
   return { ok: true, tenantId, userId: session.userId };
 }
 
+// Facebook/social URL is rendered as an <a href> to every storefront visitor,
+// so its scheme is validated at the trust boundary: empty is allowed, otherwise
+// it must be a well-formed http(s) URL. This blocks javascript:/data: schemes
+// (stored XSS). StoreFooter applies a second http(s) guard at render time.
+const httpUrl = z
+  .string()
+  .trim()
+  .max(300)
+  .refine((u) => u === "" || /^https?:\/\//i.test(u), {
+    message: "সঠিক ওয়েব ঠিকানা দিন (http বা https দিয়ে শুরু)।",
+  })
+  .refine((u) => u === "" || isParseableUrl(u), {
+    message: "সঠিক ওয়েব ঠিকানা দিন (http বা https দিয়ে শুরু)।",
+  });
+
 const StoreInput = z.object({
   name: z.string().trim().min(1, "দোকানের নাম দিন").max(120),
   phone: z.string().trim().max(20).optional().default(""),
-  facebook: z.string().trim().max(300).optional().default(""),
+  facebook: httpUrl.optional().default(""),
   address: z.string().trim().max(500).optional().default(""),
   returnPolicy: z.string().trim().max(2000).optional().default(""),
   vatBin: z.string().trim().max(60).optional().default(""),
 });
+
+function isParseableUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 interface TenantSettingsJson {
   contact?: { phone?: string; address?: string };

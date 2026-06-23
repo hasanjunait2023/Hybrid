@@ -3,8 +3,8 @@
 // CRON_SECRET-guarded internal route. Polls Steadfast for every active shipment
 // and reconciles shipment.status + orders.fulfillment_status from the live
 // delivery_status via mapSteadfastStatus. When a parcel is delivered it stamps
-// delivered_at and records cod_collected = the expected COD (the courier
-// collected the cash on hand-over) with cod_status 'collected'.
+// delivered_at and the delivered status; COD stays 'pending' (owed) until a
+// remittance reconciliation confirms the courier paid the seller (Phase-2).
 //
 // Cross-tenant enumeration uses asPlatformAdmin (active shipments span tenants);
 // each tenant's reconciliation then runs under its own withTenant context.
@@ -13,19 +13,26 @@
 // (logged, not failed) — live Steadfast verification is deferred until merchant
 // creds exist (brief §2: no sandbox). One bad tenant never aborts the sweep.
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { asPlatformAdmin, withTenant } from "@hybrid/db";
 import { getSteadfastProvider, readSteadfastCreds } from "@/lib/couriers/steadfast";
 import { syncTenantShipments } from "@/lib/couriers/sync";
 
 export const dynamic = "force-dynamic";
 
-// Constant-time-ish bearer check. CRON_SECRET must be present (fail-fast) so an
-// unset secret can't leave the route open.
+// Constant-time bearer check (mirrors billing-sweep). Fail-closed: a missing
+// CRON_SECRET can never leave the route open. Constant-time compare avoids
+// leaking the secret via response-timing differences.
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  const header = req.headers.get("authorization");
-  return header === `Bearer ${secret}`;
+
+  const header = req.headers.get("authorization") ?? "";
+  const expected = `Bearer ${secret}`;
+  const a = Buffer.from(header, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
 export async function POST(req: Request): Promise<NextResponse> {

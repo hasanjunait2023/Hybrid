@@ -142,11 +142,12 @@ export class BkashProvider implements PaymentProvider {
   async executePayment(input: ExecutePaymentInput, creds: ProviderCreds): Promise<ExecutePaymentResult> {
     const body = (await this.authedPost(creds, "/tokenized/checkout/execute", {
       paymentID: input.paymentId,
-    })) as { trxID?: string; statusCode?: string; transactionStatus?: string };
+    })) as { trxID?: string; amount?: string; statusCode?: string; transactionStatus?: string };
 
     return {
       state: mapBkashState(body),
       trxId: body.trxID,
+      amount: body.amount,
       raw: body,
     };
   }
@@ -154,11 +155,12 @@ export class BkashProvider implements PaymentProvider {
   async queryPayment(input: QueryPaymentInput, creds: ProviderCreds): Promise<QueryPaymentResult> {
     const body = (await this.authedPost(creds, "/tokenized/checkout/payment/status", {
       paymentID: input.paymentId,
-    })) as { trxID?: string; statusCode?: string; transactionStatus?: string };
+    })) as { trxID?: string; amount?: string; statusCode?: string; transactionStatus?: string };
 
     return {
       state: mapBkashState(body),
       trxId: body.trxID,
+      amount: body.amount,
       raw: body,
     };
   }

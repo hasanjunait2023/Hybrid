@@ -67,16 +67,21 @@ async function loadDashboard(tenantId: string, userId: string): Promise<Dashboar
         and fulfillment_status not in ('cancelled','returned')
     `;
 
+    // Low-stock = active products whose total TRACKED inventory across all
+    // variants is at/under the threshold. A left join + filtered SUM aggregates
+    // correctly for multi-variant products; the old scalar correlated subquery
+    // returned multiple rows (one per tracked variant) and crashed with "more
+    // than one row returned by a subquery" for products with ≥2 tracked variants.
     const lowStock = await tx<{ n: number }[]>`
       select count(*)::int as n from (
         select p.id
         from product p
+        left join product_variant v
+          on v.product_id = p.id and v.track_inventory = true
         where p.status = 'active'
         group by p.id
-        having coalesce(sum(
-          (select v.inventory_quantity from product_variant v
-            where v.product_id = p.id and v.track_inventory = true)
-        ), 0) <= ${LOW_STOCK_THRESHOLD}
+        having coalesce(sum(v.inventory_quantity) filter (where v.track_inventory = true), 0)
+               <= ${LOW_STOCK_THRESHOLD}
       ) low
     `;
 

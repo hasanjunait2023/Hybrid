@@ -232,6 +232,30 @@ describe("runBillingSweep (integration)", () => {
     expect(result.errors).toBe(0);
   });
 
+  it("suspending a tenant retires its subscription to terminal 'expired', unblocking re-signup", async () => {
+    await runBillingSweep(new Date(), async () => {});
+
+    // The suspended tenant's lapsed subscription is moved to a TERMINAL state so
+    // subscription_one_active no longer counts it as live.
+    expect(await readSubStatus(T_SUSPEND)).toBe("expired");
+    expect(await readTenantStatus(T_SUSPEND)).toBe("suspended");
+
+    // A fresh trialing subscription can now be inserted for that tenant — the
+    // partial unique index (trialing/active/past_due) is no longer occupied.
+    await asPlatformAdmin(async (tx) => {
+      const pid = await planId(tx);
+      await tx`
+        insert into subscription (
+          tenant_id, plan_id, status, current_period_start, current_period_end, billing_provider
+        ) values (
+          ${T_SUSPEND}, ${pid}, 'trialing'::subscription_status,
+          now(), now() + interval '14 days', 'manual'
+        )
+      `;
+    });
+    expect(await readSubStatus(T_SUSPEND)).toBe("trialing");
+  });
+
   it("cancelled subscriptions are never touched by the sweep", async () => {
     await runBillingSweep(new Date(), async () => {});
     expect(await readSubStatus(T_CANCELLED)).toBe("cancelled");

@@ -1,10 +1,10 @@
 {
   "project": "Hybrid",
   "chartered": "2026-06-23",
-  "phase": "BUILD",
+  "phase": "HARDEN",
   "active_milestone": "M2",
   "awaiting_gate": null,
   "autonomous": true,
   "last_updated": "2026-06-23",
-  "notes": "AUTONOMOUS. M2/Phase 1 GATE1 self-approved. BUILD Wave 0 (foundation): pure packages @hybrid/payments+@hybrid/couriers+@hybrid/db crypto, and lib/commerce core. Then Wave1 (catalog/orders/customers/dashboard/auth-provision), Wave2 (checkout/courier-wire/settings/sms), Wave3 (platform/billing/marketing) → harden → self-approve GATE2 → ship. Blueprint docs/architecture/phase1-blueprint.md; design DESIGN.md #Phase 1 Surfaces; brief docs/research/phase1-brief.md."
+  "notes": "AUTONOMOUS. M2/Phase 1. BUILD COMPLETE: Wave0 (payments/couriers/crypto pkgs + commerce core) 9b2d391, Wave1 (catalog/orders/customers/dashboard/auth-provision) 0ab5e99, Wave2 (checkout COD+bKash/courier-wire/settings/sms) 4975b16, Wave3 (platform/billing/marketing+signup, tenant-liveness fix) 6bde8db. All green: typecheck 5/5, lint 5/5, db 51/51, web build OK. NOW HARDEN: parallel gauntlet (ceo-code-reviewer+qa-engineer+security-officer) on Phase-1 diff vs phase-0 tag 4f72e4d → fix blockers → self-approve GATE2 → ship. Blueprint docs/architecture/phase1-blueprint.md."
 }

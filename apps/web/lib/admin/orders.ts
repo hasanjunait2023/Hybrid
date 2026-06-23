@@ -39,6 +39,16 @@ export function canTransition(from: string, to: string): boolean {
   return (TRANSITIONS[from] ?? []).includes(to as FulfillmentStatus);
 }
 
+/**
+ * Whether a cancel is allowed given the order's payment status. P1 has no
+ * auto-refund: cancelling a PAID order would restore stock while leaving money
+ * the seller still owes the customer — a money/inventory inconsistency. The
+ * seller must refund out-of-band first. Returns false to BLOCK the cancel.
+ */
+export function canCancelOrder(paymentStatus: string): boolean {
+  return paymentStatus !== "paid";
+}
+
 /** The single contextual next action for the list/detail primary button. */
 export function nextAction(status: string): { to: FulfillmentStatus; bn: string } | null {
   switch (status) {

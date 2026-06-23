@@ -1,4 +1,5 @@
 import { toBnDigits } from "../../lib/format";
+import { safeUrl } from "../../lib/safeUrl";
 import { PhoneIcon } from "../icons";
 import type { StoreIdentity } from "./types";
 
@@ -10,6 +11,8 @@ interface StoreFooterProps {
 // (these sellers come from FB), policy links, payment marks, "Powered by Hybrid".
 export function StoreFooter({ store }: StoreFooterProps) {
   const phone = store.phone ?? "";
+  // Seller-controlled URL: drop any non-http(s) scheme at render time.
+  const facebookUrl = safeUrl(store.facebookUrl);
 
   return (
     <footer className="border-t border-border bg-surface-2">
@@ -26,9 +29,9 @@ export function StoreFooter({ store }: StoreFooterProps) {
                 {toBnDigits(phone)}
               </a>
             )}
-            {store.facebookUrl && (
+            {facebookUrl && (
               <a
-                href={store.facebookUrl}
+                href={facebookUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bn-body mt-2 block text-sm text-primary hover:underline"

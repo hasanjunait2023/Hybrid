@@ -66,6 +66,10 @@ export interface ExecutePaymentResult {
   state: PaymentState;
   // Gateway transaction id (provider_transaction_id). Absent until success.
   trxId?: string;
+  // Charged amount as reported by the gateway (string to preserve exact decimals,
+  // e.g. "1250.50"). Used to verify the customer paid the order total. Absent
+  // until the gateway returns it.
+  amount?: string;
   raw: unknown;
 }
 
@@ -77,6 +81,9 @@ export interface QueryPaymentInput {
 export interface QueryPaymentResult {
   state: PaymentState;
   trxId?: string;
+  // Charged amount as reported by the gateway (string, exact decimals). See
+  // ExecutePaymentResult.amount. Absent until the gateway returns it.
+  amount?: string;
   raw: unknown;
 }
 

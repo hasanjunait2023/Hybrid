@@ -96,7 +96,6 @@ describe("storefront checkout — COD via submitCheckout", () => {
       ...ADDR,
       paymentMethod: "cod",
       items: [{ variantId: VAR_COD, quantity: 2 }],
-      origin: "http://store-a.lvh.me",
     });
 
     expect(result.ok).toBe(true);
@@ -148,7 +147,6 @@ describe("storefront checkout — COD via submitCheckout", () => {
       ...ADDR,
       paymentMethod: "cod",
       items: [{ variantId: VAR_COD, quantity: 1 }],
-      origin: "http://store-a.lvh.me",
     });
     expect(result.ok).toBe(false);
     // Restore for any later runs.
@@ -181,10 +179,12 @@ function makeStubBkash(paymentId: string): {
     },
     async executePayment(): Promise<ExecutePaymentResult> {
       executeCalls += 1;
-      return { state: "success", trxId: "TRX-STUB-001", raw: { statusCode: "0000" } };
+      // amount must match the seeded order total (750) — the callback now verifies
+      // the gateway-charged amount before marking paid (HARDEN FIX 1).
+      return { state: "success", trxId: "TRX-STUB-001", amount: "750.00", raw: { statusCode: "0000" } };
     },
     async queryPayment(): Promise<QueryPaymentResult> {
-      return { state: "success", trxId: "TRX-STUB-001", raw: { statusCode: "0000" } };
+      return { state: "success", trxId: "TRX-STUB-001", amount: "750.00", raw: { statusCode: "0000" } };
     },
   };
   return { provider, creds, executeCalls: () => executeCalls };

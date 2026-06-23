@@ -47,19 +47,24 @@ async function cleanup(): Promise<void> {
 describe("auth provisioning — provisionTenant", () => {
   beforeAll(async () => {
     await cleanup();
-    ownerId = await createAppUser({
+    const owner = await createAppUser({
       email: EMAIL_OWNER,
       fullName: "Provision Owner",
       phone: "01711000000",
     });
-    expect(ownerId).toBeTruthy();
+    expect(owner.userId).toBeTruthy();
+    // First insert of this email → created flag must be true.
+    expect(owner.created).toBe(true);
+    ownerId = owner.userId;
   });
 
   afterAll(cleanup);
 
-  it("1. createAppUser is idempotent on email", async () => {
+  it("1. createAppUser is idempotent on email and reports created=false on match", async () => {
     const again = await createAppUser({ email: EMAIL_OWNER });
-    expect(again).toBe(ownerId);
+    expect(again.userId).toBe(ownerId);
+    // Pre-existing email → matched, not created (the takeover guard hinges on this).
+    expect(again.created).toBe(false);
   });
 
   it("2. provisions tenant + domain + member + subscription atomically with defaults", async () => {

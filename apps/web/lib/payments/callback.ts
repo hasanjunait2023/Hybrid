@@ -12,7 +12,9 @@
 //     callback (same paymentID) inserts 0 rows and short-circuits as "replayed".
 //   * payment_txn_uniq blocks a duplicate trxID at the DB layer.
 //   * Amounts/prices are never trusted from the callback — the order was already
-//     server-priced at placeOrder time; here we only flip statuses.
+//     server-priced at placeOrder time. The gateway's executed/queried amount is
+//     verified (paisa-exact) against the order total before we mark paid; a
+//     success that doesn't reconcile is recorded as a discrepancy, never paid.
 //
 // All DB writes run inside withTenant for the resolved tenant (RLS scoped). The
 // tenant is resolved from the payment row (we look it up as platform admin since
@@ -23,6 +25,21 @@ import type { PaymentProvider, ProviderCreds, PaymentState } from "@hybrid/payme
 import { toJsonRecord } from "./json";
 
 const PROVIDER = "bkash";
+
+// Decimal-safe money equality. BDT is priced to 2dp; compare in minor units
+// (paisa) via rounding so float drift (e.g. 0.1 + 0.2) can never make a mismatch
+// look equal or vice-versa. A missing/unparseable charged amount is NOT equal —
+// we refuse to mark paid when the gateway didn't report a verifiable amount.
+function toMinorUnits(value: number): number {
+  return Math.round(value * 100);
+}
+
+function amountsEqual(charged: string | undefined, expected: number): boolean {
+  if (charged == null || charged.trim() === "") return false;
+  const parsed = Number(charged);
+  if (!Number.isFinite(parsed)) return false;
+  return toMinorUnits(parsed) === toMinorUnits(expected);
+}
 
 export type CallbackOutcome = "paid" | "failed" | "cancelled" | "replayed" | "unknown";
 
@@ -101,9 +118,16 @@ async function lookupPaymentByExternalId(
       join orders o on o.id = p.order_id
       join tenant t on t.id = p.tenant_id
       where p.provider = 'bkash' and p.provider_ref = ${paymentId}
-      limit 1
+      limit 2
     `,
   );
+
+  // provider_ref is unique per (provider, provider_ref) — more than one match is
+  // a data-integrity violation we must NOT paper over by silently picking the
+  // first (it could pay the wrong order). Fail loudly so the callback aborts.
+  if (rows.length > 1) {
+    throw new Error(`ambiguous bKash paymentID ${paymentId}: ${rows.length} payment rows`);
+  }
 
   const row = rows[0];
   if (!row) return null;
@@ -169,7 +193,11 @@ export async function processBkashCallback(
   // terminal success — the callback/execute can be lost — fall back to query.
   let state: PaymentState;
   let trxId: string | undefined;
+  let chargedAmount: string | undefined;
   let raw: unknown;
+  // Flips true when the gateway reported success but the charged amount does not
+  // reconcile with the order total — the order is failed (discrepancy), not paid.
+  let amountMismatch = false;
 
   const executed = await enabled.provider.executePayment(
     { paymentId: input.paymentId },
@@ -177,6 +205,7 @@ export async function processBkashCallback(
   );
   state = executed.state;
   trxId = executed.trxId;
+  chargedAmount = executed.amount;
   raw = executed.raw;
 
   if (state !== "success") {
@@ -188,8 +217,23 @@ export async function processBkashCallback(
     if (queried.state === "success") {
       state = queried.state;
       trxId = queried.trxId ?? trxId;
+      chargedAmount = queried.amount ?? chargedAmount;
       raw = queried.raw;
     }
+  }
+
+  // Amount verification (research §1 "Amounts are never trusted from the
+  // callback"): the gateway-reported charged amount MUST equal the server-priced
+  // order total to the paisa, or we refuse to mark the order paid. A success
+  // that doesn't reconcile is treated as a discrepancy (failed), never paid.
+  if (state === "success" && !amountsEqual(chargedAmount, lookup.total)) {
+    // Server-side log only — no secrets, no full gateway body.
+    console.error(
+      `[bkash-callback] amount mismatch for payment ${lookup.paymentId}: ` +
+        `charged=${chargedAmount ?? "<none>"} expected=${lookup.total}`,
+    );
+    state = "failed";
+    amountMismatch = true;
   }
 
   // Run the idempotent transition and return its outcome + paid-context from the
@@ -248,10 +292,24 @@ export async function processBkashCallback(
     await tx`
       update payment
          set status = ${failState},
-             payload = ${tx.json(toJsonRecord({ paymentId: input.paymentId, state, raw }))},
+             payload = ${tx.json(
+               toJsonRecord({
+                 paymentId: input.paymentId,
+                 state,
+                 amountMismatch,
+                 chargedAmount: chargedAmount ?? null,
+                 expectedAmount: lookup.total,
+                 raw,
+               }),
+             )},
              updated_at = now()
        where id = ${lookup.paymentId}
     `;
+    // The order is NEVER marked paid here. order_payment_status has no 'failed'
+    // value (enum: unpaid/partially_paid/paid/refunded/partially_refunded), so
+    // the order stays 'unpaid' — which is the correct money state: the cash did
+    // not reconcile, so nothing is collectable. The discrepancy is captured on
+    // the payment row's status + payload for the seller to chase.
     await markProcessed(tx, input.paymentId);
     return { outcome: failState === "cancelled" ? "cancelled" : "failed", paidContext: null };
   });

@@ -6,8 +6,10 @@
 //   1. reads the latest subscription (status + current_period_end)
 //   2. runs evaluateTenantBilling(sub, now)
 //   3. persists a changed subscription status (trialing/active -> past_due)
-//   4. when grace is exhausted, flips tenant.status -> 'suspended' and busts the
-//      host->tenant cache so the storefront 404s on the next request
+//   4. when grace is exhausted, flips tenant.status -> 'suspended', retires the
+//      lapsed subscription to terminal 'expired' (so a future re-signup is not
+//      blocked by subscription_one_active), and busts the host->tenant cache so
+//      the storefront 404s on the next request
 //
 // All reads/writes are cross-tenant, so asPlatformAdmin (RLS via is_platform_admin).
 // One tenant's failure never aborts the sweep.
@@ -84,15 +86,25 @@ export async function runBillingSweep(
 
       // Grace exhausted -> suspend the tenant (only if not already suspended).
       if (decision.suspendTenant && row.tenant_status !== "suspended") {
-        await asPlatformAdmin((tx) =>
-          tx`
+        await asPlatformAdmin(async (tx) => {
+          await tx`
             update tenant
             set status = 'suspended'::tenant_status,
                 suspended_at = now(),
                 updated_at = now()
             where id = ${row.tenant_id}
-          `,
-        );
+          `;
+          // Retire the lapsed subscription to a TERMINAL state. subscription_one_active
+          // only permits one trialing/active/past_due row per tenant; leaving it
+          // 'past_due' forever would block a fresh trialing subscription if the
+          // seller re-signs up. 'expired' (not 'cancelled' — that's a deliberate
+          // user/admin action) marks an unpaid lapse and frees the partial index.
+          await tx`
+            update subscription
+            set status = 'expired'::subscription_status, updated_at = now()
+            where id = ${row.sub_id}
+          `;
+        });
         await bustCache(row.tenant_id);
         result.suspended.push(row.tenant_id);
       }

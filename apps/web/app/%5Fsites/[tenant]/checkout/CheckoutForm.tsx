@@ -75,7 +75,6 @@ export function CheckoutForm({
       paymentMethod: method,
       note: note.trim() || undefined,
       items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
-      origin: window.location.origin,
     });
 
     if (!result.ok) {

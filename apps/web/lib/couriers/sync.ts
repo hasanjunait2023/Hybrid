@@ -6,9 +6,13 @@
 // to shipment + orders inside withTenant.
 //
 // Delivery handling: when mapSteadfastStatus reports 'delivered' we stamp
-// delivered_at, set cod_collected = the shipment's expected cod_amount (the
-// rider collected the COD on hand-over) and cod_status 'collected'. COD
-// *remittance* reconciliation is Phase-2 (brief §2: no Steadfast remittance API).
+// delivered_at and move the shipment to 'delivered'. We do NOT assert the cash
+// is in hand: delivery only means the parcel reached the customer, not that the
+// courier has REMITTED the COD to the seller. So cod_status stays 'pending'
+// (the money is still OWED to the seller) and cod_collected is left untouched.
+// 'collected'/cod_collected/cod_remitted are reserved for a real remittance
+// reconciliation — Phase-2 (brief §2: no Steadfast remittance API yet). Until
+// that lands, a delivered COD order REMAINS on the COD-pending list.
 import { withTenant } from "@hybrid/db";
 import type { CourierAdapter, CourierCreds } from "@hybrid/couriers";
 
@@ -69,12 +73,13 @@ async function reconcileOne(
   const delivered = status.status === "delivered";
 
   await withTenant(tenantId, null, async (tx) => {
+    // Delivery stamps delivered_at + the delivered status only. cod_status stays
+    // 'pending' and cod_collected is NOT written — the COD is still owed until a
+    // remittance reconciliation (Phase-2) confirms the courier paid the seller.
     await tx`
       update shipment
          set status = ${status.status}::shipment_status,
              raw_status = ${typeof status.raw === "object" ? JSON.stringify(status.raw) : String(status.raw)},
-             cod_collected = ${delivered ? shipment.codAmount : null},
-             cod_status = ${delivered ? "collected" : "pending"}::cod_status,
              delivered_at = ${delivered ? new Date() : null},
              updated_at = now()
        where id = ${shipment.id}
