@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hybrid/couriers": "workspace:*",
     "@hybrid/db": "workspace:*",
+    "@hybrid/payments": "workspace:*",
     "@hybrid/ui": "workspace:*",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",

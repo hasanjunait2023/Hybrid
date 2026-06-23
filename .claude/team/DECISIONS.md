@@ -83,3 +83,9 @@
 - Resolved tech debt: Windows EBUSY root-caused = Defender scanning in-repo .pgtmp → PGTMP_DIR env override (point at %TEMP%); CI/Linux default unchanged. Fixed APP_ENCRYPTION_KEY (was 24-byte invalid → valid base64 32-byte dev key).
 - Contracts published: sealCredentials/openCredentials; PaymentProvider(BkashProvider/CodProvider)+mapBkashState; CourierAdapter(SteadfastProvider)+mapSteadfastStatus; placeOrder(input):{orderId,orderNumber,paymentId,bkashRequired}; upsertCustomerByPhone(tx,...). shipping_address jsonb shape {recipient,phone,division,district,thana,line}.
 - Next: Wave 1 (admin domain catalog/orders/customers/dashboard + auth-provision + shared lib/location), then Wave 2 (checkout/courier-wire/settings/sms), Wave 3 (platform/billing/marketing).
+
+## 2026-06-23 — BUILD Wave 1 — M2
+- Done: Admin domain (catalog/orders+manual-entry/customers/dashboard, StatusBadge+Stepper, lib/location shared, lib/storage BlobStore, /api/admin/upload) 30/30 db tests + 16-page build; Auth-provision (getSession supabase branch behind seam dev-default, 05_auth.sql guarded trigger, provisionTenant) 22/22. Committed.
+- Contracts: provisionTenant({userId,storeName,slug,plan?}):{tenantId,slug} + createAppUser + SlugTakenError; StatusBadge/StatusStepper in @hybrid/ui; lib/location getCascade; lib/storage getBlobStore.
+- Notes/flags: Windows embedded-PG is WIN1252 (can't store Bangla in test DB → verify Bangla render on UTF-8 Docker/Supabase/Linux CI); cod_status derived (cod_amount>0 && unpaid) until shipment exists (Wave 2); middleware supabase token-refresh deferred to middleware owner before live Supabase cutover.
+- Next: Wave 2 — S-CHECKOUT+S-SMS (storefront checkout/cart/bkash callback/sms), S-SETTINGS+S-COURIER-WIRE (encrypted creds settings, sendToCourier/courier-sync/COD list).

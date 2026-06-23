@@ -10,6 +10,8 @@ import {
   BoxesIcon,
   UsersIcon,
   MenuIcon,
+  TruckIcon,
+  ShieldIcon,
 } from "@hybrid/ui";
 import { cn } from "@hybrid/ui";
 
@@ -27,6 +29,13 @@ const ITEMS: NavItem[] = [
   { href: "/admin/products", bn: "পণ্য", Icon: BoxesIcon, match: "/admin/products" },
   { href: "/admin/customers", bn: "গ্রাহক", Icon: UsersIcon, match: "/admin/customers" },
   { href: "/admin/collections", bn: "আরও", Icon: MenuIcon, match: "/admin/collections" },
+];
+
+// Secondary surfaces (Wave-2). The mobile bottom-tab grid stays five items, so
+// these live in the desktop sidebar's "আরও" group and remain reachable there.
+const MORE_ITEMS: NavItem[] = [
+  { href: "/admin/cod", bn: "ক্যাশ অন ডেলিভারি", Icon: TruckIcon, match: "/admin/cod" },
+  { href: "/admin/settings", bn: "সেটিংস", Icon: ShieldIcon, match: "/admin/settings" },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
@@ -53,25 +62,13 @@ export function AdminNav({
           </span>
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="অ্যাডমিন নেভিগেশন">
-          {ITEMS.map((item) => {
-            const active = isActive(pathname, item);
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary-weak text-primary"
-                    : "text-ink-muted hover:bg-surface-2 hover:text-ink",
-                )}
-              >
-                <item.Icon className="h-5 w-5" />
-                {item.bn}
-              </a>
-            );
-          })}
+          {ITEMS.map((item) => (
+            <SidebarLink key={item.href} item={item} active={isActive(pathname, item)} />
+          ))}
+          <div className="my-2 border-t border-border" />
+          {MORE_ITEMS.map((item) => (
+            <SidebarLink key={item.href} item={item} active={isActive(pathname, item)} />
+          ))}
         </nav>
         <div className="border-t border-border p-3">
           <span className="block truncate font-mono text-2xs text-ink-subtle">
@@ -108,5 +105,23 @@ export function AdminNav({
         );
       })}
     </nav>
+  );
+}
+
+function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
+  return (
+    <a
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+        active
+          ? "bg-primary-weak text-primary"
+          : "text-ink-muted hover:bg-surface-2 hover:text-ink",
+      )}
+    >
+      <item.Icon className="h-5 w-5" />
+      {item.bn}
+    </a>
   );
 }

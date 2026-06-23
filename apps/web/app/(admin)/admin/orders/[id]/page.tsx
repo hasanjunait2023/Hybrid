@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getOrderDetail, nextAction } from "@/lib/admin/orders";
 import { OrderStatusActions } from "./OrderStatusActions";
+import { SendToCourierButton } from "./SendToCourierButton";
 
 // Order detail (DESIGN §P3.3). Header = order# + stepper + contextual action.
 // Two-column ≥ lg, stacked on mobile. Latin numerals, mono amounts (§4.4).
@@ -140,18 +141,25 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           </section>
 
           {/* Courier */}
-          {order.shipment && (
+          {(order.shipment ||
+            order.fulfillmentStatus === "confirmed" ||
+            order.fulfillmentStatus === "packed") && (
             <section className="rounded-lg border border-border bg-surface p-4">
               <h2 className="mb-3 text-sm font-bold text-ink">কুরিয়ার</h2>
-              <dl className="space-y-1 text-sm">
-                <Row label="প্রোভাইডার" value={order.shipment.provider} mono />
-                {order.shipment.consignmentId && (
-                  <Row label="কনসাইনমেন্ট" value={order.shipment.consignmentId} mono />
-                )}
-                {order.shipment.trackingCode && (
-                  <Row label="ট্র্যাকিং" value={order.shipment.trackingCode} mono />
-                )}
-              </dl>
+              {order.shipment ? (
+                <dl className="space-y-1 text-sm">
+                  <Row label="প্রোভাইডার" value={order.shipment.provider} mono />
+                  {order.shipment.consignmentId && (
+                    <Row label="কনসাইনমেন্ট" value={order.shipment.consignmentId} mono />
+                  )}
+                  {order.shipment.trackingCode && (
+                    <Row label="ট্র্যাকিং" value={order.shipment.trackingCode} mono />
+                  )}
+                  <Row label="স্ট্যাটাস" value={order.shipment.status} mono />
+                </dl>
+              ) : (
+                <SendToCourierButton orderId={order.id} />
+              )}
             </section>
           )}
         </div>

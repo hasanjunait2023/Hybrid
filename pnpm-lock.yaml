@@ -17,9 +17,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@hybrid/couriers':
+        specifier: workspace:*
+        version: link:../../packages/couriers
       '@hybrid/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@hybrid/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
       '@hybrid/ui':
         specifier: workspace:*
         version: link:../../packages/ui

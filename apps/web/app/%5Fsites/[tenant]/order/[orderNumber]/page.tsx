@@ -1,0 +1,113 @@
+import { notFound } from "next/navigation";
+import {
+  CheckCircleIcon,
+  PhoneIcon,
+  StatusStepper,
+  formatBdtBangla,
+  toBnDigits,
+} from "@hybrid/ui";
+import { getStorefrontOrder, getTenantContextBySlug } from "@/lib/storefront/data";
+import { OrderLookup } from "./OrderLookup";
+
+interface OrderPageProps {
+  params: Promise<{ tenant: string; orderNumber: string }>;
+  searchParams: Promise<{ phone?: string }>;
+}
+
+// Order success / track page (DESIGN P1.7). Buyer-facing, Bangla numerals.
+// Phone-gated: without a matching ?phone it shows the lookup form (track later);
+// with one it shows the confirmation + read-only status stepper + COD amount.
+export default async function OrderPage({ params, searchParams }: OrderPageProps) {
+  const { tenant: slug, orderNumber: orderNumberRaw } = await params;
+  const { phone } = await searchParams;
+  const ctx = await getTenantContextBySlug(slug);
+  if (!ctx) notFound();
+
+  const orderNumber = Number(orderNumberRaw);
+  if (!Number.isInteger(orderNumber)) notFound();
+
+  // No phone yet → render the track-later lookup form.
+  if (!phone) {
+    return <OrderLookup orderNumber={orderNumber} />;
+  }
+
+  const order = await getStorefrontOrder(ctx.id, orderNumber, phone);
+  // Wrong phone / unknown order → lookup form again (no information leak).
+  if (!order) {
+    return <OrderLookup orderNumber={orderNumber} />;
+  }
+
+  const isCod = order.paymentMethod === "cod";
+
+  return (
+    <div className="mx-auto max-w-[480px] px-4 py-8">
+      {/* Hero confirmation. */}
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-cod-weak text-cod">
+          <CheckCircleIcon width={36} height={36} />
+        </span>
+        <h1 className="bn-heading text-2xl font-bold text-ink">অর্ডার কনফার্ম হয়েছে!</h1>
+        <p className="text-lg font-bold text-ink">অর্ডার #{toBnDigits(order.orderNumber)}</p>
+      </div>
+
+      {/* Status stepper (read-only). */}
+      <div className="my-8">
+        <StatusStepper status={order.fulfillmentStatus} />
+      </div>
+
+      {/* What happens next. */}
+      <div className="mb-6 flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+        <p className="bn-body text-sm font-semibold text-ink">এরপর কী হবে</p>
+        <p className="bn-body text-sm text-ink-muted">১. আমরা আপনাকে কল করে কনফার্ম করব</p>
+        {isCod && (
+          <p className="bn-body text-sm text-ink-muted">
+            ২. {formatBdtBangla(order.codAmount)} ডেলিভারিতে দিন
+          </p>
+        )}
+      </div>
+
+      {/* Items + total. */}
+      <div className="mb-6 flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+        <p className="bn-body text-sm font-semibold text-ink">অর্ডার সারাংশ</p>
+        <ul className="flex flex-col gap-1.5">
+          {order.items.map((item, i) => (
+            <li key={i} className="flex items-center justify-between gap-2">
+              <span className="bn-body line-clamp-1 flex-1 text-sm text-ink">
+                {item.title}{" "}
+                <span className="text-ink-muted">× {toBnDigits(item.quantity)}</span>
+              </span>
+              <span className="text-sm font-semibold text-ink tnum">
+                {formatBdtBangla(item.lineTotal)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-center justify-between border-t border-border pt-2">
+          <span className="bn-body text-base font-bold text-ink">সর্বমোট</span>
+          <span className="text-lg font-bold text-ink tnum">
+            {formatBdtBangla(order.grandTotal)}
+          </span>
+        </div>
+        {isCod && (
+          <div className="flex items-center justify-between">
+            <span className="bn-body text-sm font-semibold text-cod">ডেলিভারিতে সংগ্রহ</span>
+            <span className="text-sm font-bold text-cod tnum">
+              {formatBdtBangla(order.codAmount)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Store contact — the COD buyer's safety net. */}
+      {ctx.store.phone && (
+        <a
+          href={`tel:${ctx.store.phone}`}
+          className="flex items-center justify-center gap-2 rounded-md border border-border-strong bg-surface py-3 text-sm font-semibold text-primary"
+        >
+          <PhoneIcon width={16} height={16} />
+          দোকানে কল করুন: {toBnDigits(ctx.store.phone)}
+        </a>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,66 @@
+"use client";
+
+// COD enable toggle (DESIGN §P6). Market default ON. No credentials.
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@hybrid/ui";
+import { toggleCod } from "./actions";
+
+export function CodForm({ enabled }: { enabled: boolean }) {
+  const router = useRouter();
+  const [on, setOn] = useState(enabled);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const dirty = on !== enabled;
+
+  function save() {
+    setError(null);
+    setSaved(false);
+    const fd = new FormData();
+    fd.set("enabled", on ? "true" : "false");
+    startTransition(async () => {
+      const result = await toggleCod(null, fd);
+      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      else {
+        setSaved(true);
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-semibold text-ink">ক্যাশ অন ডেলিভারি</h2>
+          <p className="text-xs text-ink-muted">পণ্য হাতে পেয়ে টাকা দিন — বাংলাদেশের ডিফল্ট।</p>
+        </div>
+        <label className="inline-flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={on}
+            onChange={(e) => setOn(e.target.checked)}
+            className="h-5 w-5 accent-[var(--color-cod)]"
+          />
+          <span className="text-sm font-medium text-ink">{on ? "চালু" : "বন্ধ"}</span>
+        </label>
+      </div>
+
+      {error && (
+        <p role="alert" className="rounded-md bg-danger-weak px-3 py-2 text-sm font-medium text-danger">
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p role="status" className="rounded-md bg-success-weak px-3 py-2 text-sm font-medium text-success">
+          সেভ হয়েছে।
+        </p>
+      )}
+
+      <Button onClick={save} disabled={pending || !dirty}>
+        {pending ? "সেভ হচ্ছে…" : "সেভ করুন"}
+      </Button>
+    </section>
+  );
+}

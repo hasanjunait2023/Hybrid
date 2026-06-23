@@ -134,6 +134,200 @@ export async function getTenantContextBySlug(
   )();
 }
 
+// Buyer-facing order lookup for the success/track page (DESIGN P1.7). Phone-
+// gated: the order is only returned when the supplied phone matches the order's
+// customer_phone — there's no buyer account, so the phone IS the access token.
+// NOT cached (status changes as couriers sync; always read fresh).
+export interface StorefrontOrderItem {
+  title: string;
+  variantTitle: string | null;
+  quantity: number;
+  lineTotal: number;
+}
+
+export interface StorefrontOrder {
+  orderNumber: number;
+  fulfillmentStatus: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  codAmount: number;
+  grandTotal: number;
+  items: StorefrontOrderItem[];
+}
+
+// Latin-normalize a phone the same way checkout does (Bangla or Latin digits in).
+const BN_TO_LATIN: Record<string, string> = {
+  "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
+  "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9",
+};
+function normalizePhone(input: string): string {
+  return input.replace(/[০-৯]/g, (d) => BN_TO_LATIN[d] ?? d).replace(/[^\d]/g, "");
+}
+
+export async function getStorefrontOrder(
+  tenantId: string,
+  orderNumber: number,
+  phone: string,
+): Promise<StorefrontOrder | null> {
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return null;
+
+  return withTenant(tenantId, null, async (tx) => {
+    const orders = await tx<
+      {
+        id: string;
+        order_number: string;
+        fulfillment_status: string;
+        payment_status: string;
+        cod_amount: string;
+        grand_total: string;
+        customer_phone: string | null;
+      }[]
+    >`
+      select id, order_number, fulfillment_status, payment_status,
+             cod_amount, grand_total, customer_phone
+        from orders
+       where order_number = ${orderNumber}
+       limit 1
+    `;
+
+    const order = orders[0];
+    // Phone gate: compare normalized digits; mismatch → not found (no leak).
+    if (!order || normalizePhone(order.customer_phone ?? "") !== normalizedPhone) {
+      return null;
+    }
+
+    const payment = await tx<{ provider: string }[]>`
+      select provider from payment where order_id = ${order.id} order by created_at desc limit 1
+    `;
+    const items = await tx<
+      { title: string; variant_title: string | null; quantity: number; line_total: string }[]
+    >`
+      select title, variant_title, quantity, line_total
+        from order_item where order_id = ${order.id}
+    `;
+
+    return {
+      orderNumber: Number(order.order_number),
+      fulfillmentStatus: order.fulfillment_status,
+      paymentStatus: order.payment_status,
+      paymentMethod: payment[0]?.provider ?? "cod",
+      codAmount: Number(order.cod_amount),
+      grandTotal: Number(order.grand_total),
+      items: items.map((i) => ({
+        title: i.title,
+        variantTitle: i.variant_title,
+        quantity: i.quantity,
+        lineTotal: Number(i.line_total),
+      })),
+    } satisfies StorefrontOrder;
+  });
+}
+
+// One active product + its variants for the PDP (blueprint §7, DESIGN P1).
+// Variant rows carry price/stock so the client add-to-cart can pick a variant
+// and the cart can server-price-check at checkout. Cached + tagged per product
+// so an admin edit busts exactly this page via tenant:{id}:product:{id}.
+export interface StorefrontVariant {
+  id: string;
+  title: string | null;
+  price: number;
+  compareAtPrice: number | null;
+  inStock: boolean;
+}
+
+export interface StorefrontProductDetail {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  imageUrl: string | null;
+  variants: StorefrontVariant[];
+  /** Lowest active-variant price — the headline price. */
+  price: number;
+  compareAtPrice: number | null;
+  inStock: boolean;
+}
+
+export async function getStorefrontProductBySlug(
+  tenantId: string,
+  slug: string,
+): Promise<StorefrontProductDetail | null> {
+  return unstable_cache(
+    async () => {
+      const product = await withTenant(tenantId, null, async (tx) => {
+        const productRows = await tx<
+          { id: string; title: string; slug: string; description: string | null }[]
+        >`
+          select id, title, slug, description
+            from product
+           where slug = ${slug} and status = 'active'
+           limit 1
+        `;
+        const row = productRows[0];
+        if (!row) return null;
+
+        const variants = await tx<
+          {
+            id: string;
+            title: string | null;
+            price: string;
+            compare_at_price: string | null;
+            inventory_quantity: number;
+            track_inventory: boolean;
+          }[]
+        >`
+          select id, title, price, compare_at_price, inventory_quantity, track_inventory
+            from product_variant
+           where product_id = ${row.id} and is_active = true
+           order by price asc
+        `;
+
+        const image = await tx<{ url: string }[]>`
+          select url from product_image
+           where product_id = ${row.id}
+           order by position asc
+           limit 1
+        `;
+
+        return { row, variants, imageUrl: image[0]?.url ?? null };
+      });
+
+      if (!product) return null;
+
+      const variants: StorefrontVariant[] = product.variants.map((v) => ({
+        id: v.id,
+        title: v.title,
+        price: Number(v.price),
+        compareAtPrice: v.compare_at_price != null ? Number(v.compare_at_price) : null,
+        inStock: !v.track_inventory || v.inventory_quantity > 0,
+      }));
+
+      const lowest = variants.reduce<StorefrontVariant | null>(
+        (min, v) => (min == null || v.price < min.price ? v : min),
+        null,
+      );
+
+      return {
+        id: product.row.id,
+        title: product.row.title,
+        slug: product.row.slug,
+        description: product.row.description,
+        imageUrl: product.imageUrl,
+        variants,
+        price: lowest?.price ?? 0,
+        compareAtPrice: lowest?.compareAtPrice ?? null,
+        inStock: variants.some((v) => v.inStock),
+      } satisfies StorefrontProductDetail;
+    },
+    [`product:${tenantId}:${slug}`],
+    {
+      revalidate: 3600,
+      tags: [`tenant:${tenantId}`, `tenant:${tenantId}:products`],
+    },
+  )();
+}
+
 // Active products for a tenant. min(variant.price) is the card price.
 export async function getStorefrontProducts(
   tenantId: string,

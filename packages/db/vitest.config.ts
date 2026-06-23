@@ -3,17 +3,28 @@ import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      // The commerce core (apps/web/lib/commerce/*) imports "@hybrid/db". When
-      // commerce.test.ts pulls those modules into this suite, packages/db has no
-      // self-symlink for @hybrid/db, so alias it to the package source. This is
-      // test-only wiring; the apps/web source keeps its real @hybrid/db import.
-      "@hybrid/db": fileURLToPath(new URL("./src/index.ts", import.meta.url)),
+    // Array form (ordered) so the "@/" Next path alias can be a regex that
+    // doesn't swallow the "@hybrid/*" package aliases. Most specific first.
+    alias: [
+      // The commerce/admin/courier/checkout cores import "@hybrid/db". When the
+      // suites pull those modules in, packages/db has no self-symlink for
+      // @hybrid/db, so alias it to the package source. Test-only wiring; the
+      // apps/web source keeps its real @hybrid/db import.
+      { find: "@hybrid/db", replacement: fileURLToPath(new URL("./src/index.ts", import.meta.url)) },
+      // The courier wiring (apps/web/lib/couriers/*) imports "@hybrid/couriers".
+      { find: "@hybrid/couriers", replacement: fileURLToPath(new URL("../couriers/src/index.ts", import.meta.url)) },
+      // The checkout wiring (apps/web/lib/payments/*) imports "@hybrid/payments".
+      { find: "@hybrid/payments", replacement: fileURLToPath(new URL("../payments/src/index.ts", import.meta.url)) },
       // The admin dashboard helper imports "next/cache" (unstable_cache /
-      // revalidateTag). That module only resolves inside the Next app; the admin
-      // integration suite stubs it to a passthrough so the data path is testable.
-      "next/cache": fileURLToPath(new URL("./test/next-cache-stub.ts", import.meta.url)),
-    },
+      // revalidateTag). Stub it to a passthrough so the data path is testable.
+      { find: "next/cache", replacement: fileURLToPath(new URL("./test/next-cache-stub.ts", import.meta.url)) },
+      // The checkout payment wiring marks itself "server-only" (a Next build
+      // guard). Outside Next, alias it to a no-op so the module imports cleanly.
+      { find: "server-only", replacement: fileURLToPath(new URL("./test/server-only-stub.ts", import.meta.url)) },
+      // The checkout slice uses the Next "@/*" path alias (tsconfig @/* -> ./*).
+      // Map it to the web app root. Regex-anchored so it never shadows @hybrid/*.
+      { find: /^@\/(.*)$/, replacement: fileURLToPath(new URL("../../apps/web/$1", import.meta.url)) },
+    ],
   },
   test: {
     // RLS tests hit a real Postgres; run serially and allow generous startup.
