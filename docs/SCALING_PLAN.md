@@ -146,6 +146,33 @@ Everything runs on **one 2-core / 8 GB VPS** today. It will break in this order:
 Error budget + alerting on these. Track cache hit-rate (target storefront > 90% edge), DB p99,
 pooler saturation, Redis latency.
 
+## AI / vector / search tools — feature vs speed (do NOT conflate)
+
+A common misconception: "add pgvector / RAG → faster." **No.** Those are AI/semantic
+**capabilities**, not latency reducers — vector ANN search + embedding + LLM calls are
+**heavier** than the btree/RLS lookups we already serve. They add *features*, and if anything add
+latency. Keep them **off the hot request path**.
+
+- **pgvector** (bundled in self-hosted Supabase — trivial to enable): semantic product search
+  (Bangla typo/transliteration tolerant), "similar products" recommendations, dedup. *Feature*,
+  not speed. Today the storefront uses `gin_trgm` fuzzy search (`product_title_trgm_idx`); pgvector
+  adds *meaning*-based search.
+- **RAG / LLM**: seller copilot, auto product descriptions, support/FAQ bot. *Feature* track.
+- **COD-fraud score** (M3.5 backlog): ML/features — may use embeddings, but that's a feature, not a
+  perf lever.
+
+If/when you build these: compute **embeddings async** in the jobs service, run vector search on a
+**replica / separate index**, **cache** results, and keep LLM calls **off checkout**. That way the
+AI moat never slows the core.
+
+**What actually speeds specific surfaces (the right tool, not pgvector):**
+
+| Surface | Tool | Why it's faster |
+|---|---|---|
+| Product search box | **Meilisearch / Typesense** | typo-tolerant + Bangla, **sub-50 ms**; beats Postgres `ILIKE`/trgm at scale. The correct search tool — *not* pgvector. |
+| Analytics / dashboards | **ClickHouse** (OLAP) | move `analytics_event` off the OLTP primary → fast dashboards + protected primary |
+| storefront / checkout latency | CDN + Redis + pooler + replicas (above) | the real core-latency levers |
+
 ## Cost / ops reality
 
 The single self-hosted VPS is great **now** (cheap, full control) but **cannot** serve the target
