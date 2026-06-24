@@ -17,7 +17,9 @@ export function TrendChart({
   }
 
   return (
-    <div className="flex h-44 items-end gap-1.5">
+    // items-stretch (default) so each column fills h-44; the inner flex-1 bar
+    // area then has a definite height for the percentage to resolve against.
+    <div className="flex h-44 gap-1.5">
       {series.map((s, i) => {
         const isPeak = i === peakIdx && s.revenue > 0;
         const pct = s.revenue > 0 ? Math.max(6, (s.revenue / max) * 100) : 2;

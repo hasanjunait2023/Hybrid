@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { formatBdtLatin } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
-import { listCustomers } from "@/lib/admin/customers";
+import { listCustomers, getCustomerStats } from "@/lib/admin/customers";
 import { timeAgoBn } from "@/lib/admin/format";
 import { CustomerSearch } from "./CustomerSearch";
+import { PageHeader, StatStrip, StatCard } from "../_ui";
 
 // Customers list (DESIGN §P5). name · phone · orders · total spent · last-order ·
 // tags. Search by name/phone; sort by spend / recency. Stacked cards on mobile.
@@ -22,11 +23,22 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const query = sp.q?.trim() || undefined;
   const sort = sp.sort === "spend" ? "spend" : "recent";
 
-  const customers = await listCustomers(tenantId, session.userId, { query, sort });
+  const [customers, stats] = await Promise.all([
+    listCustomers(tenantId, session.userId, { query, sort }),
+    getCustomerStats(tenantId, session.userId),
+  ]);
 
   return (
     <div lang="en" className="space-y-4">
-      <h1 className="text-2xl font-bold text-ink">গ্রাহক</h1>
+      <PageHeader title="গ্রাহক" subtitle={`${stats.total} জন গ্রাহক · ${stats.repeat} জন রিপিট`} />
+
+      <StatStrip>
+        <StatCard label="মোট গ্রাহক" value={String(stats.total)} />
+        <StatCard label="রিপিট গ্রাহক" value={String(stats.repeat)} tone="success" />
+        <StatCard label="মোট আয়" value={formatBdtLatin(stats.totalRevenue)} mono />
+        <StatCard label="গড় খরচ" value={formatBdtLatin(stats.avgSpend)} mono />
+      </StatStrip>
+
       <CustomerSearch defaultValue={query ?? ""} sort={sort} />
 
       {customers.length === 0 ? (

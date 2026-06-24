@@ -6,6 +6,7 @@
 // Numerals are Latin in admin (DESIGN §4.4); formatting happens at the view
 // layer. This module returns plain numbers.
 import { withTenant } from "@hybrid/db";
+import { LOW_STOCK_THRESHOLD } from "./dashboard";
 
 export interface ProductListFilter {
   /** product_status, or "all". */
@@ -71,6 +72,49 @@ export async function listProducts(
     imageUrl: r.image_url,
     variantCount: r.variant_count,
   }));
+}
+
+export interface ProductStats {
+  total: number;
+  active: number;
+  lowStock: number;
+  outOfStock: number;
+}
+
+// Store-wide product counts for the list-page summary strip (independent of the
+// active filter). Low/out-of-stock count only active products whose total
+// tracked inventory is at/under the threshold (same rule as the dashboard).
+export async function getProductStats(
+  tenantId: string,
+  userId: string,
+): Promise<ProductStats> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ total: number; active: number; low_stock: number; out_of_stock: number }[]>`
+      with inv as (
+        select
+          p.id,
+          p.status,
+          coalesce(sum(v.inventory_quantity) filter (where v.track_inventory = true), 0) as qty,
+          bool_or(v.track_inventory) as tracked
+        from product p
+        left join product_variant v on v.product_id = p.id
+        group by p.id, p.status
+      )
+      select
+        count(*)::int as total,
+        count(*) filter (where status = 'active')::int as active,
+        count(*) filter (where status = 'active' and tracked and qty > 0 and qty <= ${LOW_STOCK_THRESHOLD})::int as low_stock,
+        count(*) filter (where status = 'active' and tracked and qty <= 0)::int as out_of_stock
+      from inv
+    `,
+  );
+  const r = rows[0];
+  return {
+    total: r?.total ?? 0,
+    active: r?.active ?? 0,
+    lowStock: r?.low_stock ?? 0,
+    outOfStock: r?.out_of_stock ?? 0,
+  };
 }
 
 export interface AdminVariant {

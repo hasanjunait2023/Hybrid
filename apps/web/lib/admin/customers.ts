@@ -62,6 +62,39 @@ export async function listCustomers(
   }));
 }
 
+export interface CustomerStats {
+  total: number;
+  repeat: number;
+  totalRevenue: number;
+  avgSpend: number;
+}
+
+// Store-wide customer summary for the list-page strip. `repeat` = customers
+// with more than one order (the loyalty signal). Denormalized counters on
+// `customer` keep this a single cheap aggregate.
+export async function getCustomerStats(
+  tenantId: string,
+  userId: string,
+): Promise<CustomerStats> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ total: number; repeat: number; total_revenue: string; avg_spend: string }[]>`
+      select
+        count(*)::int as total,
+        count(*) filter (where orders_count > 1)::int as repeat,
+        coalesce(sum(total_spent), 0) as total_revenue,
+        coalesce(round(avg(total_spent) filter (where orders_count > 0)), 0) as avg_spend
+      from customer
+    `,
+  );
+  const r = rows[0];
+  return {
+    total: r?.total ?? 0,
+    repeat: r?.repeat ?? 0,
+    totalRevenue: Number(r?.total_revenue ?? 0),
+    avgSpend: Number(r?.avg_spend ?? 0),
+  };
+}
+
 export interface CustomerAddress {
   id: string;
   recipient: string | null;

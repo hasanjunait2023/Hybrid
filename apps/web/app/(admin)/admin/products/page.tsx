@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { formatBdtLatin, PlusIcon } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
-import { listProducts } from "@/lib/admin/catalog";
+import { listProducts, getProductStats } from "@/lib/admin/catalog";
 import { LOW_STOCK_THRESHOLD } from "@/lib/admin/dashboard";
 import { ProductSearch } from "./ProductSearch";
+import { PageHeader, StatStrip, StatCard } from "../_ui";
 
 // Admin product list (DESIGN §P4). Status filter pills + title search (trigram),
 // thumbnail, status chip, price (mono), total inventory (warning if low, danger
@@ -30,7 +31,10 @@ export default async function AdminProductsPage({ searchParams }: ProductsPagePr
   const status = (sp.status as "all" | "active" | "draft" | "archived") || "all";
   const query = sp.q?.trim() || undefined;
 
-  const products = await listProducts(tenantId, session.userId, { status, query });
+  const [products, stats] = await Promise.all([
+    listProducts(tenantId, session.userId, { status, query }),
+    getProductStats(tenantId, session.userId),
+  ]);
 
   const buildHref = (s: string) => {
     const params = new URLSearchParams();
@@ -42,15 +46,36 @@ export default async function AdminProductsPage({ searchParams }: ProductsPagePr
 
   return (
     <div lang="en" className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-ink">পণ্য</h1>
-        <a
-          href="/admin/products/new"
-          className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
-        >
-          <PlusIcon className="h-4 w-4" /> নতুন পণ্য
+      <PageHeader
+        title="পণ্য"
+        subtitle={`${stats.total} টি পণ্য · ${stats.active} অ্যাকটিভ`}
+        action={
+          <a
+            href="/admin/products/new"
+            className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
+          >
+            <PlusIcon className="h-4 w-4" /> নতুন পণ্য
+          </a>
+        }
+      />
+
+      <StatStrip>
+        <StatCard label="মোট পণ্য" value={String(stats.total)} />
+        <StatCard label="অ্যাকটিভ" value={String(stats.active)} tone="success" />
+        <a href="/admin/products?status=active" className="contents">
+          <StatCard
+            label="কম স্টক"
+            value={String(stats.lowStock)}
+            tone={stats.lowStock > 0 ? "warning" : "muted"}
+            tappable
+          />
         </a>
-      </div>
+        <StatCard
+          label="স্টক শেষ"
+          value={String(stats.outOfStock)}
+          tone={stats.outOfStock > 0 ? "danger" : "muted"}
+        />
+      </StatStrip>
 
       <ProductSearch defaultValue={query ?? ""} />
 

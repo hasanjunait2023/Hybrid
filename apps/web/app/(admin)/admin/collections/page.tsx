@@ -3,6 +3,7 @@ import { PlusIcon } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listCollections } from "@/lib/admin/catalog";
+import { PageHeader } from "../_ui";
 
 // Collections list (DESIGN §P4). The "আরও" tab destination on mobile. Simple
 // manual collections; rule-based is Phase 2.
@@ -16,15 +17,18 @@ export default async function CollectionsPage() {
 
   return (
     <div lang="en" className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-ink">কালেকশন</h1>
-        <a
-          href="/admin/collections/new"
-          className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
-        >
-          <PlusIcon className="h-4 w-4" /> নতুন কালেকশন
-        </a>
-      </div>
+      <PageHeader
+        title="কালেকশন"
+        subtitle={`${collections.length} টি কালেকশন`}
+        action={
+          <a
+            href="/admin/collections/new"
+            className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
+          >
+            <PlusIcon className="h-4 w-4" /> নতুন কালেকশন
+          </a>
+        }
+      />
 
       {collections.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-12 text-center text-ink-muted">

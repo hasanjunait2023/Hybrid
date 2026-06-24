@@ -5,6 +5,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { getDashboard } from "@/lib/admin/dashboard";
 import { timeAgoBn } from "@/lib/admin/format";
 import { TrendChart, StatusBars } from "./DashboardCharts";
+import { PageHeader, StatStrip, StatCard } from "./_ui";
 
 // Admin dashboard (DESIGN §P2.3), reference layout: KPI row → trend chart +
 // month highlight → recent-orders table + status panel. Data-dense but calm;
@@ -23,30 +24,30 @@ export default async function AdminDashboardPage() {
 
   return (
     <div lang="en" className="space-y-5">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">সুপ্রভাত</h1>
-          <p className="text-sm text-ink-muted">{todayLabel()}</p>
-        </div>
-        <a
-          href="/admin/orders/new"
-          className="hidden rounded-md bg-primary px-3 py-2 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover sm:inline-block"
-        >
-          + নতুন অর্ডার
-        </a>
-      </div>
+      <PageHeader
+        title="সুপ্রভাত"
+        subtitle={todayLabel()}
+        action={
+          <a
+            href="/admin/orders/new"
+            className="hidden rounded-md bg-primary px-3 py-2 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover sm:inline-block"
+          >
+            + নতুন অর্ডার
+          </a>
+        }
+      />
 
-      {/* KPI row — 2-col mobile, 4-col ≥ md. Order = operational urgency. */}
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MetricCard
+      {/* KPI row — order = operational urgency. */}
+      <StatStrip>
+        <StatCard
           label="আজকের অর্ডার"
           value={String(data.todayOrders)}
           sub={delta >= 0 ? `গতকালের চেয়ে +${delta}` : `গতকালের চেয়ে ${delta}`}
           deltaUp={delta >= 0}
         />
-        <MetricCard label="আজকের বিক্রি" value={formatBdtLatin(data.todayRevenue)} mono />
+        <StatCard label="আজকের বিক্রি" value={formatBdtLatin(data.todayRevenue)} mono />
         <a href="/admin/orders?cod=pending" className="contents">
-          <MetricCard
+          <StatCard
             label="COD বকেয়া"
             value={formatBdtLatin(data.codPendingAmount)}
             sub={`${data.codPendingCount} টি অর্ডার`}
@@ -56,14 +57,14 @@ export default async function AdminDashboardPage() {
           />
         </a>
         <a href="/admin/products?status=active" className="contents">
-          <MetricCard
+          <StatCard
             label="কম স্টক"
             value={String(data.lowStockCount)}
             tone={data.lowStockCount > 0 ? "warning" : "muted"}
             tappable
           />
         </a>
-      </section>
+      </StatStrip>
 
       {/* Action-needed strip (only if non-zero) */}
       {data.pendingConfirmCount > 0 && (
@@ -179,46 +180,3 @@ function todayLabel(): string {
   }).format(new Date());
 }
 
-function MetricCard({
-  label,
-  value,
-  sub,
-  tone = "default",
-  mono = false,
-  tappable = false,
-  deltaUp,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "default" | "pending" | "warning" | "muted";
-  mono?: boolean;
-  tappable?: boolean;
-  deltaUp?: boolean;
-}) {
-  const valueTone =
-    tone === "pending"
-      ? "text-st-pending"
-      : tone === "warning"
-        ? "text-warning"
-        : tone === "muted"
-          ? "text-ink-subtle"
-          : "text-ink";
-  const subTone =
-    deltaUp === undefined
-      ? "text-ink-subtle"
-      : deltaUp
-        ? "text-success"
-        : "text-danger";
-  return (
-    <div
-      className={`rounded-lg border border-border bg-surface p-4 shadow-xs ${tappable ? "transition-shadow hover:shadow-md" : ""}`}
-    >
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-bold leading-none ${valueTone} ${mono ? "font-mono tnum" : "tnum"}`}>
-        {value}
-      </p>
-      {sub && <p className={`mt-1.5 text-2xs ${subTone}`}>{sub}</p>}
-    </div>
-  );
-}

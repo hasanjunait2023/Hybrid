@@ -5,6 +5,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { listOrders, getOrderStatusCounts } from "@/lib/admin/orders";
 import { timeAgoBn } from "@/lib/admin/format";
 import { OrderSearch } from "./OrderSearch";
+import { PageHeader } from "../_ui";
 
 // Orders list (DESIGN §P3.1). Triage-speed: status filter pills with counts,
 // phone/order# search, stacked cards on mobile / table ≥ md, COD-pending money
@@ -58,15 +59,18 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
   return (
     <div lang="en" className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-ink">অর্ডার</h1>
-        <a
-          href="/admin/orders/new"
-          className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
-        >
-          <PlusIcon className="h-4 w-4" /> নতুন অর্ডার
-        </a>
-      </div>
+      <PageHeader
+        title="অর্ডার"
+        subtitle={`${counts.all} টি অর্ডার · ${counts.codPending} COD বকেয়া`}
+        action={
+          <a
+            href="/admin/orders/new"
+            className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
+          >
+            <PlusIcon className="h-4 w-4" /> নতুন অর্ডার
+          </a>
+        }
+      />
 
       <OrderSearch defaultValue={query ?? ""} />
 
