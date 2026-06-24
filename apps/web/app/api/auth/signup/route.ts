@@ -16,6 +16,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireSameOrigin } from "@/lib/auth/csrf";
 import { verifyOtp } from "@/lib/auth/otp";
 import { hashPassword } from "@/lib/auth/password";
+import { supabaseAdminClient } from "@/lib/auth/supabaseAuth";
 import { createSession } from "@/lib/auth/session";
 import {
   createAppUser,
@@ -116,6 +117,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return fail({ email: "এই ইমেইল ইতিমধ্যে ব্যবহৃত — লগ ইন করুন।" }, 409);
     }
     userId = created.userId;
+
+    // AUTH_PROVIDER=supabase: GoTrue is the credential authority, so the new
+    // seller must also exist in auth.users. email_confirm=true lets them sign in
+    // immediately (the phone OTP above already proved ownership). On failure,
+    // roll back the orphan app_user so a retry isn't refused as "already used".
+    if (process.env.AUTH_PROVIDER === "supabase") {
+      const { error: supaErr } = await supabaseAdminClient().auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+      if (supaErr) {
+        await deleteOwnerlessUser(userId).catch((cleanupErr) =>
+          console.error("[auth/signup] orphan user cleanup failed", cleanupErr),
+        );
+        const dup = /registered|already|exists/i.test(supaErr.message);
+        return dup
+          ? fail({ email: "এই ইমেইল ইতিমধ্যে ব্যবহৃত — লগ ইন করুন।" }, 409)
+          : fail({ form: GENERIC_ERROR_BN }, 500);
+      }
+    }
   } catch (err) {
     console.error("[auth/signup] user creation failed", err);
     return fail({ form: GENERIC_ERROR_BN }, 500);

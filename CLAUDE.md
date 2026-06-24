@@ -12,7 +12,31 @@ Each seller gets an admin backend, a live themed storefront on a subdomain (late
 and native integration with bKash/Nagad/COD and Bangladesh's courier network (Steadfast, Pathao,
 RedX, Paperfly). Hard tenant isolation is enforced at the database layer via Postgres RLS.
 
-Current status: Phase 1 complete (sellable MVP). Phase 2 (custom domains, theme catalog) is next.
+Current status: Phase 1 + Phase 2 (M3) complete. **Deployed live on a self-hosted Supabase
+stack on the founder's VPS** (see the production callout below) as of 2026-06-25.
+
+---
+
+## ⚡ PRODUCTION DEPLOYMENT — self-hosted Supabase on VPS (CURRENT REALITY — read first)
+
+The app is **live**, served from a single VPS, with the **entire backend on self-hosted
+Supabase** (Docker). This SUPERSEDES the older "Vercel + Supabase Cloud" and "Phase 2 drops
+Supabase" plans — those are historical. Full operational runbook: `docs/INFRA_SUPABASE.md`.
+
+| Thing | Production value |
+|---|---|
+| Host | VPS `72.62.228.196`, Ubuntu, Docker. SSH alias `mt5vps` (root). |
+| Root domain | `hybrid.ecomex.cloud` (Cloudflare wildcard → VPS Caddy, auto-TLS) |
+| App deploy | `/opt/hybrid` (source tree, NOT git) → `docker-compose.prod.yml` + `deploy.sh`. Reverse proxy: **Caddy** (`hybrid-web`, `hybrid-redis`). |
+| Database | **self-hosted `supabase-db`** (Supabase Postgres 15) — Hybrid lives in the `postgres` DB `public` schema, alongside Supabase's `auth`/`storage` schemas. `DATABASE_URL=app_runtime_login@supabase-db:5432/postgres`, `DIRECT_URL=postgres@supabase-db:5432/postgres`. RLS UNCHANGED — `withTenant()` still the only tenant path. |
+| Auth | **`AUTH_PROVIDER=supabase`** — Supabase **GoTrue** is the credential authority (users in `auth.users`, managed in Studio). Login verifies against GoTrue, then mints the app's own opaque `hybrid_session` (the password-provider session path in `session.ts`). |
+| Storage | **`BLOB_DRIVER=s3` → Supabase MinIO** (`supabase-minio`), bucket `hybrid-media`, served public-read at `https://cdn.hybrid.ecomex.cloud` (Caddy → MinIO, GetObject-only). |
+| Cache | local `hybrid-redis` (ioredis) — not Upstash |
+| Supabase stack | Coolify-generated, run lean (`/data/coolify/services/pe9o2li2n3bns3wnofob49uw/docker-compose.trimmed.yml`): db, kong, auth, rest, storage, minio, imgproxy, meta, studio. **Dropped** (8 GB box): analytics/logflare, vector, realtime, edge-functions, supavisor. |
+
+**For agents/sessions:** treat Supabase (self-hosted) as the backend for DB + auth + storage.
+Do NOT reintroduce Vercel, Upstash, or "own-auth replaces Supabase" assumptions. The Golden
+Rule (RLS via `withTenant`) is unchanged and still sacred.
 
 ---
 
@@ -22,10 +46,12 @@ Current status: Phase 1 complete (sellable MVP). Phase 2 (custom domains, theme 
 |---|---|
 | Framework | Next.js (App Router), TypeScript strict, latest stable |
 | Monorepo | Turborepo + pnpm workspaces |
-| DB | Supabase Postgres + RLS via `app.current_tenant_id` session variable |
+| DB | **Self-hosted Supabase Postgres** + RLS via `app.current_tenant_id` session variable (was Supabase Cloud; now on the VPS) |
 | Runtime DB access | `postgres.js` + `withTenant()` / `asPlatformAdmin()` — never raw `sql` or the Supabase client for tenant data |
-| Hosting | Vercel for Platforms (wildcard subdomains + custom domains + auto-SSL) |
-| Cache | Upstash Redis (host→tenant lookup, sessions) |
+| Hosting | **Self-hosted on VPS** (Docker + Caddy, wildcard `*.hybrid.ecomex.cloud`). (Vercel-for-Platforms remains a possible future path, not current.) |
+| Auth | **Supabase GoTrue** (`AUTH_PROVIDER=supabase`) as credential authority + app opaque session |
+| Storage | **Supabase MinIO** (`BLOB_DRIVER=s3`), public CDN at `cdn.hybrid.ecomex.cloud` |
+| Cache | Redis (`hybrid-redis` self-hosted; Upstash-compatible seam for future) |
 | Async / heavy jobs | FastAPI service + queue (courier sync, reconciliation) |
 | Payments | bKash, Nagad, SSLCommerz, COD |
 | Couriers | Steadfast (Phase 1), Pathao / RedX / Paperfly (Phase 2+) |
@@ -65,7 +91,13 @@ grants). A `NOLOGIN` role cannot open a connection. The fix is two bookend files
 - `04_grant_login.sql` (runs last): `GRANT app_runtime TO app_runtime_login`
 
 `DATABASE_URL` → `app_runtime_login` (RLS forced)
-`DIRECT_URL`   → `postgres` superuser (migrations, seed, type gen, host lookup)
+`DIRECT_URL`   → `postgres` (migrations, seed, type gen, host lookup, `asPlatformAdmin`)
+
+> **Self-hosted Supabase note:** on `supabase-db` the Hybrid schema lives in the **`postgres`
+> database, `public` schema** (so the GoTrue `auth` schema shares the DB). Both URLs target
+> database `postgres` (not `hybrid`). The `postgres` role there is **not a full superuser** but
+> has `BYPASSRLS` — sufficient for `asPlatformAdmin`. `app_runtime_login` is non-superuser /
+> non-bypassrls, so RLS is forced for all tenant traffic, exactly as before.
 
 ---
 
@@ -360,13 +392,28 @@ to `lib/storefront/data.ts`, so the handler swap is one file change).
 compare prevents timing oracles. `DEV_SESSION_SECRET` must be set. **Production-gated** —
 returns null immediately when `NODE_ENV === 'production'`.
 
-**Password branch (Phase 2, production default):** Set `AUTH_PROVIDER=password` for own auth
-— Argon2id hashing (`@node-rs/argon2`) and opaque DB session tokens (`user_session`, SHA-256
-of the cookie token). `SESSION_SECRET` (32+ bytes) signs/derives the token and
-`SESSION_MAX_AGE_SECONDS` (default 604800) sets the lifetime; both fail-fast if unset in
-production. Callers are unchanged — the seam is intentional. Supabase is dropped in Phase 2:
-`AUTH_PROVIDER=supabase`, `@supabase/ssr`, the `SUPABASE_*` env vars, and `05_auth.sql` are
-removed.
+**Password branch (`AUTH_PROVIDER=password`):** own auth — Argon2id hashing
+(`@node-rs/argon2`) and opaque DB session tokens (`user_session`, SHA-256 of the cookie token).
+`SESSION_SECRET` (32+ bytes) signs/derives the token and `SESSION_MAX_AGE_SECONDS`
+(default 604800) sets the lifetime; both fail-fast if unset in production. Still available as a
+fallback; not the production default anymore.
+
+**Supabase branch (`AUTH_PROVIDER=supabase`) — CURRENT PRODUCTION DEFAULT:** Supabase **GoTrue**
+is the credential authority (users in `auth.users`, managed in Supabase Studio). `getSession`
+dispatches `supabase` to the SAME opaque-session reader as `password` (so session *reading* is
+unchanged). Login (`/api/auth/login`) verifies the email+password against GoTrue via
+`verifySupabaseCredentials` (`lib/auth/supabaseAuth.ts`, `@supabase/supabase-js` → internal Kong
+at `SUPABASE_URL=http://supabase-kong:8000`), then maps the verified identity to its `app_user`
+**by email** and mints the app's own `hybrid_session`. Signup (`/api/auth/signup`) also creates
+the GoTrue user (`auth.admin.createUser`, email-confirmed). Required env: `SUPABASE_URL`,
+`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Why "credential authority" and not full
+`@supabase/ssr` JWT cookies: keeps the robust app session layer, no per-request network call to
+GoTrue on authenticated pages, no middleware rewrite of cookie handling on a live box.
+
+> **Gotcha (fixed):** auth-gated shells (`(admin)/admin/layout.tsx`, `(platform)/platform/layout.tsx`)
+> MUST be `export const dynamic = "force-dynamic"`, else Next statically prerenders the auth
+> redirect at build time (no cookie at build) and serves a cached 307 that never re-checks the
+> session at runtime. Any new authenticated route segment needs the same.
 
 ---
 
@@ -422,13 +469,19 @@ See `docs/DESIGN.md` for the full spec. Key decisions for every UI task:
 ```
 Phase 0 (DONE) — multi-tenant spine: withTenant RLS layer, host middleware, Doreja storefront, admin→ISR loop
 Phase 1 (DONE) — sellable MVP: products CRUD, orders, COD + bKash(sandbox) checkout, Steadfast courier, SMS, billing, super-admin, signup
-Phase 2 (next)  — custom domains, theme catalog, visual customizer, COD reconciliation, own auth + S3 blob driver (Supabase dropped)
+Phase 2 / M3 (DONE) — custom domains, theme catalog, visual customizer, COD reconciliation, analytics, WhatsApp
+Infra (DONE, 2026-06-25) — migrated entire backend to SELF-HOSTED SUPABASE on the VPS:
+                  DB → supabase-db, auth → Supabase GoTrue (AUTH_PROVIDER=supabase),
+                  storage → Supabase MinIO (BLOB_DRIVER=s3, cdn.hybrid.ecomex.cloud).
+                  NOTE: this REVERSED the earlier "Phase 2 drops Supabase" plan.
 Phase 3         — funnel builder, self-serve bKash billing, plan limits
 Phase 4         — full section editor, multi-step funnels, scale hardening
 ```
 
-Open Phase-1→2 decisions:
-- Own auth in Phase 2 replaces Supabase Auth (`AUTH_PROVIDER=password`; set `SESSION_SECRET`); S3-compatible blob store (`BLOB_DRIVER=s3`, R2 recommended)
+Resolved infra decisions (2026-06-25):
+- Backend self-hosted on Supabase (VPS), NOT Vercel/Supabase-Cloud. Auth = Supabase GoTrue
+  (`AUTH_PROVIDER=supabase`); blob = `BLOB_DRIVER=s3` against the self-hosted MinIO (not R2).
+  `AUTH_PROVIDER=password` (own auth) remains a working fallback.
 - bKash production credential onboarding (~2–4 week merchant process)
 - Steadfast merchant account (no sandbox; live after account)
 - SMS sender-ID masking approval (sms.net.bd, 6–7 days)

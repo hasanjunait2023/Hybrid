@@ -9,10 +9,15 @@ export const config = {
   matcher: ["/((?!api/|_next/|_static/|[\\w-]+\\.\\w+).*)"],
 };
 
-// Auth paths must resolve on the admin host without the /admin prefix, so the
-// admin layout's relative redirect to /dev-login?as=... lands on the real route.
+// Auth paths must resolve on the admin/app host without the /admin or /platform
+// prefix, so layout redirects to /dev-login or /login land on the real route.
 function isAuthPath(pathname: string): boolean {
-  return pathname === "/dev-login" || pathname.startsWith("/dev-login/");
+  return (
+    pathname === "/dev-login" ||
+    pathname.startsWith("/dev-login/") ||
+    pathname === "/login" ||
+    pathname.startsWith("/login/")
+  );
 }
 
 export default async function middleware(req: NextRequest): Promise<NextResponse> {
@@ -32,6 +37,8 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
 
   if (isRoot) return NextResponse.next(); // marketing
   if (sub === "app") {
+    // Auth routes pass through untouched; everything else is the platform app.
+    if (isAuthPath(url.pathname)) return NextResponse.next();
     return NextResponse.rewrite(new URL(`/platform${url.pathname}`, req.url));
   }
   if (sub === "admin") {

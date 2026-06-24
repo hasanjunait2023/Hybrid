@@ -6,6 +6,29 @@ Versions track phases rather than semver until the first public release.
 
 ---
 
+## [Infra: self-hosted Supabase migration] — 2026-06-25
+
+Migrated the **entire backend onto a self-hosted Supabase stack** on the VPS
+(`hybrid.ecomex.cloud`). Reverses the earlier "Phase 2 drops Supabase" plan. Runbook:
+`docs/INFRA_SUPABASE.md`.
+
+- **Database** → self-hosted `supabase-db` (Supabase Postgres 15). Hybrid schema in
+  `postgres.public` alongside the GoTrue `auth` schema. `DATABASE_URL`/`DIRECT_URL` repointed;
+  RLS isolation re-verified (`app_runtime_login` non-superuser; `postgres` BYPASSRLS).
+- **Auth** → Supabase **GoTrue** (`AUTH_PROVIDER=supabase`). GoTrue is the credential authority
+  (users in `auth.users`, Studio-managed); login verifies there and the app mints its own opaque
+  `hybrid_session`. New: `lib/auth/supabaseAuth.ts`, `supabase` branches in `getSession` +
+  `/api/auth/login` + `/api/auth/signup`, a real `/login` page, `@supabase/supabase-js` dep.
+- **Storage** → Supabase **MinIO** (`BLOB_DRIVER=s3`, bucket `hybrid-media`, public GetObject-only),
+  served at `https://cdn.hybrid.ecomex.cloud` via Caddy. Images now survive rebuilds.
+- **Stack trimmed** to fit 2 vCPU / 8 GB: dropped analytics/logflare, vector, realtime,
+  edge-functions, supavisor (the heavy services that OOM-killed it before).
+- **Fix**: `(admin)` and `(platform)` layouts are now `force-dynamic` — they were being statically
+  prerendered into a baked auth redirect, so the runtime session was never evaluated.
+- `dev-login` now funnels to `/login` (on the public host) whenever `AUTH_PROVIDER != dev`.
+
+---
+
 ## [Phase 1] — 2026-06-23
 
 Phase 1 goal: sellable MVP. A new seller can sign up, get a live subdomain, add products, take

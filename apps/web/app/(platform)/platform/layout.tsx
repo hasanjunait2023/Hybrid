@@ -2,6 +2,11 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getPlatformAdmin } from "@/lib/platform/auth";
 
+// Auth-gated shell: must run per request so the session is evaluated at runtime
+// (never statically prerendered into a baked redirect). getPlatformAdmin reads
+// cookies; force-dynamic guarantees the gate is not cached.
+export const dynamic = "force-dynamic";
+
 // Super-admin shell (blueprint S-PLATFORM). app.{root} -> /platform. The
 // middleware rewrites the host but does NOT gate by role, so the layout enforces
 // authz: only app_user.is_platform_admin reaches any /platform page. A logged-in

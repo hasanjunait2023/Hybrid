@@ -9,3 +9,8 @@ store-b.hybrid.ecomex.cloud {
 	encode zstd gzip
 	reverse_proxy web:3000
 }
+
+cdn.hybrid.ecomex.cloud {
+	encode zstd gzip
+	reverse_proxy supabase-minio:9000
+}

@@ -4,6 +4,11 @@ import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { AdminNav } from "./AdminNav";
 
+// Auth-gated shell: must run per request so the session is evaluated at runtime
+// (never statically prerendered into a baked redirect to /dev-login). getSession
+// reads cookies; force-dynamic guarantees the gate is not cached.
+export const dynamic = "force-dynamic";
+
 // Tenant admin shell (DESIGN §P2.1). The "calm, capable" dialect: comfortable
 // density, indigo for the single primary action only, marigold nearly absent,
 // Latin numerals / tabular-nums (§4.4). Mobile-only sellers get a bottom tab bar

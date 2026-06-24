@@ -22,6 +22,21 @@ function devKeyOk(presented: string | null): boolean {
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === "production";
 
+  // When a real auth provider is active (e.g. AUTH_PROVIDER=supabase), the dev
+  // stub is not the login path. Funnel callers — the admin/platform layout
+  // redirects target /dev-login?as=... — to the real /login page, and never mint
+  // a credential-less dev session. Build the redirect from the trusted forwarded
+  // host (only if it matches our root domain) so it lands on the public host, not
+  // the app's internal localhost origin behind the proxy.
+  if (process.env.AUTH_PROVIDER && process.env.AUTH_PROVIDER !== "dev") {
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+    const host = req.headers.get("host") ?? req.nextUrl.host;
+    const ok = !!rootDomain && (host === rootDomain || host.endsWith(`.${rootDomain}`));
+    const proto = req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "");
+    const origin = ok ? `${proto}://${host}` : req.nextUrl.origin;
+    return NextResponse.redirect(new URL("/login", origin));
+  }
+
   // Staging override: ALLOW_DEV_LOGIN=true re-enables this on a deployed box
   // for founder check/QA. Default OFF — real production returns 404.
   if (isProd && process.env.ALLOW_DEV_LOGIN !== "true") {

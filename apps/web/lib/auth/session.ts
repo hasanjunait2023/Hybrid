@@ -65,7 +65,11 @@ export function signDevCookie(userId: string): string {
 // Provider dispatch. Defaults to 'dev' so an unset AUTH_PROVIDER keeps the
 // local HMAC dev-login path — local dev needs no external auth config.
 export async function getSession(): Promise<Session | null> {
-  if (process.env.AUTH_PROVIDER === "password") {
+  // 'supabase' (GoTrue as credential authority) reuses the opaque DB-session
+  // path: login verifies against GoTrue then mints the same hybrid_session
+  // cookie, so session *reading* is identical to the own-auth password path.
+  const provider = process.env.AUTH_PROVIDER;
+  if (provider === "password" || provider === "supabase") {
     return getPasswordSession();
   }
   return getDevSession();

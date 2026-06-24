@@ -13,6 +13,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireSameOrigin } from "@/lib/auth/csrf";
 import { verifyPassword } from "@/lib/auth/password";
+import { verifySupabaseCredentials } from "@/lib/auth/supabaseAuth";
 import { createSession } from "@/lib/auth/session";
 import { emailSchema, LOGIN_FAILED_BN, RATE_LIMITED_BN, GENERIC_ERROR_BN } from "@/lib/auth/validate";
 import { rateLimit, clientIpFrom } from "@/lib/ratelimit";
@@ -60,6 +61,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    // AUTH_PROVIDER=supabase: GoTrue is the credential authority. Verify there,
+    // then map the verified identity to its app_user by email and mint the app
+    // session. The same generic error is returned on any failure (no oracle).
+    if (process.env.AUTH_PROVIDER === "supabase") {
+      const verified = await verifySupabaseCredentials(email, password);
+      if (!verified) {
+        return NextResponse.json({ ok: false, error: LOGIN_FAILED_BN }, { status: 401 });
+      }
+      const supaRows = await asPlatformAdmin((tx) =>
+        tx<{ id: string }[]>`select id from app_user where email = ${email} limit 1`,
+      );
+      const supaUserId = supaRows[0]?.id;
+      if (!supaUserId) {
+        // Valid GoTrue credential but no app_user — identity not provisioned in
+        // the app's tenant model. Fail closed with the generic message.
+        return NextResponse.json({ ok: false, error: LOGIN_FAILED_BN }, { status: 401 });
+      }
+      await createSession(supaUserId, { ip, userAgent: req.headers.get("user-agent") });
+      return NextResponse.json({ ok: true });
+    }
+
+    // --- own-auth (AUTH_PROVIDER=password|dev): local Argon2id/scrypt verify ---
     const rows = await asPlatformAdmin((tx) =>
       tx<{ id: string; password_hash: string | null }[]>`
         select id, password_hash from app_user where email = ${email} limit 1
