@@ -27,7 +27,7 @@ deployed via `deploy.sh` (`docker compose --env-file .env.deploy ... up -d --bui
 | `hybrid-web` | Next.js (`next start`, :3000). On networks `hybrid_default` + the Supabase net. |
 | `hybrid-caddy` | reverse proxy :80/:443 → `web:3000`, and `cdn.*` → `supabase-minio`. On both networks. |
 | `hybrid-redis` | ioredis cache (host→tenant, sessions) |
-| `hybrid-postgres` | **legacy, unused** — kept as rollback net. Retire after soak: `docker stop hybrid-postgres` (keep volume). |
+| `hybrid-postgres` | **legacy — STOPPED/retired 2026-06-25.** Volume `hybrid_hybrid_pgdata` kept as a rollback net. To fully remove later: `docker rm hybrid-postgres` + drop the volume. |
 
 **2. Supabase** — Coolify-generated, project ref `pe9o2li2n3bns3wnofob49uw`, run **lean** from
 `/data/coolify/services/pe9o2li2n3bns3wnofob49uw/docker-compose.trimmed.yml` (NOT via Coolify —
@@ -142,6 +142,20 @@ ssh mt5vps "docker exec supabase-db-pe9o2li2n3bns3wnofob49uw psql -U postgres -d
 
 (Studio at `supabase-studio` can also create the GoTrue user via UI; the `app_user`/`tenant_member`
 rows still need the SQL above.)
+
+## Backups & hardening (2026-06-25)
+
+- **Nightly backups**: `/usr/local/bin/hybrid-backup.sh`, cron `0 3 * * *` (root). Dumps the whole
+  `postgres` DB (Hybrid + `auth` + `storage`) gzipped to `/root/backups/db-<ts>.sql.gz` (14-dump
+  retention) and mirrors the MinIO `hybrid-media` bucket to `/root/backups/minio/`. Log:
+  `/var/log/hybrid-backup.log`. Run on demand: `ssh mt5vps /usr/local/bin/hybrid-backup.sh`.
+  - **Restore DB**: `gunzip -c /root/backups/db-<ts>.sql.gz | docker exec -i supabase-db-... psql -U postgres -d postgres`.
+  - ⚠️ **TODO (off-site)**: backups currently live on the same VPS disk — protects against volume
+    corruption / accidental drops, NOT full VPS loss. Add an off-box copy (rclone → R2/S3) before scale.
+- **Hardening done**: `app_runtime_login` password rotated off the seed default `app_runtime_local_pw`
+  (live secret in `/opt/hybrid/.env.deploy` `DATABASE_URL`; the repo `00_roles.sql` default is only
+  for local/CI). Dev-login backdoor disabled (`ALLOW_DEV_LOGIN=false`, `DEV_LOGIN_KEY` removed) —
+  also inert under `AUTH_PROVIDER=supabase` since `/dev-login` redirects to `/login`.
 
 ## Gotchas (learned the hard way)
 
