@@ -1,34 +1,25 @@
-/* Marketing-only typography helpers.
+/* =============================================================================
+ * Hybrid marketing landing — "Bengali editorial commerce".
  *
- * Editorial serif faces scoped to the landing page. The serif family is chosen
- * by document language: Bangla copy renders in Noto Serif Bengali, English copy
- * in Noto Serif. Body text stays on the existing sans stack (--font-bangla /
- * --font-latin) for readability; only headlines and lead copy go serif.
+ * Direction: premium, atmospheric, confident. Warm paper base for trust bands;
+ * dark ink hero/closing bands with a glowing purple gradient-mesh + film grain
+ * that echoes the logo glow. Dramatic SCALE CONTRAST between tiny tracked
+ * all-caps eyebrows and oversized editorial headlines is the signature.
  *
- * The font variables are provided by app/(marketing)/layout.tsx
- * (marketingFontVariables) — admin and storefront never see these classes. */
-
-.font-serif-display {
-  font-family: var(--font-noto-serif-bengali), "Noto Serif", "Noto Sans Bengali", serif;
-  line-height: var(--leading-bangla-tight);
-  letter-spacing: -0.01em;
-}
-
-/* English documents swap to the Latin editorial serif. */
-:lang(en) .font-serif-display {
-  font-family: var(--font-noto-serif), Georgia, serif;
-}
+ * Typography:
+ *   - Bangla display + body  → Noto Serif Bengali (var --font-noto-serif-bengali)
+ *   - Latin display headlines → Fraunces, variable opsz (var --font-noto-serif)
+ *   - Wordmark / eyebrows / UI labels / EN body → Poppins (var --font-poppins)
+ *
+ * All font variables are provided by app/(marketing)/layout.tsx — admin and
+ * storefront never see these classes. Brand purple is overridden ONLY under
+ * .marketing-root; COD green stays the dedicated trust signal (not overridden).
+ * Every motion is compositor-friendly (transform/opacity/filter) and gated
+ * behind prefers-reduced-motion.
+ * ========================================================================== */
 
 /* ---------------------------------------------------------------------------
- * Brand palette — SCOPED to the marketing landing only.
- *
- * Overrides a handful of design tokens to the official Hybrid brand purple.
- * This lives under `.marketing-root` so admin and storefront keep the
- * app-wide indigo/marigold palette from @hybrid/ui globals.css untouched.
- * COD green (--color-cod) is intentionally NOT overridden — it stays the
- * dedicated trust signal. All consuming utilities (bg-primary, text-primary,
- * border-primary, ring-primary, bg-primary-weak, hover:bg-primary-hover, the
- * shadcn --primary/--accent/--ring bridges) resolve to these values.
+ * 1. Brand palette + tokens — SCOPED to the marketing landing only.
  * ------------------------------------------------------------------------- */
 .marketing-root {
   --color-primary: #5a19e6; /* primary purple — CTAs, links, focus */
@@ -38,10 +29,85 @@
   --color-accent: #7b3ff2; /* light purple accent */
   --color-ink: #0d0b1f; /* near-black brand ink */
 
+  /* Local brand atmosphere tokens (not part of the global token contract). */
+  --brand-ink: #0d0b1f;
+  --brand-ink-2: #15102e; /* lifted dark surface on the ink bands */
+  --brand-violet: #7b3ff2;
+  --brand-violet-bright: #9d6bff;
+  --brand-paper: #f5f5f7;
+
   /* Re-point the shadcn bridges so primitives using them follow the brand. */
   --primary: var(--color-primary);
   --accent: var(--color-accent);
   --ring: var(--color-primary);
+
+  /* Slightly warmer paper than the app default, for the trust bands. */
+  --color-bg: #f6f5fa;
+
+  background-color: var(--color-bg);
+}
+
+/* Refined purple focus ring across the whole landing (overrides the global
+ * indigo focus shadow within marketing only). */
+.marketing-root :focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--color-bg),
+    0 0 0 4px var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+.marketing-root .on-ink :focus-visible {
+  box-shadow:
+    0 0 0 2px var(--brand-ink),
+    0 0 0 4px var(--brand-violet-bright);
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. Typography — the backbone. Editorial serif display, tracked eyebrows.
+ * ------------------------------------------------------------------------- */
+
+/* Display family is language-driven. Bangla → Noto Serif Bengali. */
+.font-serif-display {
+  font-family: var(--font-noto-serif-bengali), "Noto Serif Bengali", serif;
+  line-height: var(--leading-bangla-tight);
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+/* English documents swap to Fraunces with optical sizing + tighter tracking
+ * and a touch more contrast (heavier weight) at display scale. */
+:lang(en) .font-serif-display {
+  font-family: var(--font-noto-serif), Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+}
+
+/* The signature oversized editorial headline. Huge on desktop, with dramatic
+ * scale contrast against the tracked eyebrow above it. */
+.display-hero {
+  font-size: clamp(2.75rem, 1.2rem + 7.4vw, 6.5rem);
+  line-height: 1.02;
+}
+:lang(bn) .display-hero {
+  line-height: 1.12; /* Bangla needs more leading at scale */
+  font-size: clamp(2.5rem, 1.4rem + 6vw, 5.25rem);
+}
+
+.display-section {
+  font-size: clamp(2rem, 1.2rem + 3.4vw, 3.75rem);
+  line-height: 1.05;
+}
+:lang(bn) .display-section {
+  line-height: 1.18;
+  font-size: clamp(1.85rem, 1.2rem + 2.8vw, 3.25rem);
+}
+
+/* English headlines get an italic-serif emphasis span for editorial flavour. */
+:lang(en) .display-emphasis {
+  font-style: italic;
+  font-weight: 500;
 }
 
 /* Brand wordmark: "Hybrid" in Poppins. Used only by the HybridLogo lockup. */
@@ -51,20 +117,307 @@
   letter-spacing: -0.02em;
 }
 
-/* Footer tagline eyebrow: small uppercase, wide tracking, brand purple. */
+/* Small uppercase tracked eyebrow — the counterweight to the huge headlines. */
+.eyebrow {
+  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* Footer / hero tagline eyebrow (kept name for HybridLogo compatibility). */
 .brand-tagline {
   font-family: var(--font-poppins), system-ui, sans-serif;
   font-weight: 500;
   letter-spacing: 0.18em;
 }
 
-/* Closing-CTA button sits on the brand-purple band, where the accent purple
- * lacks separation. Force a white button + purple ink so the CTA pops with AA
- * contrast. Scoped to this wrapper only — the shared Button stays untouched. */
+/* English body + UI labels ride Poppins (clean, not a system font, not Inter).
+ * Bangla body stays on .bn-body (Noto Serif Bengali via the global token). */
+:lang(en) .marketing-root,
+.marketing-root :lang(en) {
+  --font-bangla: var(--font-poppins), system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. Atmosphere — the dark ink bands: purple gradient-mesh + film grain.
+ * ------------------------------------------------------------------------- */
+
+/* Ink band base. Children that sit on it should carry `.on-ink` (for the
+ * focus-ring swap). The mesh + grain are pseudo-elements so content stays crisp. */
+.ink-band {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--brand-ink);
+  color: #f5f5f7;
+  overflow: hidden;
+}
+
+/* Glowing purple radial mesh — echoes the logo bloom. Layered radials, offset
+ * and asymmetric so it never reads as a flat center gradient. */
+.ink-band::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% -20% -10%;
+  z-index: -2;
+  background:
+    radial-gradient(42% 55% at 78% 18%, rgba(157, 107, 255, 0.42), transparent 62%),
+    radial-gradient(48% 60% at 12% 8%, rgba(123, 63, 242, 0.34), transparent 60%),
+    radial-gradient(60% 80% at 50% 118%, rgba(90, 25, 230, 0.32), transparent 64%);
+  filter: saturate(118%);
+}
+
+/* Film grain overlay — a tiny tiled SVG noise, very low opacity, screen-blended.
+ * Adds texture/atmosphere without touching layout. */
+.ink-band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.5;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  pointer-events: none;
+}
+
+/* Muted text colors on the ink band. */
+.ink-band .ink-muted {
+  color: rgba(245, 245, 247, 0.72);
+}
+.ink-band .ink-subtle {
+  color: rgba(245, 245, 247, 0.55);
+}
+
+/* Thin purple top accent hairline across the very top of the page. */
+.brand-topline {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary-active),
+    var(--brand-violet),
+    var(--brand-violet-bright),
+    var(--brand-violet)
+  );
+}
+
+/* Decorative hairline divider used between paper sections. */
+.hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-border),
+    transparent
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. Bloom — a soft purple glow plate placed behind the hero mock / logo motif.
+ * ------------------------------------------------------------------------- */
+.bloom {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  background: radial-gradient(
+    circle,
+    rgba(123, 63, 242, 0.55),
+    rgba(90, 25, 230, 0.18) 55%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * 5. Ghosted editorial numerals for how-it-works (huge, faint, overlapping).
+ * ------------------------------------------------------------------------- */
+.ghost-numeral {
+  font-family: var(--font-noto-serif-bengali), var(--font-noto-serif), serif;
+  font-weight: 700;
+  line-height: 0.8;
+  font-size: clamp(5rem, 4rem + 10vw, 11rem);
+  color: var(--color-primary);
+  opacity: 0.1;
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * 6. Designed interaction states.
+ * ------------------------------------------------------------------------- */
+
+/* Primary CTA glow + lift. Scoped to wrappers that carry .cta-glow. */
+.cta-glow > button {
+  box-shadow: 0 8px 24px -8px rgba(90, 25, 230, 0.5);
+  transition:
+    transform var(--duration-fast, 180ms) ease,
+    box-shadow var(--duration-fast, 180ms) ease;
+}
+.cta-glow > button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px -8px rgba(90, 25, 230, 0.62);
+}
+
+/* Closing-CTA / hero buttons that sit on the dark ink band: force a white
+ * button + deep-purple ink so the CTA pops with AA contrast. */
 .cta-on-band > button {
   background-color: #ffffff;
   color: var(--color-primary-active);
+  box-shadow: 0 10px 30px -10px rgba(157, 107, 255, 0.6);
+  transition:
+    transform var(--duration-fast, 180ms) ease,
+    box-shadow var(--duration-fast, 180ms) ease,
+    background-color var(--duration-fast, 180ms) ease;
 }
 .cta-on-band > button:hover {
-  background-color: var(--color-primary-weak);
+  background-color: #f3effe;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px -10px rgba(157, 107, 255, 0.75);
+}
+
+/* Secondary "ghost" button on the dark band: outlined, fills on hover. */
+.btn-on-ink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 3rem;
+  padding: 0 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: #f5f5f7;
+  border: 1px solid rgba(245, 245, 247, 0.28);
+  background: rgba(245, 245, 247, 0.04);
+  transition:
+    background-color var(--duration-fast, 180ms) ease,
+    border-color var(--duration-fast, 180ms) ease,
+    transform var(--duration-fast, 180ms) ease;
+}
+.btn-on-ink:hover {
+  background: rgba(245, 245, 247, 0.12);
+  border-color: rgba(157, 107, 255, 0.7);
+  transform: translateY(-1px);
+}
+
+/* Card lift + border-glow (features, testimonials, pricing). */
+.lift-card {
+  transition:
+    transform var(--duration-base, 260ms) ease,
+    box-shadow var(--duration-base, 260ms) ease,
+    border-color var(--duration-base, 260ms) ease;
+  will-change: transform;
+}
+.lift-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  box-shadow:
+    0 18px 40px -22px rgba(45, 12, 166, 0.4),
+    0 2px 0 0 color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+/* Popular pricing card: permanently lifted + glowing, not just a badge. */
+.pop-card {
+  border-color: var(--color-primary);
+  box-shadow:
+    0 28px 60px -28px rgba(90, 25, 230, 0.5),
+    0 0 0 1px var(--color-primary);
+  transform: translateY(-6px);
+}
+@media (min-width: 1024px) {
+  .pop-card {
+    transform: translateY(-14px) scale(1.02);
+  }
+}
+
+/* Feature image frame: soft long shadow + subtle hover scale on the inner img. */
+.frame-shadow {
+  box-shadow: 0 40px 80px -40px rgba(45, 12, 166, 0.45);
+}
+.frame-shadow img {
+  transition: transform var(--duration-slow, 400ms) ease;
+}
+.frame-shadow:hover img {
+  transform: scale(1.03);
+}
+
+/* Partner wordmarks: grayscale → brand color on hover (already color-on-hover
+ * in the component; this adds a gentle lift). */
+.partner-pill {
+  transition:
+    color var(--duration-base, 260ms) ease,
+    transform var(--duration-base, 260ms) ease;
+}
+.partner-pill:hover {
+  transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------------------
+ * 7. Orchestrated hero page-load reveal (eyebrow→headline→sub→CTA→mock).
+ * ------------------------------------------------------------------------- */
+@keyframes hybrid-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes hybrid-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes hybrid-bloom-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+.reveal {
+  opacity: 0;
+  animation: hybrid-rise 0.7s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1))
+    forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+.float-slow {
+  animation: hybrid-float 6s ease-in-out infinite;
+}
+.bloom-pulse {
+  animation: hybrid-bloom-pulse 7s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+ * 8. prefers-reduced-motion — kill ALL motion, reveal everything immediately.
+ * ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    animation: none;
+  }
+  .float-slow,
+  .bloom-pulse {
+    animation: none;
+  }
+  .cta-glow > button:hover,
+  .cta-on-band > button:hover,
+  .btn-on-ink:hover,
+  .lift-card:hover,
+  .frame-shadow:hover img,
+  .partner-pill:hover {
+    transform: none;
+  }
 }

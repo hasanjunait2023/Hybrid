@@ -61,6 +61,12 @@ export interface PlaceOrderInput {
   source: OrderSource;
   /** Optional flat shipping charge (BDT). P1 has no shipping calculator. */
   shippingTotal?: number;
+  /**
+   * Optional discount code (Phase 2.4). Server-authoritative: the client sends
+   * ONLY the code; the amount is computed here from the locked discount row.
+   * Null/undefined/blank → no discount.
+   */
+  discountCode?: string | null;
 }
 
 export interface PlaceOrderResult {
@@ -69,6 +75,33 @@ export interface PlaceOrderResult {
   paymentId: string;
   /** true for bkash → checkout slice runs BkashProvider.createPayment next. */
   bkashRequired: boolean;
+  /** Applied discount (Phase 2.4), or null when no code was applied. */
+  discount: AppliedDiscount | null;
+}
+
+/** Server-computed discount applied to an order (Phase 2.4). */
+export interface AppliedDiscount {
+  code: string;
+  /** Amount subtracted from the order total (BDT, never negative). */
+  amount: number;
+}
+
+// Thrown (and rolled back) when a passed discount code cannot be applied. The
+// reason maps to a friendly Bengali message at the checkout boundary. The whole
+// txn rolls back, so used_count is never incremented for a rejected code.
+export type DiscountErrorReason =
+  | "DISCOUNT_INVALID" // unknown / inactive / outside window / global limit hit
+  | "DISCOUNT_BELOW_MINIMUM" // subtotal < min_subtotal
+  | "DISCOUNT_USAGE_LIMIT" // per-customer limit reached
+  | "DISCOUNT_NOT_APPLICABLE"; // applies_to scope matched no line item
+
+export class DiscountError extends Error {
+  readonly reason: DiscountErrorReason;
+  constructor(reason: DiscountErrorReason) {
+    super(reason);
+    this.name = "DiscountError";
+    this.reason = reason;
+  }
 }
 
 // Thrown (and rolled back) when a tracked variant lacks the requested quantity.
@@ -162,6 +195,115 @@ function toPricedLine(
   };
 }
 
+interface DiscountRow {
+  id: string;
+  code: string;
+  type: "percentage" | "fixed_amount" | "free_shipping";
+  value: string;
+  min_subtotal: string;
+  usage_limit: number | null;
+  used_count: number;
+  per_customer_limit: number | null;
+  applies_to: { scope?: string; productIds?: string[]; collectionIds?: string[] } | null;
+}
+
+// Resolve, validate, and lock a discount inside the live txn (Phase 2.4). The
+// row is taken FOR UPDATE so two concurrent checkouts racing the same code can't
+// both pass a usage_limit < used_count check — the second blocks until the first
+// commits its used_count increment, then re-reads the new value. Returns the
+// computed discount (and whether it zeroes shipping); the CALLER increments
+// used_count + persists. Throws DiscountError (rolls back) on any rejection.
+async function applyDiscount(
+  tx: Tx,
+  tenantId: string,
+  code: string,
+  customerId: string,
+  subtotal: number,
+  shippingTotal: number,
+  lineProductIds: string[],
+): Promise<{ row: DiscountRow; amount: number; zeroesShipping: boolean }> {
+  // status='active' + window check + global usage_limit, all under a row lock.
+  // citext column → case-insensitive code match. now() gates the active window.
+  const rows = await tx<DiscountRow[]>`
+    select id, code, type, value, min_subtotal,
+           usage_limit, used_count, per_customer_limit, applies_to
+      from discount
+     where tenant_id = ${tenantId}
+       and code = ${code}
+       and status = 'active'
+       and (starts_at is null or starts_at <= now())
+       and (ends_at   is null or ends_at   >= now())
+     for update
+  `;
+  const row = rows[0];
+  if (!row) throw new DiscountError("DISCOUNT_INVALID");
+
+  // Global usage limit (re-checked under the lock against the freshest count).
+  if (row.usage_limit !== null && row.used_count >= row.usage_limit) {
+    throw new DiscountError("DISCOUNT_INVALID");
+  }
+
+  // Minimum cart value.
+  if (subtotal < Number(row.min_subtotal)) {
+    throw new DiscountError("DISCOUNT_BELOW_MINIMUM");
+  }
+
+  // Per-customer limit: count this customer's PRIOR orders carrying this code.
+  if (row.per_customer_limit !== null) {
+    const prior = await tx<{ n: string }[]>`
+      select count(*)::bigint as n
+        from orders
+       where tenant_id = ${tenantId}
+         and customer_id = ${customerId}
+         and discount_code = ${row.code}
+    `;
+    if (Number(prior[0]?.n ?? 0) >= row.per_customer_limit) {
+      throw new DiscountError("DISCOUNT_USAGE_LIMIT");
+    }
+  }
+
+  // applies_to scope: 'all' (default) matches always; 'product'/'collection'
+  // require at least one line item in the referenced set.
+  const scope = row.applies_to?.scope ?? "all";
+  if (scope === "product") {
+    const ids = row.applies_to?.productIds ?? [];
+    const match = lineProductIds.some((pid) => ids.includes(pid));
+    if (!match) throw new DiscountError("DISCOUNT_NOT_APPLICABLE");
+  } else if (scope === "collection") {
+    const ids = row.applies_to?.collectionIds ?? [];
+    const inScope =
+      ids.length > 0 &&
+      lineProductIds.length > 0 &&
+      (
+        await tx<{ n: string }[]>`
+          select count(*)::bigint as n
+            from product_collection
+           where tenant_id = ${tenantId}
+             and product_id in ${tx(lineProductIds)}
+             and collection_id in ${tx(ids)}
+        `
+      );
+    const n = Array.isArray(inScope) ? Number(inScope[0]?.n ?? 0) : 0;
+    if (n === 0) throw new DiscountError("DISCOUNT_NOT_APPLICABLE");
+  }
+
+  // Compute the discount amount. Never exceeds subtotal; never negative.
+  let amount = 0;
+  let zeroesShipping = false;
+  if (row.type === "percentage") {
+    amount = Math.min((subtotal * Number(row.value)) / 100, subtotal);
+  } else if (row.type === "fixed_amount") {
+    amount = Math.min(Number(row.value), subtotal);
+  } else {
+    // free_shipping: requires a known (non-null) shipping charge to zero. When
+    // there is no shipping line the discount is a no-op amount but still valid.
+    if (shippingTotal == null) throw new DiscountError("DISCOUNT_NOT_APPLICABLE");
+    zeroesShipping = true;
+  }
+  amount = Math.max(0, Math.round(amount * 100) / 100);
+  return { row, amount, zeroesShipping };
+}
+
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   if (input.items.length === 0) {
     throw new Error("EMPTY_ORDER");
@@ -169,6 +311,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   const isCod = input.paymentMethod === "cod";
   const shippingTotal = input.shippingTotal ?? 0;
+  const discountCode = input.discountCode?.trim() || null;
 
   return withTenant(input.tenantId, input.userId, async (tx) => {
     // (1) customer upsert by phone.
@@ -203,7 +346,41 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     // Server-computed totals — never trust client prices.
     const subtotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
-    const grandTotal = subtotal + shippingTotal;
+
+    // (3b) discount (Phase 2.4). Applied AFTER subtotal is known and BEFORE the
+    // orders INSERT, inside the SAME txn — the FOR UPDATE lock + the used_count
+    // increment below roll back atomically with the order if anything later
+    // fails. Server-authoritative: amount is computed here, never trusted from
+    // the client. A blank/absent code is simply no discount.
+    let appliedDiscount: AppliedDiscount | null = null;
+    let discountTotal = 0;
+    let effectiveShipping = shippingTotal;
+    if (discountCode) {
+      const result = await applyDiscount(
+        tx,
+        input.tenantId,
+        discountCode,
+        customerId,
+        subtotal,
+        shippingTotal,
+        lines.map((l) => l.productId),
+      );
+      discountTotal = result.amount;
+      if (result.zeroesShipping) effectiveShipping = 0;
+      // Atomic, race-safe usage increment under the held lock. Re-asserts the
+      // global limit in the WHERE so an exhausted code can never tip over.
+      const bumped = await tx<{ id: string }[]>`
+        update discount
+           set used_count = used_count + 1, updated_at = now()
+         where id = ${result.row.id}
+           and (usage_limit is null or used_count < usage_limit)
+        returning id
+      `;
+      if (bumped.length !== 1) throw new DiscountError("DISCOUNT_INVALID");
+      appliedDiscount = { code: result.row.code, amount: discountTotal };
+    }
+
+    const grandTotal = subtotal - discountTotal + effectiveShipping;
     const codAmount = isCod ? grandTotal : 0;
 
     // (4) INSERT orders. order_number is assigned by the assign_order_number
@@ -213,7 +390,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         tenant_id, customer_id,
         customer_name, customer_phone, customer_email,
         shipping_address,
-        subtotal, shipping_total, grand_total, cod_amount, currency,
+        subtotal, discount_total, discount_code,
+        shipping_total, grand_total, cod_amount, currency,
         payment_status, fulfillment_status, source, note
       ) values (
         ${input.tenantId}, ${customerId},
@@ -226,7 +404,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
           thana: input.shippingAddress.thana,
           line: input.shippingAddress.line,
         })},
-        ${subtotal}, ${shippingTotal}, ${grandTotal}, ${codAmount}, 'BDT',
+        ${subtotal}, ${discountTotal}, ${appliedDiscount?.code ?? null},
+        ${effectiveShipping}, ${grandTotal}, ${codAmount}, 'BDT',
         'unpaid',
         ${isCod ? "confirmed" : "pending"},
         ${input.source}, ${input.note ?? null}
@@ -284,6 +463,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       orderNumber: Number(order.order_number),
       paymentId,
       bkashRequired: input.paymentMethod === "bkash",
+      discount: appliedDiscount,
     };
   });
 }

@@ -86,6 +86,65 @@ export async function getPaymentSettings(
   };
 }
 
+// ---- Nagad -----------------------------------------------------------------
+export interface NagadSettings {
+  enabled: boolean;
+  /** true once merchantId + merchantPrivateKey + nagadPublicKey are sealed. */
+  configured: boolean;
+  mode: "sandbox" | "live";
+  merchantIdHint: string | null;
+}
+
+// ---- SSLCommerz ------------------------------------------------------------
+export interface SslcommerzSettings {
+  enabled: boolean;
+  /** true once storeId + storePassword are sealed. */
+  configured: boolean;
+  mode: "sandbox" | "live";
+  storeIdHint: string | null;
+}
+
+export async function getNagadSettings(
+  tenantId: string,
+  userId: string,
+): Promise<NagadSettings> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ is_enabled: boolean; credentials: unknown }[]>`
+      select is_enabled, credentials from payment_account where provider = 'nagad' limit 1
+    `,
+  );
+  const row = rows[0];
+  const creds = openIfSealed(row?.credentials);
+  return {
+    enabled: row?.is_enabled ?? false,
+    configured:
+      Boolean(creds.merchantId) &&
+      Boolean(creds.merchantPrivateKey) &&
+      Boolean(creds.nagadPublicKey),
+    mode: creds.mode === "live" ? "live" : "sandbox",
+    merchantIdHint: maskTail(creds.merchantId),
+  };
+}
+
+export async function getSslcommerzSettings(
+  tenantId: string,
+  userId: string,
+): Promise<SslcommerzSettings> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ is_enabled: boolean; credentials: unknown }[]>`
+      select is_enabled, credentials from payment_account where provider = 'sslcommerz' limit 1
+    `,
+  );
+  const row = rows[0];
+  const creds = openIfSealed(row?.credentials);
+  return {
+    enabled: row?.is_enabled ?? false,
+    configured: Boolean(creds.storeId) && Boolean(creds.storePassword),
+    mode: creds.mode === "live" ? "live" : "sandbox",
+    storeIdHint: maskTail(creds.storeId),
+  };
+}
+
 // ---- Courier (Steadfast) ---------------------------------------------------
 export interface CourierSettings {
   enabled: boolean;
@@ -113,6 +172,73 @@ export async function getCourierSettings(
     enabled: row?.is_enabled ?? false,
     configured: Boolean(creds.apiKey) && Boolean(creds.secretKey),
     apiKeyHint: maskTail(creds.apiKey),
+  };
+}
+
+// ---- Courier (Pathao) ------------------------------------------------------
+export interface PathaoSettings {
+  enabled: boolean;
+  /** true once clientId + clientSecret + username + password are sealed. */
+  configured: boolean;
+  mode: "stage" | "live";
+  clientIdHint: string | null;
+}
+
+export async function getPathaoSettings(
+  tenantId: string,
+  userId: string,
+): Promise<PathaoSettings> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ is_enabled: boolean; credentials: unknown }[]>`
+      select is_enabled, credentials from courier_account where provider = 'pathao' limit 1
+    `,
+  );
+  const row = rows[0];
+  const creds = openIfSealed(row?.credentials);
+  return {
+    enabled: row?.is_enabled ?? false,
+    configured:
+      Boolean(creds.clientId) &&
+      Boolean(creds.clientSecret) &&
+      Boolean(creds.username) &&
+      Boolean(creds.password),
+    mode: creds.mode === "live" ? "live" : "stage",
+    clientIdHint: maskTail(creds.clientId),
+  };
+}
+
+// ---- SMS (tenant-side) -----------------------------------------------------
+// The tenant pastes its OWN sms.net.bd api_key for customer notifications; the
+// platform key (env SMS_API_KEY) stays for signup OTP. Sealed in
+// tenant.settings.notifications.sms (jsonb).
+export interface SmsSettings {
+  enabled: boolean;
+  /** true once api_key is sealed. */
+  configured: boolean;
+  apiKeyHint: string | null;
+  senderId: string;
+}
+
+interface NotificationsJson {
+  sms?: { enabled?: boolean; credentials?: unknown; senderId?: string };
+}
+
+export async function getSmsSettings(
+  tenantId: string,
+  userId: string,
+): Promise<SmsSettings> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ settings: { notifications?: NotificationsJson } }[]>`
+      select settings from tenant where id = ${tenantId} limit 1
+    `,
+  );
+  const sms = rows[0]?.settings?.notifications?.sms;
+  const creds = openIfSealed(sms?.credentials);
+  return {
+    enabled: sms?.enabled ?? false,
+    configured: Boolean(creds.apiKey),
+    apiKeyHint: maskTail(creds.apiKey),
+    senderId: typeof sms?.senderId === "string" ? sms.senderId : "",
   };
 }
 

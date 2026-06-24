@@ -102,3 +102,82 @@ export async function saveSteadfast(
   revalidateTag(`tenant:${auth.tenantId}:settings`);
   return { ok: true };
 }
+
+// ---- Pathao ----------------------------------------------------------------
+// OAuth2 creds {clientId, clientSecret, username, password} + default store +
+// geography. The bearer token is adapter-managed in Redis (not persisted here).
+const PathaoInput = z.object({
+  enabled: z.coerce.boolean().default(false),
+  mode: z.enum(["stage", "live"]).default("stage"),
+  clientId: z.string().trim().max(300).optional().default(""),
+  clientSecret: z.string().trim().max(300).optional().default(""),
+  username: z.string().trim().max(200).optional().default(""),
+  password: z.string().trim().max(200).optional().default(""),
+});
+
+export async function savePathao(
+  _prev: SettingsResult | null,
+  formData: FormData,
+): Promise<SettingsResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return auth;
+
+  const parsed = PathaoInput.safeParse({
+    enabled: formData.get("enabled") === "on" || formData.get("enabled") === "true",
+    mode: formData.get("mode") ?? "stage",
+    clientId: formData.get("clientId") ?? "",
+    clientSecret: formData.get("clientSecret") ?? "",
+    username: formData.get("username") ?? "",
+    password: formData.get("password") ?? "",
+  });
+  if (!parsed.success) return { ok: false, error: "ইনপুট ভুল।" };
+  const input = parsed.data;
+
+  try {
+    await withTenant(auth.tenantId, auth.userId, async (tx) => {
+      const existing = await tx<{ credentials: unknown }[]>`
+        select credentials from courier_account where provider = 'pathao' limit 1
+      `;
+      const prev = readSealed(existing[0]?.credentials);
+      const merged = {
+        mode: input.mode,
+        clientId: input.clientId || prev.clientId || "",
+        clientSecret: input.clientSecret || prev.clientSecret || "",
+        username: input.username || prev.username || "",
+        password: input.password || prev.password || "",
+        // Preserve any previously-saved default store/geography (set elsewhere).
+        storeId: prev.storeId || "",
+        cityId: prev.cityId || "",
+        zoneId: prev.zoneId || "",
+        areaId: prev.areaId || "",
+      };
+      if (
+        input.enabled &&
+        (!merged.clientId || !merged.clientSecret || !merged.username || !merged.password)
+      ) {
+        throw new Error("INCOMPLETE_PATHAO");
+      }
+      const sealed = sealCredentials(merged);
+      await tx`
+        insert into courier_account (tenant_id, provider, is_enabled, credentials)
+        values (${auth.tenantId}, 'pathao', ${input.enabled}, ${tx.json(sealed as unknown as Jsonb)})
+        on conflict (tenant_id, provider) do update
+          set is_enabled = ${input.enabled},
+              credentials = ${tx.json(sealed as unknown as Jsonb)},
+              updated_at = now()
+      `;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INCOMPLETE_PATHAO") {
+      return {
+        ok: false,
+        error: "Pathao চালু করতে client_id, client_secret, username, password দিন।",
+      };
+    }
+    console.error("[savePathao] failed", error);
+    return { ok: false, error: "সেভ ব্যর্থ হয়েছে।" };
+  }
+
+  revalidateTag(`tenant:${auth.tenantId}:settings`);
+  return { ok: true };
+}

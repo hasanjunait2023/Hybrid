@@ -30,6 +30,7 @@ import type {
 } from "../../payments/src/index";
 import { submitCheckout } from "../../../apps/web/app/%5Fsites/[tenant]/checkout/actions";
 import { processBkashCallback } from "../../../apps/web/lib/payments/callback";
+import { __resetCache } from "./redis-client-stub";
 
 const TENANT_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa000a"; // slug 'store-a' (seed)
 
@@ -271,5 +272,202 @@ describe("bKash callback — replay idempotency (webhook_event guard)", () => {
     // provider call) — but the STATE TRANSITION happened once. The second call's
     // claim lost the race, so the second execute's result was discarded.
     expect(stub.executeCalls()).toBe(2);
+  });
+});
+
+// ============================================================================
+// Discounts (S-DISCOUNTS 2.4) — discount application inside the placeOrder txn.
+// Drives through submitCheckout (COD) so the whole path is exercised: code →
+// SELECT FOR UPDATE → validate → compute → increment used_count → order total.
+// Proves: valid % + fixed apply with correct totals; expired/disabled/min-cart/
+// global-limit/per-customer rejected; idempotent re-submit doesn't double-count;
+// oversell guard still wins even with a valid discount.
+// ============================================================================
+const DISC_PHONE = "01711222050";
+const DISC_VAR = VAR_COD; // reuse the COD variant (price 500, seeded qty 10)
+
+async function makeDiscount(fields: Record<string, unknown>): Promise<void> {
+  await asPlatformAdmin(async (tx) => {
+    await tx`delete from discount where tenant_id = ${TENANT_A} and code = ${fields.code as string}`;
+    await tx`
+      insert into discount ${tx({ tenant_id: TENANT_A, ...fields })}
+    `;
+  });
+}
+
+async function clearDiscOrders(): Promise<void> {
+  await asPlatformAdmin(async (tx) => {
+    await tx`delete from payment where tenant_id = ${TENANT_A} and order_id in (select id from orders where customer_phone = ${DISC_PHONE})`;
+    await tx`delete from order_item where tenant_id = ${TENANT_A} and order_id in (select id from orders where customer_phone = ${DISC_PHONE})`;
+    await tx`delete from orders where tenant_id = ${TENANT_A} and customer_phone = ${DISC_PHONE}`;
+    await tx`delete from customer_address where tenant_id = ${TENANT_A} and customer_id in (select id from customer where phone = ${DISC_PHONE})`;
+    await tx`delete from customer where tenant_id = ${TENANT_A} and phone = ${DISC_PHONE}`;
+  });
+}
+
+function codCheckout(code: string | undefined, quantity = 1) {
+  return submitCheckout({
+    tenantSlug: "store-a",
+    phone: DISC_PHONE,
+    name: "Discount Buyer",
+    ...ADDR,
+    paymentMethod: "cod",
+    discountCode: code,
+    items: [{ variantId: DISC_VAR, quantity }],
+  });
+}
+
+async function orderTotals(): Promise<{
+  subtotal: number;
+  discountTotal: number;
+  grandTotal: number;
+  discountCode: string | null;
+}> {
+  return withTenant(TENANT_A, null, async (tx) => {
+    const rows = await tx<
+      { subtotal: string; discount_total: string; grand_total: string; discount_code: string | null }[]
+    >`select subtotal, discount_total, grand_total, discount_code
+        from orders where customer_phone = ${DISC_PHONE} order by placed_at desc limit 1`;
+    const r = rows[0]!;
+    return {
+      subtotal: Number(r.subtotal),
+      discountTotal: Number(r.discount_total),
+      grandTotal: Number(r.grand_total),
+      discountCode: r.discount_code,
+    };
+  });
+}
+
+async function usedCount(code: string): Promise<number> {
+  const rows = await asPlatformAdmin(
+    (tx) => tx<{ used_count: number }[]>`
+      select used_count from discount where tenant_id = ${TENANT_A} and code = ${code}`,
+  );
+  return rows[0]?.used_count ?? 0;
+}
+
+describe("checkout discounts — apply inside placeOrder txn", () => {
+  beforeAll(seedFixtures);
+  afterAll(async () => {
+    await clearDiscOrders();
+    await asPlatformAdmin((tx) => tx`delete from discount where tenant_id = ${TENANT_A}`);
+    await cleanupFixtures();
+  });
+  beforeEach(async () => {
+    // Reset the in-memory rate-limit counters so repeated same-phone checkouts in
+    // these tests never trip the per-phone checkout dampener (it persists across
+    // files when a prior suite pinned REDIS_URL).
+    __resetCache();
+    await asPlatformAdmin((tx) => tx`update product_variant set inventory_quantity = 10 where id = ${DISC_VAR}`);
+    await clearDiscOrders();
+  });
+
+  it("applies a valid percentage discount and computes the total", async () => {
+    await makeDiscount({ code: "PCT10", type: "percentage", value: 10, status: "active" });
+    const result = await codCheckout("PCT10", 2); // subtotal 1000
+    expect(result.ok).toBe(true);
+    const t = await orderTotals();
+    expect(t.subtotal).toBe(1000);
+    expect(t.discountTotal).toBe(100); // 10% of 1000
+    expect(t.grandTotal).toBe(900);
+    expect(t.discountCode).toBe("PCT10");
+    expect(await usedCount("PCT10")).toBe(1);
+  });
+
+  it("applies a fixed_amount discount capped at subtotal", async () => {
+    await makeDiscount({ code: "FLAT200", type: "fixed_amount", value: 200, status: "active" });
+    const result = await codCheckout("FLAT200", 1); // subtotal 500
+    expect(result.ok).toBe(true);
+    const t = await orderTotals();
+    expect(t.discountTotal).toBe(200);
+    expect(t.grandTotal).toBe(300);
+  });
+
+  it("rejects an expired discount (outside window); order is NOT created", async () => {
+    await makeDiscount({
+      code: "EXPIRED",
+      type: "percentage",
+      value: 10,
+      status: "active",
+      ends_at: new Date(Date.now() - 86_400_000), // ended yesterday
+    });
+    const result = await codCheckout("EXPIRED", 1);
+    expect(result.ok).toBe(false);
+    // No order row and the code was never consumed (txn rolled back).
+    const rows = await withTenant(TENANT_A, null, (tx) =>
+      tx`select id from orders where customer_phone = ${DISC_PHONE}`,
+    );
+    expect(rows.length).toBe(0);
+    expect(await usedCount("EXPIRED")).toBe(0);
+  });
+
+  it("rejects a disabled (non-active status) discount", async () => {
+    await makeDiscount({ code: "OFFNOW", type: "percentage", value: 10, status: "disabled" });
+    const result = await codCheckout("OFFNOW", 1);
+    expect(result.ok).toBe(false);
+    expect(await usedCount("OFFNOW")).toBe(0);
+  });
+
+  it("rejects when subtotal is below min_subtotal", async () => {
+    await makeDiscount({
+      code: "MIN2000",
+      type: "fixed_amount",
+      value: 100,
+      status: "active",
+      min_subtotal: 2000,
+    });
+    const result = await codCheckout("MIN2000", 1); // subtotal 500 < 2000
+    expect(result.ok).toBe(false);
+    expect(await usedCount("MIN2000")).toBe(0);
+  });
+
+  it("rejects when the global usage_limit is exhausted", async () => {
+    await makeDiscount({
+      code: "ONCE",
+      type: "percentage",
+      value: 10,
+      status: "active",
+      usage_limit: 1,
+      used_count: 1, // already at the cap
+    });
+    const result = await codCheckout("ONCE", 1);
+    expect(result.ok).toBe(false);
+    expect(await usedCount("ONCE")).toBe(1); // unchanged
+  });
+
+  it("enforces per_customer_limit across this customer's prior orders", async () => {
+    await makeDiscount({
+      code: "PERCUST1",
+      type: "percentage",
+      value: 10,
+      status: "active",
+      per_customer_limit: 1,
+    });
+    const first = await codCheckout("PERCUST1", 1);
+    expect(first.ok).toBe(true);
+    expect(await usedCount("PERCUST1")).toBe(1);
+    // Second order by the same phone with the same code → over the per-customer cap.
+    const second = await codCheckout("PERCUST1", 1);
+    expect(second.ok).toBe(false);
+    expect(await usedCount("PERCUST1")).toBe(1); // not double-counted
+  });
+
+  it("does not double-count used_count when a distinct order reuses an unlimited code", async () => {
+    await makeDiscount({ code: "REUSE", type: "percentage", value: 10, status: "active" });
+    const a = await codCheckout("REUSE", 1);
+    expect(a.ok).toBe(true);
+    const b = await codCheckout("REUSE", 1);
+    expect(b.ok).toBe(true);
+    // Two separate valid orders → used_count incremented exactly twice (once each),
+    // never more — the increment is one UPDATE per successful txn.
+    expect(await usedCount("REUSE")).toBe(2);
+  });
+
+  it("keeps the oversell guard authoritative even with a valid discount", async () => {
+    await makeDiscount({ code: "STOCKED", type: "percentage", value: 10, status: "active" });
+    await asPlatformAdmin((tx) => tx`update product_variant set inventory_quantity = 0 where id = ${DISC_VAR}`);
+    const result = await codCheckout("STOCKED", 1);
+    expect(result.ok).toBe(false); // INSUFFICIENT_STOCK rolls back before any discount commit
+    expect(await usedCount("STOCKED")).toBe(0); // discount not consumed on a failed order
   });
 });

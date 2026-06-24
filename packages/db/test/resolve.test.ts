@@ -93,4 +93,44 @@ describe("resolveTenantByHost — trial liveness", () => {
     const resolved = await resolveTenantByHost(`nope-${RUN}.myhybrid.com`);
     expect(resolved).toBeNull();
   });
+
+  // --- Custom domains (S-DOMAINS): resolveTenantByHost routes a VERIFIED
+  // tenant_domain of type 'custom' exactly like a subdomain, and stays
+  // fail-closed for an unverified one. ---------------------------------------
+  const CUSTOM_HOST = `shop-${RUN}.example.com`;
+  const UNVERIFIED_HOST = `pending-${RUN}.example.com`;
+
+  it("5. resolves a VERIFIED custom domain to its tenant (active store)", async () => {
+    // Re-activate the tenant first (prior cases left it 'cancelled').
+    await setTenantStatus("active");
+    await asPlatformAdmin(async (tx) => {
+      await tx`
+        insert into tenant_domain (tenant_id, domain, type, verified, ssl_status)
+        values (${tenantId}, ${CUSTOM_HOST}, 'custom', true, 'issued')
+        on conflict (domain) do nothing
+      `;
+    });
+    const resolved = await resolveTenantByHost(CUSTOM_HOST);
+    expect(resolved).not.toBeNull();
+    expect(resolved?.id).toBe(tenantId);
+    expect(resolved?.slug).toBe(SLUG);
+  });
+
+  it("6. returns null for an UNVERIFIED custom domain (fail-closed)", async () => {
+    await asPlatformAdmin(async (tx) => {
+      await tx`
+        insert into tenant_domain (tenant_id, domain, type, verified, ssl_status)
+        values (${tenantId}, ${UNVERIFIED_HOST}, 'custom', false, 'none')
+        on conflict (domain) do nothing
+      `;
+    });
+    const resolved = await resolveTenantByHost(UNVERIFIED_HOST);
+    expect(resolved).toBeNull();
+  });
+
+  it("7. a verified custom domain goes dark when the tenant is suspended", async () => {
+    await setTenantStatus("suspended");
+    const resolved = await resolveTenantByHost(CUSTOM_HOST);
+    expect(resolved).toBeNull();
+  });
 });

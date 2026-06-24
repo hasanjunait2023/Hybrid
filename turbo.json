@@ -30,7 +30,8 @@
     "VERCEL_DOMAINS_ENABLED",
     "VERCEL_API_TOKEN",
     "VERCEL_PROJECT_ID",
-    "VERCEL_TEAM_ID"
+    "VERCEL_TEAM_ID",
+    "VERCEL_CNAME_TARGET"
   ],
   "tasks": {
     "build": {

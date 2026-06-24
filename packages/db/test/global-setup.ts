@@ -98,6 +98,11 @@ export async function setup(): Promise<void> {
     port,
     persistent: false,
     authMethod: "password",
+    // Force UTF-8 so Bangla text fields round-trip on Windows too (the default
+    // initdb on Windows is WIN1252, which cannot store Bangla — was tech-debt
+    // known-issue #4). --locale=C pairs safely with UTF8 on any platform and
+    // matches what Docker/Linux CI already use. ASCII-only tests are unaffected.
+    initdbFlags: ["--encoding=UTF8", "--locale=C"],
   });
 
   await pg.initialise();

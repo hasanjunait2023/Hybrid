@@ -1,48 +1,64 @@
-// Per-tenant courier status reconciliation (blueprint S-COURIER-WIRE 1.8).
+// Per-tenant courier status reconciliation (blueprint S-COURIER-WIRE 1.8;
+// extended for multi-courier in S-PATHAO-WIRE).
 //
-// Extracted from the cron route so it is testable in isolation: given a tenant,
-// a courier adapter (real or stubbed) and decrypted creds, poll each active
-// shipment's status, map it to the internal status pair, and write the result
-// to shipment + orders inside withTenant.
+// Extracted from the cron route so it is testable in isolation: given a tenant
+// and a set of courier adapters (real or stubbed) keyed by provider with their
+// decrypted creds, poll each active shipment's status, map it to the internal
+// status pair, and write the result to shipment + orders inside withTenant.
 //
-// Delivery handling: when mapSteadfastStatus reports 'delivered' we stamp
-// delivered_at and move the shipment to 'delivered'. We do NOT assert the cash
-// is in hand: delivery only means the parcel reached the customer, not that the
-// courier has REMITTED the COD to the seller. So cod_status stays 'pending'
-// (the money is still OWED to the seller) and cod_collected is left untouched.
-// 'collected'/cod_collected/cod_remitted are reserved for a real remittance
-// reconciliation — Phase-2 (brief §2: no Steadfast remittance API yet). Until
-// that lands, a delivered COD order REMAINS on the COD-pending list.
+// Delivery handling: when the status maps to 'delivered' we stamp delivered_at
+// and move the shipment to 'delivered'. We do NOT assert the cash is in hand:
+// delivery only means the parcel reached the customer, not that the courier has
+// REMITTED the COD to the seller. So cod_status stays 'pending' (the money is
+// still OWED) and cod_collected is left untouched. 'collected'/cod_collected/
+// cod_remitted are written ONLY by the remittance reconciliation engine
+// (lib/cod/recon.ts) from a real courier CSV — never fabricated by status sync.
+// Until a delivered shipment is matched against a remittance, it REMAINS on the
+// COD-pending list.
 import { withTenant } from "@hybrid/db";
-import type { CourierAdapter, CourierCreds } from "@hybrid/couriers";
+import type { CourierAdapter, CourierCreds, CourierProvider } from "@hybrid/couriers";
 
 interface ActiveShipment {
   id: string;
   orderId: string;
   consignmentId: string;
+  provider: string;
   codAmount: number;
 }
 
-// Reconcile every non-terminal Steadfast shipment for one tenant. Returns the
-// number of shipments whose status was polled. Runs each poll's network call
-// outside the DB write, then applies the update inside withTenant.
+// A courier adapter bound to its decrypted creds, keyed by provider name. The
+// caller supplies only the providers it has configured for this tenant.
+export type CourierBindings = Partial<
+  Record<CourierProvider, { provider: CourierAdapter; creds: CourierCreds }>
+>;
+
+// Reconcile every non-terminal shipment for one tenant across all supplied
+// couriers. Returns the number of shipments whose status was polled. Each poll's
+// network call runs outside the DB write; the update is applied inside withTenant.
 export async function syncTenantShipments(
   tenantId: string,
-  provider: CourierAdapter,
-  creds: CourierCreds,
+  bindings: CourierBindings | CourierAdapter,
+  creds?: CourierCreds,
 ): Promise<number> {
+  // Backward-compatible overload: an old caller may still pass a single adapter
+  // as `bindings` + `creds`. Detect that and adapt to the keyed form (steadfast).
+  const resolved = normalizeBindings(bindings, creds);
+  const providerNames = Object.keys(resolved) as CourierProvider[];
+  if (providerNames.length === 0) return 0;
+
   const active = await withTenant(tenantId, null, (tx) =>
     tx<
       {
         id: string;
         order_id: string;
         consignment_id: string;
+        provider: string;
         cod_amount: string;
       }[]
     >`
-      select id, order_id, consignment_id, cod_amount
+      select id, order_id, consignment_id, provider, cod_amount
       from shipment
-      where provider = 'steadfast'
+      where provider = any(${providerNames})
         and consignment_id is not null
         and status not in ('delivered', 'returned', 'cancelled')
     `,
@@ -50,16 +66,31 @@ export async function syncTenantShipments(
 
   let count = 0;
   for (const row of active) {
+    const binding = resolved[row.provider as CourierProvider];
+    if (!binding) continue; // a configured-then-disabled courier; skip cleanly
     const shipment: ActiveShipment = {
       id: row.id,
       orderId: row.order_id,
       consignmentId: row.consignment_id,
+      provider: row.provider,
       codAmount: Number(row.cod_amount),
     };
-    await reconcileOne(tenantId, provider, creds, shipment);
+    await reconcileOne(tenantId, binding.provider, binding.creds, shipment);
     count += 1;
   }
   return count;
+}
+
+// Accept either the keyed bindings form or the legacy (adapter, creds) pair.
+function normalizeBindings(
+  bindings: CourierBindings | CourierAdapter,
+  creds?: CourierCreds,
+): CourierBindings {
+  if ("createConsignment" in (bindings as CourierAdapter)) {
+    const adapter = bindings as CourierAdapter;
+    return { [adapter.provider]: { provider: adapter, creds: creds! } } as CourierBindings;
+  }
+  return bindings as CourierBindings;
 }
 
 async function reconcileOne(
@@ -75,7 +106,7 @@ async function reconcileOne(
   await withTenant(tenantId, null, async (tx) => {
     // Delivery stamps delivered_at + the delivered status only. cod_status stays
     // 'pending' and cod_collected is NOT written — the COD is still owed until a
-    // remittance reconciliation (Phase-2) confirms the courier paid the seller.
+    // remittance reconciliation confirms the courier paid the seller.
     await tx`
       update shipment
          set status = ${status.status}::shipment_status,

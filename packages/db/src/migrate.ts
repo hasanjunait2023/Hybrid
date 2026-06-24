@@ -1,13 +1,16 @@
 // Apply SQL files in lexical order over the DIRECT_URL (superuser) connection,
 // recording each in a `_migrations` ledger so re-runs are idempotent.
 //
-//   db:migrate -> applies 00,01,02,04,06 (roles, schema, policies, grant, own-auth)
+//   db:migrate -> applies 00,01,02,04,06,07 (roles, schema, policies, grant,
+//                 own-auth, phase2 feature columns)
 //   db:seed    -> applies 03 (seed)
 //
 // Phase 2 (SHIFT 1): 05_auth.sql (the Supabase on_auth_user_created trigger) was
 // removed from disk; own auth ships in 06_own_auth.sql (user_session/otp_code +
-// app_user.password_hash). pickFiles globs by prefix, so 06 is picked up by the
-// migrate set automatically and 05 simply no longer exists to apply.
+// app_user.password_hash). 07_phase2.sql adds the COD-reconciliation batch-state
+// columns to cod_remittance (status/processed_at/unmatched_count). pickFiles
+// globs by prefix, so 06 and 07 are picked up by the migrate set automatically
+// (in lexical order, after 04) and 05 simply no longer exists to apply.
 //
 // docker-compose also auto-applies the same files on first boot via
 // /docker-entrypoint-initdb.d; this script is the explicit/CI path and is safe
@@ -45,7 +48,7 @@ async function applyFile(filename: string): Promise<void> {
   console.warn(`[migrate] applied ${filename}`);
 }
 
-// Select files by lexical prefix. migrate -> 00,01,02,04 ; seed -> 03.
+// Select files by lexical prefix. migrate -> 00,01,02,04,06,07 ; seed -> 03.
 async function pickFiles(mode: "migrate" | "seed"): Promise<string[]> {
   const all = (await readdir(SQL_DIR)).filter((f) => f.endsWith(".sql")).sort();
   if (mode === "seed") return all.filter((f) => f.startsWith("03_"));

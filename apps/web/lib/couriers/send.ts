@@ -6,8 +6,12 @@
 // harness without the Next request context.
 import { withTenant } from "@hybrid/db";
 import type { Tx } from "@hybrid/db";
-import type { CourierAdapter, CourierCreds } from "@hybrid/couriers";
+import type { CourierAdapter, CourierCreds, ConsignmentInput } from "@hybrid/couriers";
 import { CourierNotConfiguredError } from "./steadfast";
+
+// Providers persisted on shipment.provider (courier_provider enum). The dispatch
+// layer chooses the adapter + creds reader per provider; the INSERT records which.
+export type ShipmentProvider = "steadfast" | "pathao";
 
 export interface CourierActionResult {
   ok: boolean;
@@ -91,13 +95,23 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+// Optional per-send geography override (Pathao needs city/zone/area IDs; the
+// Send-to-Courier form may override the tenant's stored default). Steadfast
+// ignores it. Kept optional so existing Steadfast callers are unaffected.
+export interface SendOptions {
+  providerName?: ShipmentProvider; // shipment.provider value; defaults to 'steadfast'
+  courierArea?: ConsignmentInput["courierArea"];
+}
+
 export async function sendToCourierCore(
   tenantId: string,
   userId: string | null,
   orderId: string,
   provider: CourierAdapter,
   readCreds: (tx: Tx) => Promise<CourierCreds | null>,
+  options: SendOptions = {},
 ): Promise<CourierActionResult> {
+  const providerName: ShipmentProvider = options.providerName ?? "steadfast";
   try {
     const result = await withTenant(tenantId, userId, async (tx) => {
       const order = await readOrderForShipment(tx, orderId);
@@ -110,7 +124,8 @@ export async function sendToCourierCore(
       const creds = await readCreds(tx);
       if (!creds) throw new CourierNotConfiguredError();
 
-      // Live network call. Steadfast invoice = the human order number.
+      // Live network call. invoice = the human order number. Pathao additionally
+      // consumes courierArea (Steadfast ignores it).
       const consignment = await provider.createConsignment(
         {
           invoice: String(order.orderNumber),
@@ -119,6 +134,7 @@ export async function sendToCourierCore(
           recipient_address: order.recipientAddress,
           cod_amount: order.codAmount,
           note: order.note ?? "",
+          courierArea: options.courierArea,
         },
         creds,
       );
@@ -130,7 +146,7 @@ export async function sendToCourierCore(
           tenant_id, order_id, provider, consignment_id, tracking_code,
           status, cod_amount, cod_status
         ) values (
-          ${tenantId}, ${orderId}, 'steadfast',
+          ${tenantId}, ${orderId}, ${providerName}::courier_provider,
           ${consignment.consignmentId}, ${consignment.trackingCode},
           'created', ${order.codAmount}, 'pending'
         )
@@ -168,4 +184,50 @@ export async function sendToCourierCore(
     console.error("[sendToCourier] failed", error);
     return { ok: false, error: "কুরিয়ারে পাঠানো ব্যর্থ হয়েছে।" };
   }
+}
+
+// Multi-courier dispatch (blueprint S-PATHAO-WIRE). Picks the tenant's ENABLED
+// courier and returns the adapter + a creds reader + the provider name to record
+// on the shipment. Steadfast is the default/fallback so existing single-courier
+// tenants are unchanged. When both are enabled, an explicit `prefer` wins; else
+// the order below applies (Steadfast first — it was Phase-1's only courier).
+//
+// The adapter constructors + creds readers are INJECTED so this stays testable
+// (the integration suite passes stubbed providers) and free of the Redis/Next
+// request context that the real pathao.ts/steadfast.ts modules carry.
+export interface CourierBinding {
+  providerName: ShipmentProvider;
+  adapter: CourierAdapter;
+  readCreds: (tx: Tx) => Promise<CourierCreds | null>;
+}
+
+export interface DispatchProviders {
+  steadfast: () => CourierBinding;
+  pathao: () => CourierBinding;
+}
+
+// Read which provider is enabled for the tenant (courier_account.is_enabled).
+// Returns the chosen binding, or null when no courier is configured.
+export async function resolveCourierBinding(
+  tenantId: string,
+  userId: string | null,
+  providers: DispatchProviders,
+  prefer?: ShipmentProvider,
+): Promise<CourierBinding | null> {
+  const enabled = await withTenant(tenantId, userId, (tx) =>
+    tx<{ provider: string }[]>`
+      select provider from courier_account
+      where is_enabled = true and provider in ('steadfast', 'pathao')
+    `,
+  );
+  const names = new Set(enabled.map((r) => r.provider));
+  if (names.size === 0) return null;
+
+  if (prefer && names.has(prefer)) {
+    return prefer === "pathao" ? providers.pathao() : providers.steadfast();
+  }
+  // Deterministic default order: Steadfast, then Pathao.
+  if (names.has("steadfast")) return providers.steadfast();
+  if (names.has("pathao")) return providers.pathao();
+  return null;
 }

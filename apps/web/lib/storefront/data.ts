@@ -14,6 +14,8 @@
 import { unstable_cache } from "next/cache";
 import { asPlatformAdmin, withTenant } from "@hybrid/db";
 import type { StorefrontProduct, StoreIdentity } from "@hybrid/ui";
+import { coerceSettings } from "@/lib/theme/data";
+import type { ThemeSettings } from "@/lib/theme/schema";
 
 export interface StorefrontTheme {
   /** Tenant primary/accent (hex) → inline CSS vars on storefront <html>. */
@@ -27,11 +29,8 @@ export interface TenantContext {
   name: string;
   theme: StorefrontTheme;
   store: StoreIdentity;
-}
-
-interface ThemeSettings {
-  colors?: { primary?: string; accent?: string };
-  storeName?: string;
+  /** Full validated customizer settings (colors/typography/content/sections). */
+  settings: ThemeSettings;
 }
 
 interface TenantSettings {
@@ -83,7 +82,7 @@ export async function getTenantContextBySlug(
             slug: string;
             name: string;
             settings: TenantSettings;
-            theme_settings: ThemeSettings | null;
+            theme_settings: unknown;
           }[]
         >`
           select
@@ -107,20 +106,25 @@ export async function getTenantContextBySlug(
       const row = rows[0];
       if (!row) return null;
 
-      const themeColors = row.theme_settings?.colors ?? {};
+      // Heal the raw JSON (legacy partial rows, missing keys) into the full
+      // validated settings so the storefront always renders from a complete,
+      // schema-checked object (colors/typography/content/sections).
+      const settings = coerceSettings(row.theme_settings);
+      const storeName = settings.content.storeName || row.name;
       return {
         id: row.id,
         slug: row.slug,
-        name: row.theme_settings?.storeName ?? row.name,
+        name: storeName,
         theme: {
-          primary: themeColors.primary ?? DEFAULT_THEME.primary,
-          accent: themeColors.accent ?? DEFAULT_THEME.accent,
+          primary: settings.colors.primary ?? DEFAULT_THEME.primary,
+          accent: settings.colors.accent ?? DEFAULT_THEME.accent,
         },
         store: {
-          name: row.theme_settings?.storeName ?? row.name,
+          name: storeName,
           phone: row.settings?.contact?.phone ?? null,
           facebookUrl: row.settings?.social?.facebook ?? null,
         },
+        settings,
       } satisfies TenantContext;
     },
     [`tenant-ctx:${tenantId}`],
@@ -131,6 +135,79 @@ export async function getTenantContextBySlug(
         `tenant:${tenantId}:theme`,
         `tenant-slug:${slug}`,
       ],
+    },
+  )();
+}
+
+// Admin-gated DRAFT preview (DESIGN §Q1.4 / brief §2.3). Returns the tenant's
+// in-progress draft settings so the customizer's ?preview=1 storefront shows
+// unpublished edits. SECURITY: this is NEVER public — the caller MUST have
+// already proven an admin session that owns this tenant (the storefront page
+// does getSession() + getActiveTenantId and only then calls this). We re-assert
+// ownership by reading under withTenant(tenantId, userId) (RLS): a session that
+// doesn't own the tenant gets no rows. NOT cached — drafts change as the seller
+// edits; preview must always be fresh. Falls back to the published context's
+// settings if no draft exists yet.
+export async function getDraftTenantContext(
+  slug: string,
+  tenantId: string,
+  userId: string,
+): Promise<TenantContext | null> {
+  const published = await getTenantContextBySlug(slug);
+  if (!published || published.id !== tenantId) return null;
+
+  const draft = await withTenant(tenantId, userId, async (tx) => {
+    const rows = await tx<{ settings: unknown }[]>`
+      select settings from tenant_theme_settings
+       where is_active = false
+       order by updated_at desc limit 1
+    `;
+    return rows[0]?.settings ?? null;
+  });
+  if (draft == null) return published;
+
+  const settings = coerceSettings(draft);
+  const storeName = settings.content.storeName || published.name;
+  return {
+    ...published,
+    name: storeName,
+    theme: {
+      primary: settings.colors.primary ?? DEFAULT_THEME.primary,
+      accent: settings.colors.accent ?? DEFAULT_THEME.accent,
+    },
+    store: { ...published.store, name: storeName },
+    settings,
+  } satisfies TenantContext;
+}
+
+export interface StorefrontCollection {
+  id: string;
+  title: string;
+  slug: string;
+}
+
+// Active collections for the storefront collections_grid section (DESIGN §Q1.3).
+// Cached + tagged tenant:{id}:collections so an admin collection edit busts it.
+export async function getStorefrontCollections(
+  tenantId: string,
+): Promise<StorefrontCollection[]> {
+  return unstable_cache(
+    async () => {
+      const rows = await withTenant(tenantId, null, (tx) =>
+        tx<{ id: string; title: string; slug: string }[]>`
+          select id, title, slug
+            from collection
+           where is_active = true
+           order by sort_order asc, created_at desc
+           limit 12
+        `,
+      );
+      return rows.map((r) => ({ id: r.id, title: r.title, slug: r.slug }));
+    },
+    [`collections:${tenantId}`],
+    {
+      revalidate: 3600,
+      tags: [`tenant:${tenantId}`, `tenant:${tenantId}:collections`],
     },
   )();
 }

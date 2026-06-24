@@ -8,10 +8,12 @@ interface StorefrontLayoutProps {
   params: Promise<{ tenant: string }>;
 }
 
-// Storefront shell (blueprint §7). Loads the tenant + active theme settings and
-// applies the tenant accent per-request as inline CSS variables on a wrapper —
-// `bg-primary`, `text-primary`, focus ring, etc. all track the active tenant
-// (Store A indigo #1D4ED8, Store B crimson #DC2626) without per-component props.
+// Storefront shell (blueprint §7). Loads the tenant + published theme settings
+// and applies the seller's full palette per-request as inline CSS variables on a
+// wrapper — `bg-primary`, `text`, surfaces and background all track the active
+// tenant's customizer colors without per-component props. (The draft-preview
+// palette swap happens in page.tsx, which re-applies its own vars on the home
+// route; the shell uses the published palette as the stable chrome.)
 export default async function StorefrontLayout({
   children,
   params,
@@ -20,11 +22,15 @@ export default async function StorefrontLayout({
   const ctx = await getTenantContextBySlug(slug);
   if (!ctx) notFound();
 
+  const c = ctx.settings.colors;
   // Override the brand vars the design tokens read from. Everything downstream
-  // (buttons, links, focus, hero panel) inherits these.
+  // (buttons, links, focus, hero panel, surfaces) inherits these.
   const themeStyle = {
-    "--color-primary": ctx.theme.primary,
-    "--color-accent": ctx.theme.accent,
+    "--color-primary": c.primary,
+    "--color-accent": c.accent,
+    "--color-bg": c.background,
+    "--color-surface": c.surface,
+    "--color-text": c.text,
   } as React.CSSProperties;
 
   return (

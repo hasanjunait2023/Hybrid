@@ -14,7 +14,12 @@
 //      { ok, bkashURL } for the client to open the popup.
 import { z } from "zod";
 import { withTenant, asPlatformAdmin } from "@hybrid/db";
-import { placeOrder, InsufficientStockError } from "@/lib/commerce/placeOrder";
+import {
+  placeOrder,
+  InsufficientStockError,
+  DiscountError,
+  type DiscountErrorReason,
+} from "@/lib/commerce/placeOrder";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
 import { getEnabledBkash } from "@/lib/payments/bkash";
 import { toJsonRecord } from "@/lib/payments/json";
@@ -36,6 +41,9 @@ const checkoutSchema = z.object({
   addressLine: z.string().min(1).max(300),
   paymentMethod: z.enum(["cod", "bkash"]),
   note: z.string().max(500).optional(),
+  // Optional promo code (Phase 2.4). The client sends ONLY the code; placeOrder
+  // re-validates and computes the amount server-side under a row lock.
+  discountCode: z.string().trim().max(40).optional(),
   items: z.array(itemSchema).min(1).max(50),
   // NOTE: the bKash callbackURL is derived SERVER-SIDE from the tenant's
   // verified primary domain + request scheme — never from a client-supplied
@@ -50,10 +58,31 @@ const CHECKOUT_WINDOW_SECONDS = 10 * 60; // 10 minutes
 
 export type SubmitCheckoutInput = z.infer<typeof checkoutSchema>;
 
+/** Discount applied to the placed order, surfaced to the client for the receipt. */
+export interface SubmitCheckoutDiscount {
+  code: string;
+  amount: number;
+}
+
 export type SubmitCheckoutResult =
-  | { ok: true; method: "cod"; orderNumber: number }
-  | { ok: true; method: "bkash"; bkashURL: string; orderNumber: number }
+  | { ok: true; method: "cod"; orderNumber: number; discount: SubmitCheckoutDiscount | null }
+  | {
+      ok: true;
+      method: "bkash";
+      bkashURL: string;
+      orderNumber: number;
+      discount: SubmitCheckoutDiscount | null;
+    }
   | { ok: false; error: string };
+
+// Map a discount rejection to a friendly Bengali message. The order is NOT
+// created when the code is invalid — the buyer fixes/removes it and resubmits.
+const DISCOUNT_MESSAGES: Record<DiscountErrorReason, string> = {
+  DISCOUNT_INVALID: "প্রোমো কোডটি সঠিক নয় বা মেয়াদ শেষ।",
+  DISCOUNT_BELOW_MINIMUM: "এই কোড ব্যবহারে কার্টের মূল্য যথেষ্ট নয়।",
+  DISCOUNT_USAGE_LIMIT: "এই কোড আপনি আগে ব্যবহার করেছেন।",
+  DISCOUNT_NOT_APPLICABLE: "এই কোড আপনার কার্টের পণ্যে প্রযোজ্য নয়।",
+};
 
 // Normalize a BD phone to Latin digits (DESIGN §4.4 — accept Bangla or Latin).
 const BN_TO_LATIN: Record<string, string> = {
@@ -114,10 +143,14 @@ export async function submitCheckout(
       paymentMethod: input.paymentMethod,
       note: input.note ?? null,
       source: "storefront",
+      discountCode: input.discountCode ?? null,
     });
   } catch (error) {
     if (error instanceof InsufficientStockError) {
       return { ok: false, error: "দুঃখিত, একটি পণ্যের স্টক শেষ হয়ে গেছে।" };
+    }
+    if (error instanceof DiscountError) {
+      return { ok: false, error: DISCOUNT_MESSAGES[error.reason] };
     }
     if (error instanceof Error && error.message === "EMPTY_ORDER") {
       return { ok: false, error: "আপনার কার্ট খালি।" };
@@ -141,7 +174,12 @@ export async function submitCheckout(
       customerPhone: phone,
       sellerPhone: ctx.store.phone ?? null,
     });
-    return { ok: true, method: "cod", orderNumber: placed.orderNumber };
+    return {
+      ok: true,
+      method: "cod",
+      orderNumber: placed.orderNumber,
+      discount: placed.discount,
+    };
   }
 
   // bKash: kick off the tokenized create. The payment row exists (status
@@ -200,6 +238,7 @@ export async function submitCheckout(
     method: "bkash",
     bkashURL: created.redirectUrl,
     orderNumber: placed.orderNumber,
+    discount: placed.discount,
   };
 }
 

@@ -37,6 +37,7 @@ export function CheckoutForm({
   const [method, setMethod] = useState<Method>("cod");
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +75,7 @@ export function CheckoutForm({
       addressLine: addressLine.trim(),
       paymentMethod: method,
       note: note.trim() || undefined,
+      discountCode: promoCode.trim() || undefined,
       items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
     });
 
@@ -230,6 +232,20 @@ export function CheckoutForm({
             ✎ অর্ডার নোট যোগ করুন
           </button>
         )}
+
+        {/* Promo code — optional. Server validates + applies on submit; no
+            client-side preview (avoids a pre-check race with usage limits). */}
+        <Field label="প্রোমো কোড (ঐচ্ছিক)">
+          <input
+            type="text"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            placeholder="কোড থাকলে লিখুন"
+            autoCapitalize="characters"
+            autoComplete="off"
+            className="h-11 rounded-sm border border-border-strong bg-surface px-3 text-base uppercase text-ink placeholder:normal-case placeholder:text-ink-subtle"
+          />
+        </Field>
 
         {/* Order summary. */}
         <OrderSummary

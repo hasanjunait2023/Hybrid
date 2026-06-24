@@ -15,11 +15,17 @@ import { revalidateTag } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getSteadfastProvider, readSteadfastCreds } from "@/lib/couriers/steadfast";
-import { sendToCourierCore, type CourierActionResult } from "@/lib/couriers/send";
+import { getPathaoProvider, readPathaoCreds } from "@/lib/couriers/pathao";
+import {
+  sendToCourierCore,
+  resolveCourierBinding,
+  type CourierActionResult,
+} from "@/lib/couriers/send";
 
 export type { CourierActionResult } from "@/lib/couriers/send";
 
 const OrderId = z.string().uuid();
+const Provider = z.enum(["steadfast", "pathao"]).optional();
 
 export async function sendToCourier(
   _prev: CourierActionResult | null,
@@ -34,12 +40,40 @@ export async function sendToCourier(
   if (!parsed.success) return { ok: false, error: "অবৈধ অনুরোধ।" };
   const orderId = parsed.data;
 
+  const preferParsed = Provider.safeParse(formData.get("provider") || undefined);
+  const prefer = preferParsed.success ? preferParsed.data : undefined;
+
+  // Multi-courier dispatch: pick the tenant's enabled courier (Steadfast or
+  // Pathao). The Pathao provider is bound to this tenant's Redis token cache.
+  const binding = await resolveCourierBinding(
+    tenantId,
+    session.userId,
+    {
+      steadfast: () => ({
+        providerName: "steadfast",
+        adapter: getSteadfastProvider(),
+        readCreds: readSteadfastCreds,
+      }),
+      pathao: () => ({
+        providerName: "pathao",
+        adapter: getPathaoProvider(tenantId),
+        readCreds: readPathaoCreds,
+      }),
+    },
+    prefer,
+  );
+
+  if (!binding) {
+    return { ok: false, error: "প্রথমে সেটিংসে কুরিয়ার সংযোগ করুন।" };
+  }
+
   const result = await sendToCourierCore(
     tenantId,
     session.userId,
     orderId,
-    getSteadfastProvider(),
-    readSteadfastCreds,
+    binding.adapter,
+    binding.readCreds,
+    { providerName: binding.providerName },
   );
 
   if (result.ok) {

@@ -1,20 +1,36 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
-import { getPaymentSettings } from "@/lib/admin/settings";
+import {
+  getPaymentSettings,
+  getNagadSettings,
+  getSslcommerzSettings,
+} from "@/lib/admin/settings";
+import { getProviderCallbackUrl } from "@/lib/domains/callbackUrl";
 import { BkashForm } from "./BkashForm";
+import { NagadForm } from "./NagadForm";
+import { SslcommerzForm } from "./SslcommerzForm";
 import { CodForm } from "./CodForm";
 
-// Payment settings (DESIGN §P6). COD (market default) + bKash Tokenized Checkout.
-// Secrets are write-masked — the page renders only "configured" + a masked tail,
-// never the raw key.
+// Payment settings (DESIGN §Q4). COD (market default) + bKash + Nagad +
+// SSLCommerz, each on the shared <ProviderCard>. Secrets are write-masked.
+// Nagad/SSLCommerz callback/IPN URLs are SERVER-DERIVED from the verified domain
+// (never client-supplied) and shown as copy-able — the silent-failure guard.
 export default async function PaymentSettingsPage() {
   const session = await getSession();
   if (!session) redirect("/dev-login?as=owner-a");
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
+  const userId = session.userId;
 
-  const settings = await getPaymentSettings(tenantId, session.userId);
+  const [payment, nagad, sslcommerz, bkashCb, nagadCb, sslIpn] = await Promise.all([
+    getPaymentSettings(tenantId, userId),
+    getNagadSettings(tenantId, userId),
+    getSslcommerzSettings(tenantId, userId),
+    getProviderCallbackUrl(tenantId, userId, "bkash"),
+    getProviderCallbackUrl(tenantId, userId, "nagad"),
+    getProviderCallbackUrl(tenantId, userId, "sslcommerz"),
+  ]);
 
   return (
     <div lang="en" className="max-w-xl space-y-5">
@@ -23,8 +39,10 @@ export default async function PaymentSettingsPage() {
       </a>
       <h1 className="text-xl font-bold text-ink">পেমেন্ট</h1>
 
-      <CodForm enabled={settings.cod.enabled} />
-      <BkashForm settings={settings.bkash} />
+      <CodForm enabled={payment.cod.enabled} />
+      <BkashForm settings={payment.bkash} callbackUrl={bkashCb} />
+      <NagadForm settings={nagad} callbackUrl={nagadCb} />
+      <SslcommerzForm settings={sslcommerz} ipnUrl={sslIpn} />
     </div>
   );
 }

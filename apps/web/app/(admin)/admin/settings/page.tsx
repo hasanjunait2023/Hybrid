@@ -6,8 +6,10 @@ import { getActiveTenantId } from "@/lib/admin/data";
 // concerns (payments / courier / store) each get their own page. Operator-facing,
 // calm, one section per concern.
 const SECTIONS = [
-  { href: "/admin/settings/payments", bn: "পেমেন্ট", sub: "বিকাশ ও ক্যাশ অন ডেলিভারি" },
-  { href: "/admin/settings/courier", bn: "কুরিয়ার", sub: "Steadfast সংযোগ" },
+  { href: "/admin/settings/payments", bn: "পেমেন্ট", sub: "বিকাশ, নগদ, SSLCommerz, COD" },
+  { href: "/admin/settings/courier", bn: "কুরিয়ার", sub: "Steadfast, Pathao" },
+  { href: "/admin/settings/notifications", bn: "নোটিফিকেশন", sub: "SMS সংযোগ" },
+  { href: "/admin/settings/domains", bn: "কাস্টম ডোমেইন", sub: "নিজের ডোমেইন যোগ করুন" },
   { href: "/admin/settings/store", bn: "স্টোর প্রোফাইল", sub: "নাম, ফোন, ঠিকানা, পলিসি" },
 ];
 

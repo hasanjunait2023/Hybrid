@@ -132,6 +132,137 @@ export async function saveBkash(
   return { ok: true };
 }
 
+// ---- Nagad -----------------------------------------------------------------
+// Per-merchant RSA (NOT OAuth): merchantId + merchant_private_key (PEM) +
+// nagad_public_key. The PEM is multi-line — sealed AES-256-GCM, never echoed.
+const NagadInput = z.object({
+  enabled: z.coerce.boolean().default(false),
+  mode: z.enum(["sandbox", "live"]).default("sandbox"),
+  merchantId: z.string().trim().max(100).optional().default(""),
+  merchantPrivateKey: z.string().trim().max(4000).optional().default(""),
+  nagadPublicKey: z.string().trim().max(4000).optional().default(""),
+});
+
+export async function saveNagad(
+  _prev: SettingsResult | null,
+  formData: FormData,
+): Promise<SettingsResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return auth;
+
+  const parsed = NagadInput.safeParse({
+    enabled: formData.get("enabled") === "on" || formData.get("enabled") === "true",
+    mode: formData.get("mode") ?? "sandbox",
+    merchantId: formData.get("merchantId") ?? "",
+    merchantPrivateKey: formData.get("merchantPrivateKey") ?? "",
+    nagadPublicKey: formData.get("nagadPublicKey") ?? "",
+  });
+  if (!parsed.success) return { ok: false, error: "ইনপুট ভুল।" };
+  const input = parsed.data;
+
+  try {
+    await withTenant(auth.tenantId, auth.userId, async (tx) => {
+      const existing = await tx<{ credentials: unknown }[]>`
+        select credentials from payment_account where provider = 'nagad' limit 1
+      `;
+      const prev = readSealed(existing[0]?.credentials);
+      const merged = {
+        mode: input.mode,
+        merchantId: input.merchantId || prev.merchantId || "",
+        merchantPrivateKey: input.merchantPrivateKey || prev.merchantPrivateKey || "",
+        nagadPublicKey: input.nagadPublicKey || prev.nagadPublicKey || "",
+      };
+      if (
+        input.enabled &&
+        (!merged.merchantId || !merged.merchantPrivateKey || !merged.nagadPublicKey)
+      ) {
+        throw new Error("INCOMPLETE_NAGAD");
+      }
+      const sealed = sealCredentials(merged);
+      await tx`
+        insert into payment_account (tenant_id, provider, is_enabled, credentials)
+        values (${auth.tenantId}, 'nagad', ${input.enabled}, ${tx.json(sealed as unknown as Jsonb)})
+        on conflict (tenant_id, provider) do update
+          set is_enabled = ${input.enabled},
+              credentials = ${tx.json(sealed as unknown as Jsonb)},
+              updated_at = now()
+      `;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INCOMPLETE_NAGAD") {
+      return {
+        ok: false,
+        error: "নগদ চালু করতে merchant_id, merchant_private_key, nagad_public_key দিন।",
+      };
+    }
+    console.error("[saveNagad] failed", error);
+    return { ok: false, error: "সেভ ব্যর্থ হয়েছে।" };
+  }
+
+  bustSettings(auth.tenantId);
+  return { ok: true };
+}
+
+// ---- SSLCommerz ------------------------------------------------------------
+const SslcommerzInput = z.object({
+  enabled: z.coerce.boolean().default(false),
+  mode: z.enum(["sandbox", "live"]).default("sandbox"),
+  storeId: z.string().trim().max(100).optional().default(""),
+  storePassword: z.string().trim().max(200).optional().default(""),
+});
+
+export async function saveSslcommerz(
+  _prev: SettingsResult | null,
+  formData: FormData,
+): Promise<SettingsResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return auth;
+
+  const parsed = SslcommerzInput.safeParse({
+    enabled: formData.get("enabled") === "on" || formData.get("enabled") === "true",
+    mode: formData.get("mode") ?? "sandbox",
+    storeId: formData.get("storeId") ?? "",
+    storePassword: formData.get("storePassword") ?? "",
+  });
+  if (!parsed.success) return { ok: false, error: "ইনপুট ভুল।" };
+  const input = parsed.data;
+
+  try {
+    await withTenant(auth.tenantId, auth.userId, async (tx) => {
+      const existing = await tx<{ credentials: unknown }[]>`
+        select credentials from payment_account where provider = 'sslcommerz' limit 1
+      `;
+      const prev = readSealed(existing[0]?.credentials);
+      const merged = {
+        mode: input.mode,
+        storeId: input.storeId || prev.storeId || "",
+        storePassword: input.storePassword || prev.storePassword || "",
+      };
+      if (input.enabled && (!merged.storeId || !merged.storePassword)) {
+        throw new Error("INCOMPLETE_SSL");
+      }
+      const sealed = sealCredentials(merged);
+      await tx`
+        insert into payment_account (tenant_id, provider, is_enabled, credentials)
+        values (${auth.tenantId}, 'sslcommerz', ${input.enabled}, ${tx.json(sealed as unknown as Jsonb)})
+        on conflict (tenant_id, provider) do update
+          set is_enabled = ${input.enabled},
+              credentials = ${tx.json(sealed as unknown as Jsonb)},
+              updated_at = now()
+      `;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INCOMPLETE_SSL") {
+      return { ok: false, error: "SSLCommerz চালু করতে store_id এবং store_password দিন।" };
+    }
+    console.error("[saveSslcommerz] failed", error);
+    return { ok: false, error: "সেভ ব্যর্থ হয়েছে।" };
+  }
+
+  bustSettings(auth.tenantId);
+  return { ok: true };
+}
+
 // ---- COD -------------------------------------------------------------------
 const CodInput = z.object({ enabled: z.coerce.boolean() });
 
