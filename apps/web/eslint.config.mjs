@@ -4,7 +4,9 @@ import { next } from "@hybrid/config/eslint/next";
 
 export default [
   {
-    ignores: [".next/**", "next-env.d.ts"],
+    // cache-handler.cjs is a CommonJS file (Next.js runs it in a CJS context);
+    // ESLint's ESM-based flat config cannot parse it as a module.
+    ignores: [".next/**", "next-env.d.ts", "cache-handler.cjs"],
   },
   ...next,
 ];
