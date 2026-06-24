@@ -3,10 +3,11 @@
 //
 // A new seller signing up gets a live store in ONE atomic platform-admin
 // transaction: tenant + its subdomain + the owner membership + a trialing
-// subscription. The Wave-3 marketing signup slice creates the app_user (via
-// createAppUser, dev path) and then calls provisionTenant. Under the Supabase
-// provider the app_user already exists (created by the on_auth_user_created
-// trigger), so signup calls provisionTenant directly.
+// subscription. Signup first creates the app_user row (the identity), then mints
+// the matching GoTrue user under the live supabase provider, then calls
+// provisionTenant with that app_user.id. (The earlier on_auth_user_created DB
+// trigger / 05_auth.sql was dropped — app_user is created explicitly by the
+// signup flow, not by a GoTrue insert trigger.)
 //
 // Runs via asPlatformAdmin (NOT withTenant): at provisioning time the tenant
 // does not exist yet, and these are platform-level inserts across the tenant /

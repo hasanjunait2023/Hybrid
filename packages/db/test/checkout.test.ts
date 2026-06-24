@@ -221,9 +221,13 @@ describe("bKash callback — replay idempotency (webhook_event guard)", () => {
           ${TENANT_A}, 'Bkash Buyer', ${BKASH_PHONE}, ${tx.json({ division: "Dhaka" })},
           750, 750, 0, 'BDT', 'unpaid', 'pending', 'storefront'
         ) returning id`;
+      // Seed payload.analytics.eventId exactly as placeOrder does — the success
+      // page reads it to dedup the purchase event. The callback must MERGE, not
+      // clobber, so this key survives the success write.
       await tx`
-        insert into payment (tenant_id, order_id, provider, status, amount, provider_ref)
-        values (${TENANT_A}, ${order[0]!.id}, 'bkash', 'pending', 750, ${GATEWAY_PAYMENT_ID})`;
+        insert into payment (tenant_id, order_id, provider, status, amount, provider_ref, payload)
+        values (${TENANT_A}, ${order[0]!.id}, 'bkash', 'pending', 750, ${GATEWAY_PAYMENT_ID},
+                ${tx.json({ analytics: { eventId: "evt-survives-001" } })})`;
     });
   });
 
@@ -256,8 +260,8 @@ describe("bKash callback — replay idempotency (webhook_event guard)", () => {
          where provider = 'bkash' and external_id = ${GATEWAY_PAYMENT_ID}`;
       const order = await tx<{ payment_status: string }[]>`
         select payment_status from orders where customer_phone = ${BKASH_PHONE}`;
-      const payment = await tx<{ status: string; transaction_id: string | null }[]>`
-        select p.status, p.transaction_id
+      const payment = await tx<{ status: string; transaction_id: string | null; payload: { analytics?: { eventId?: string } } | null }[]>`
+        select p.status, p.transaction_id, p.payload
           from payment p join orders o on o.id = p.order_id
          where o.customer_phone = ${BKASH_PHONE}`;
       return { events, order, payment };
@@ -267,6 +271,9 @@ describe("bKash callback — replay idempotency (webhook_event guard)", () => {
     expect(state.order[0]!.payment_status).toBe("paid");
     expect(state.payment[0]!.status).toBe("success");
     expect(state.payment[0]!.transaction_id).toBe("TRX-STUB-001");
+    // The success write MERGED into payload — analytics.eventId survived (would be
+    // dropped by a clobbering `payload = {...}` set, killing purchase analytics).
+    expect(state.payment[0]!.payload?.analytics?.eventId).toBe("evt-survives-001");
 
     // execute was called on BOTH callbacks (the guard is at the DB write, not the
     // provider call) — but the STATE TRANSITION happened once. The second call's

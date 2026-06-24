@@ -5,14 +5,21 @@
 // membership (never from the client), so a caller can only ever write into their
 // own tenant's uploads dir. Returns { url } for the client to append to the
 // product's image list (the reorder/save Server Action persists it).
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/session";
+import { requireSameOrigin } from "@/lib/auth/csrf";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getBlobStore, BlobValidationError } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  // CSRF: this is a cookie-authed, state-changing POST. Route Handlers don't get
+  // Next's automatic Server-Action Origin check, so verify same-origin explicitly
+  // (same guard every /api/auth/* route uses). Returns 403 on mismatch.
+  const badOrigin = requireSameOrigin(request);
+  if (badOrigin) return badOrigin;
+
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "লগইন প্রয়োজন।" }, { status: 401 });

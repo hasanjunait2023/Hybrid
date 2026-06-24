@@ -94,13 +94,14 @@ export async function signupAction(
     throw new Error("dev signup is disabled in production");
   }
 
-  // Per-IP abuse dampener before any DB write. Fails open on a Redis outage.
+  // Per-IP abuse dampener before any DB write. Auth bucket: fails CLOSED on a Redis outage.
   const ip = clientIpFrom(await requestHeaders());
   const rl = await rateLimit({
     bucket: "signup",
     identifier: ip,
     limit: SIGNUP_MAX_PER_WINDOW,
     windowSeconds: SIGNUP_WINDOW_SECONDS,
+    failClosed: true,
   });
   if (!rl.allowed) {
     return {

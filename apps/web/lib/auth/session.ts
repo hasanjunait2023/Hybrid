@@ -1,14 +1,18 @@
-// Auth seam. Two providers sit behind ONE getSession() signature, selected by
+// Auth seam. Three providers sit behind ONE getSession() signature, selected by
 // the AUTH_PROVIDER env var:
 //
-//   AUTH_PROVIDER=dev      (DEFAULT) — HMAC-signed dev-login cookie. Local-first;
-//                                      needs NO external services. UNCHANGED.
-//   AUTH_PROVIDER=password           — own auth (SHIFT 1). Opaque DB-backed
-//                                      session token in user_session, SHA-256
-//                                      hashed at rest. Production default.
+//   AUTH_PROVIDER=dev      (local default) — HMAC-signed dev-login cookie.
+//                                      Local-first; needs NO external services.
+//                                      Production-gated (returns null in prod).
+//   AUTH_PROVIDER=password           — own auth. Opaque DB-backed session token in
+//                                      user_session, SHA-256 hashed at rest.
+//   AUTH_PROVIDER=supabase (LIVE production) — Supabase GoTrue is the credential
+//                                      authority; login verifies against GoTrue
+//                                      then mints the SAME opaque hybrid_session.
 //
-// Callers stay identical: both return Session{userId, tenantId}. The Supabase
-// branch was REMOVED in Phase 2 (own auth replaces it).
+// Session *reading* is identical for password and supabase (both resolve the
+// opaque hybrid_session via user_session); only the login/credential step differs.
+// Callers stay identical: all return Session{userId, tenantId}.
 //
 // Dev cookie format: "<userId>.<hmac>" where hmac = HMAC-SHA256(userId, secret).
 // We RECOMPUTE the HMAC and constant-time compare before trusting the userId —
@@ -219,7 +223,7 @@ async function resolveActiveTenantId(userId: string): Promise<string | null> {
     tx<{ tenant_id: string }[]>`
       select tenant_id
         from tenant_member
-       where user_id = ${userId}
+       where user_id = ${userId} and accepted_at is not null
        order by case role when 'owner' then 0 when 'admin' then 1 else 2 end,
                 created_at asc
        limit 1

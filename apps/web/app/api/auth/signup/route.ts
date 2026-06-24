@@ -87,13 +87,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const email = emailParsed.success ? emailParsed.data : "";
   const password = passwordParsed.success ? passwordParsed.data : "";
 
-  // --- Abuse dampener (per-IP), fails open on a Redis outage ---
+  // --- Abuse dampener (per-IP). Auth bucket: fails CLOSED on a Redis outage ---
   const ip = clientIpFrom(req.headers);
   const rl = await rateLimit({
     bucket: "signup",
     identifier: ip,
     limit: SIGNUP_MAX_PER_WINDOW,
     windowSeconds: SIGNUP_WINDOW_SECONDS,
+    failClosed: true,
   });
   if (!rl.allowed) return fail({ form: RATE_LIMITED_BN }, 429);
 

@@ -7,10 +7,33 @@ app.hybrid.ecomex.cloud,
 store-a.hybrid.ecomex.cloud,
 store-b.hybrid.ecomex.cloud {
 	encode zstd gzip
+
+	# Baseline security headers on every app response. A full CSP is deferred
+	# (the app ships inline styles; a nonce-based CSP is a follow-up) — these four
+	# are safe to add now and cover transport, clickjacking, MIME sniffing, and
+	# referrer leakage.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
 	reverse_proxy web:3000
 }
 
+# Public CDN for product/media objects only. The MinIO S3 API exposes bucket
+# listing, PUT/DELETE, and admin endpoints on the same port — so we DON'T forward
+# everything. Only GET/HEAD reads under the public media bucket path reach MinIO;
+# anything else (other buckets, writes, S3 admin, listing) gets a flat 403.
 cdn.hybrid.ecomex.cloud {
 	encode zstd gzip
-	reverse_proxy supabase-minio:9000
+
+	@ok {
+		method GET HEAD
+		path /hybrid-media/*
+	}
+	reverse_proxy @ok supabase-minio:9000
+
+	respond 403
 }

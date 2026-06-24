@@ -68,6 +68,7 @@ export async function issueOtp(
     identifier: target,
     limit: ISSUE_LIMIT,
     windowSeconds: ISSUE_WINDOW_SECONDS,
+    failClosed: true, // auth bucket: reject on a limiter outage.
   });
   if (!rl.allowed) return { ok: false };
 

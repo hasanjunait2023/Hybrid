@@ -5,9 +5,11 @@
 // Design notes:
 //   * Fixed window (INCR + EX on first hit) — cheap, atomic enough for abuse
 //     control. Not a precise sliding window; that's intentional (KISS).
-//   * FAIL-OPEN: if Redis is down we must NOT block real users on an outage, so
-//     a cache error is logged once and treated as "allowed". The DB / business
-//     logic remains the real guard; this is a front-line dampener only.
+//   * Failure mode is per-bucket. Non-auth buckets (e.g. "checkout") FAIL OPEN:
+//     a Redis outage must not block real shoppers; the DB / business logic is the
+//     real guard there. Auth buckets (login/signup/otp) FAIL CLOSED: an attacker
+//     could otherwise knock Redis over to disable the brute-force limiter, so on a
+//     limiter error we refuse the request rather than wave it through.
 import { getCache } from "@/lib/redis/client";
 
 export interface RateLimitResult {
@@ -26,6 +28,12 @@ export interface RateLimitOptions {
   limit: number;
   /** Window length in seconds. */
   windowSeconds: number;
+  /**
+   * On a Redis/limiter error: reject (true) instead of allowing (false, default).
+   * Set true for auth-sensitive buckets (login/signup/otp) so an outage can't be
+   * used to disable brute-force protection.
+   */
+  failClosed?: boolean;
 }
 
 // The CacheClient interface exposes get/set/del but not INCR; reach the raw
@@ -78,19 +86,28 @@ export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult
     return { allowed: next <= opts.limit, count: next };
   } catch (err) {
     logOutageOnce(err);
-    return { allowed: true, count: 0 };
+    // Auth buckets fail CLOSED (reject); everything else fails OPEN (allow).
+    return { allowed: !opts.failClosed, count: 0 };
   }
 }
 
-// Extract the client IP the Next way. x-forwarded-for is a comma-separated list
-// (client, proxy1, proxy2, …); the first entry is the originating client. Falls
-// back to x-real-ip, then a fixed sentinel so a missing header buckets together
-// rather than throwing.
+// Extract the client IP behind EXACTLY ONE trusted reverse proxy (Caddy in this
+// deployment). x-forwarded-for is an APPEND list: each proxy adds the address it
+// received the connection from to the RIGHT. The client can forge any number of
+// LEFT-most entries, so the only entry we can trust is the RIGHT-most one — the
+// hop Caddy itself appended (the real source as Caddy saw it). Taking the
+// left-most (the "originating client") would let an attacker rotate
+// X-Forwarded-For to mint a fresh rate-limit bucket per request.
+//
+// ASSUMPTION: the app is always reached through one trusted proxy. If the proxy
+// topology changes (e.g. an additional CDN in front of Caddy), revisit which
+// entry from the right is the trusted hop.
 export function clientIpFrom(headers: Headers): string {
   const fwd = headers.get("x-forwarded-for");
   if (fwd) {
-    const first = fwd.split(",")[0]?.trim();
-    if (first) return first;
+    const parts = fwd.split(",").map((p) => p.trim()).filter(Boolean);
+    const rightMost = parts[parts.length - 1];
+    if (rightMost) return rightMost;
   }
   return headers.get("x-real-ip")?.trim() || "unknown";
 }

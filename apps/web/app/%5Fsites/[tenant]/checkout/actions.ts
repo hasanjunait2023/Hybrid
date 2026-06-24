@@ -224,11 +224,14 @@ export async function submitCheckout(
   }
 
   // Bind the gateway paymentID → our payment row for the callback lookup.
+  // MERGE into the existing jsonb (||) — placeOrder seeded payload.analytics.eventId
+  // (the shared purchase-event dedup key the success page reads); clobbering the
+  // whole payload here would drop it and silently kill the bKash purchase analytics.
   await withTenant(ctx.id, null, (tx) =>
     tx`
       update payment
          set provider_ref = ${created.paymentId},
-             payload = ${tx.json(toJsonRecord({ create: created.raw }))},
+             payload = coalesce(payload, '{}'::jsonb) || ${tx.json(toJsonRecord({ create: created.raw }))},
              updated_at = now()
        where id = ${placed.paymentId}
     `,

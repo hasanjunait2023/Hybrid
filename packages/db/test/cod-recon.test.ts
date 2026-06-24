@@ -253,6 +253,56 @@ describe("COD reconciliation + Pathao wire", () => {
     expect(Number(row[0]!.discrepancy_amount)).toBe(-200);
   });
 
+  it("5b. a duplicate consignment line is counted unmatched, not double-applied", async () => {
+    // Reset SHIP.missing to a clean OWED state so this test is self-contained.
+    await withTenant(TENANT_A, OWNER_A, (tx) =>
+      tx`update shipment set cod_status = 'pending', cod_remitted = null, reconciled = false,
+            discrepancy_amount = 0, remittance_id = null where id = ${SHIP.missing}`,
+    );
+    // Two CSV lines with the SAME consignment_id (CID-1003 → SHIP.missing). The
+    // first remits the full 1000 (reconciled). The second is a duplicate: it must
+    // NOT re-match — it routes to unmatchedCount and leaves the first write intact.
+    const csv = [
+      "Consignment ID,Invoice,Collected Amount,COD Amount",
+      "CID-1003,6003,1000,1000",
+      "CID-1003,6003,1000,777", // duplicate line — different remit; must be ignored
+    ].join("\n");
+    const parsed = new SteadfastCsvParser().parse(csv);
+    expect(parsed.lines).toHaveLength(2);
+
+    const result = await reconcileRemittance(TENANT_A, OWNER_A, {
+      provider: "steadfast",
+      reference: "BATCH-DUP",
+      remittedAt: new Date(),
+      lines: parsed.lines,
+      rawCsv: csv,
+    });
+
+    // First line matched; duplicate routed to unmatched (manual review).
+    expect(result.matchedCount).toBe(1);
+    expect(result.unmatchedCount).toBe(1);
+    expect(result.discrepancyCount).toBe(0);
+
+    // The shipment reflects ONLY the first line (1000 remitted, reconciled) —
+    // the duplicate's 777 never overwrote it.
+    const row = await withTenant(TENANT_A, OWNER_A, (tx) =>
+      tx<{ cod_status: string; cod_remitted: string | null; reconciled: boolean }[]>`
+        select cod_status, cod_remitted, reconciled from shipment where id = ${SHIP.missing}
+      `,
+    );
+    expect(row[0]!.cod_status).toBe("reconciled");
+    expect(Number(row[0]!.cod_remitted)).toBe(1000);
+    expect(row[0]!.reconciled).toBe(true);
+
+    // The batch's unmatched tally reflects the rejected duplicate.
+    const batch = await withTenant(TENANT_A, OWNER_A, (tx) =>
+      tx<{ unmatched_count: number }[]>`
+        select unmatched_count from cod_remittance where reference = 'BATCH-DUP'
+      `,
+    );
+    expect(Number(batch[0]!.unmatched_count)).toBe(1);
+  });
+
   it("6. fallback match by order_number when consignment_id column is blank", async () => {
     // Reset SHIP.match to pending first, then match by Invoice only.
     await withTenant(TENANT_A, OWNER_A, (tx) =>

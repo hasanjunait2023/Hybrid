@@ -55,6 +55,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     identifier: ip,
     limit: LOGIN_MAX_PER_WINDOW,
     windowSeconds: LOGIN_WINDOW_SECONDS,
+    failClosed: true, // auth bucket: reject on a limiter outage, don't wave through.
   });
   if (!rl.allowed) {
     return NextResponse.json({ ok: false, error: RATE_LIMITED_BN }, { status: 429 });

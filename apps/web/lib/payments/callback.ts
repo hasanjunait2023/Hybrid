@@ -256,11 +256,14 @@ export async function processBkashCallback(
     if (state === "success") {
       // payment.status='success' + transaction_id=trxID; orders.payment_status='paid'.
       // payment_txn_uniq guards against a duplicate trxID slipping in.
+      // MERGE into the existing payload (||) — placeOrder/createPayment seeded
+      // payload.analytics.eventId + the create response; clobbering here would
+      // drop the analytics dedup key the success page reads. Preserve both ways.
       await tx`
         update payment
            set status = 'success',
                transaction_id = ${trxId ?? null},
-               payload = ${tx.json(toJsonRecord({ paymentId: input.paymentId, trxId, raw }))},
+               payload = coalesce(payload, '{}'::jsonb) || ${tx.json(toJsonRecord({ paymentId: input.paymentId, trxId, raw }))},
                paid_at = now(),
                updated_at = now()
          where id = ${lookup.paymentId}
@@ -289,10 +292,12 @@ export async function processBkashCallback(
     // reserved stock at placeOrder; an unpaid bKash order is the seller's to
     // chase or cancel manually.
     const failState = state === "cancelled" ? "cancelled" : "failed";
+    // MERGE into the existing payload (||) — keep the analytics dedup key + the
+    // create response placeOrder/createPayment seeded; only add the failure detail.
     await tx`
       update payment
          set status = ${failState},
-             payload = ${tx.json(
+             payload = coalesce(payload, '{}'::jsonb) || ${tx.json(
                toJsonRecord({
                  paymentId: input.paymentId,
                  state,

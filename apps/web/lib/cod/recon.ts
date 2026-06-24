@@ -67,10 +67,17 @@ interface IngestInput {
 // Match one parsed line to a shipment within the current tenant txn. Primary key
 // is the normalized consignment_id; order_number is the documented fallback for
 // couriers that omit/format the consignment id differently in CSV vs API.
+//
+// `alreadyMatched` holds shipment ids a previous line in THIS batch already
+// claimed. A second CSV line that resolves to the same shipment (duplicate
+// consignment_id / order_number) returns null so it routes to unmatchedCount for
+// manual review instead of overwriting the first line's remitted/discrepancy and
+// double-counting the totals.
 async function findShipment(
   tx: Tx,
   tenantId: string,
   line: ParsedLine,
+  alreadyMatched: ReadonlySet<string>,
 ): Promise<{ id: string; codAmount: number } | null> {
   if (line.consignmentId) {
     const byCid = await tx<{ id: string; cod_amount: string }[]>`
@@ -78,7 +85,13 @@ async function findShipment(
       where tenant_id = ${tenantId} and consignment_id = ${line.consignmentId}
       limit 1
     `;
-    if (byCid[0]) return { id: byCid[0].id, codAmount: Number(byCid[0].cod_amount) };
+    if (byCid[0] && !alreadyMatched.has(byCid[0].id)) {
+      return { id: byCid[0].id, codAmount: Number(byCid[0].cod_amount) };
+    }
+    // A consignment_id that resolves to an already-claimed shipment is a
+    // duplicate line — do NOT fall through to the order_number path (it would
+    // re-match the same shipment). Treat the line as unmatched.
+    if (byCid[0]) return null;
   }
   if (line.orderNumber) {
     const byOrder = await tx<{ id: string; cod_amount: string }[]>`
@@ -88,7 +101,9 @@ async function findShipment(
       where s.tenant_id = ${tenantId} and o.order_number = ${line.orderNumber}
       limit 1
     `;
-    if (byOrder[0]) return { id: byOrder[0].id, codAmount: Number(byOrder[0].cod_amount) };
+    if (byOrder[0] && !alreadyMatched.has(byOrder[0].id)) {
+      return { id: byOrder[0].id, codAmount: Number(byOrder[0].cod_amount) };
+    }
   }
   return null;
 }
@@ -127,10 +142,13 @@ export async function reconcileRemittance(
     let matchedCount = 0;
     let unmatchedCount = 0;
     let discrepancyCount = 0;
+    // Shipment ids already claimed by an earlier line in this batch — guards
+    // against a duplicate consignment line re-writing the same shipment.
+    const matchedShipmentIds = new Set<string>();
 
     // 2-3. Match + compute, per line.
     for (const line of input.lines) {
-      const shipment = await findShipment(tx, tenantId, line);
+      const shipment = await findShipment(tx, tenantId, line, matchedShipmentIds);
       if (!shipment) {
         unmatchedCount += 1;
         outcomes.push({
@@ -167,6 +185,7 @@ export async function reconcileRemittance(
       `;
 
       matchedCount += 1;
+      matchedShipmentIds.add(shipment.id);
       outcomes.push({
         rowNumber: line.rowNumber,
         consignmentId: line.consignmentId,
