@@ -5,6 +5,10 @@ import { fontVariables } from "./fonts";
 export const metadata = {
   title: "Hybrid",
   description: "Multi-tenant commerce for Bangladesh.",
+  icons: {
+    icon: "/favicon-32.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

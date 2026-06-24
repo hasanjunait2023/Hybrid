@@ -17,6 +17,7 @@ import {
   Inter_Tight,
   Noto_Serif_Bengali,
   Noto_Serif,
+  Poppins,
 } from "next/font/google";
 
 // Primary Bangla UI face. Weights 400/500/600/700 only (DESIGN §4.1).
@@ -89,8 +90,20 @@ export const notoSerif = Noto_Serif({
   fallback: ["Georgia", "serif"],
 });
 
-/** Serif CSS-variable classes scoped to the marketing layout only. */
+// Brand wordmark face — used ONLY for the "Hybrid" lockup + tagline on the
+// marketing landing. Body and headings stay Noto Serif Bengali / Noto Serif.
+export const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-poppins",
+  display: "swap",
+  preload: false,
+  fallback: ["system-ui", "sans-serif"],
+});
+
+/** Serif + brand-wordmark CSS-variable classes scoped to the marketing layout. */
 export const marketingFontVariables = [
   notoSerifBengali.variable,
   notoSerif.variable,
+  poppins.variable,
 ].join(" ");

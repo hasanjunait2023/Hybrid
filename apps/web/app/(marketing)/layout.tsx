@@ -13,7 +13,7 @@ import "./marketing.css";
 export default async function MarketingLayout({ children }: { children: ReactNode }) {
   const locale = await getMarketingLocale();
   return (
-    <div lang={locale} className={marketingFontVariables}>
+    <div lang={locale} className={`marketing-root ${marketingFontVariables}`}>
       {children}
     </div>
   );

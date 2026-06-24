@@ -31,6 +31,9 @@ export interface MarketingMessages {
   htmlLang: string;
   langToggle: { toLabel: string; ariaLabel: string };
 
+  /** Official brand tagline — shown in the footer lockup + hero eyebrow. */
+  tagline: string;
+
   nav: {
     features: string;
     pricing: string;
@@ -111,6 +114,8 @@ export interface MarketingMessages {
 const en: MarketingMessages = {
   htmlLang: "en",
   langToggle: { toLabel: "বাংলা", ariaLabel: "Switch language to Bangla" },
+
+  tagline: "Powering your online business",
 
   nav: {
     features: "Features",
@@ -288,6 +293,8 @@ const en: MarketingMessages = {
 const bn: MarketingMessages = {
   htmlLang: "bn",
   langToggle: { toLabel: "EN", ariaLabel: "ভাষা ইংরেজিতে পরিবর্তন করুন" },
+
+  tagline: "আপনার অনলাইন ব্যবসার চালিকাশক্তি",
 
   nav: {
     features: "যা যা পাবেন",

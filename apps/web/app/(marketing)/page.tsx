@@ -7,6 +7,7 @@ import {
   type MarketingMessages,
   type PricingTier,
 } from "../../lib/i18n/marketing";
+import { HybridLogo } from "./_components/HybridLogo";
 import { LangToggle } from "./_components/LangToggle";
 import { FaqAccordion } from "./_components/FaqAccordion";
 import { PartnerLogos } from "./_components/PartnerLogos";
@@ -59,8 +60,8 @@ function SiteHeader({ t, locale }: { t: MarketingMessages; locale: Locale }) {
   return (
     <header className="sticky top-0 z-sticky border-b border-border bg-bg/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-marketing items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="text-xl font-bold tracking-tight text-ink">
-          Hybrid
+        <Link href="/" aria-label="Hybrid" className="-m-1 inline-flex p-1">
+          <HybridLogo variant="lockup" />
         </Link>
         <nav aria-label={t.nav.features} className="hidden items-center gap-8 lg:flex">
           <HeaderLink href="#features">{t.nav.features}</HeaderLink>
@@ -103,6 +104,7 @@ function Hero({ t }: { t: MarketingMessages }) {
     >
       <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
         <div>
+          <p className="brand-tagline mb-4 text-[0.6875rem] uppercase text-primary">{t.tagline}</p>
           <span className="inline-flex items-center gap-2 rounded-full bg-cod-weak px-3 py-1 text-xs font-semibold text-cod">
             <span className="h-1.5 w-1.5 rounded-full bg-cod" aria-hidden="true" />
             {t.hero.badge}
@@ -433,6 +435,9 @@ function ClosingCta({ t }: { t: MarketingMessages }) {
           className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-primary-hover/50 blur-3xl"
         />
         <div className="relative">
+          <div className="mb-6 flex justify-center">
+            <HybridLogo variant="lockup" tone="onDark" />
+          </div>
           <h2 className="font-serif-display mx-auto max-w-2xl text-3xl font-bold text-ink-on-primary md:text-4xl">
             {t.closing.heading}
           </h2>
@@ -440,7 +445,7 @@ function ClosingCta({ t }: { t: MarketingMessages }) {
             {t.closing.subcopy}
           </p>
           <div className="mt-8 flex justify-center">
-            <Link href="/signup">
+            <Link href="/signup" className="cta-on-band">
               <Button variant="accent" size="lg">
                 {t.closing.cta}
               </Button>
@@ -460,8 +465,8 @@ function SiteFooter({ t, locale }: { t: MarketingMessages; locale: Locale }) {
       <div className="mx-auto max-w-marketing px-4 py-10 sm:px-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <span className="text-xl font-bold text-ink">Hybrid</span>
-            <p className="bn-body mt-2 max-w-xs text-sm text-ink-muted">{t.footer.tagline}</p>
+            <HybridLogo variant="full" tagline={t.tagline} />
+            <p className="bn-body mt-3 max-w-xs text-sm text-ink-muted">{t.footer.tagline}</p>
           </div>
           <div className="bn-body space-y-2 text-sm text-ink-muted">
             <p className="inline-flex items-center gap-2">

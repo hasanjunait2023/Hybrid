@@ -18,3 +18,53 @@
 :lang(en) .font-serif-display {
   font-family: var(--font-noto-serif), Georgia, serif;
 }
+
+/* ---------------------------------------------------------------------------
+ * Brand palette — SCOPED to the marketing landing only.
+ *
+ * Overrides a handful of design tokens to the official Hybrid brand purple.
+ * This lives under `.marketing-root` so admin and storefront keep the
+ * app-wide indigo/marigold palette from @hybrid/ui globals.css untouched.
+ * COD green (--color-cod) is intentionally NOT overridden — it stays the
+ * dedicated trust signal. All consuming utilities (bg-primary, text-primary,
+ * border-primary, ring-primary, bg-primary-weak, hover:bg-primary-hover, the
+ * shadcn --primary/--accent/--ring bridges) resolve to these values.
+ * ------------------------------------------------------------------------- */
+.marketing-root {
+  --color-primary: #5a19e6; /* primary purple — CTAs, links, focus */
+  --color-primary-hover: #4a14c4; /* deep purple hover */
+  --color-primary-active: #2d0ca6; /* deepest purple active */
+  --color-primary-weak: #ece7fd; /* light purple tint surface */
+  --color-accent: #7b3ff2; /* light purple accent */
+  --color-ink: #0d0b1f; /* near-black brand ink */
+
+  /* Re-point the shadcn bridges so primitives using them follow the brand. */
+  --primary: var(--color-primary);
+  --accent: var(--color-accent);
+  --ring: var(--color-primary);
+}
+
+/* Brand wordmark: "Hybrid" in Poppins. Used only by the HybridLogo lockup. */
+.brand-wordmark {
+  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Footer tagline eyebrow: small uppercase, wide tracking, brand purple. */
+.brand-tagline {
+  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+}
+
+/* Closing-CTA button sits on the brand-purple band, where the accent purple
+ * lacks separation. Force a white button + purple ink so the CTA pops with AA
+ * contrast. Scoped to this wrapper only — the shared Button stays untouched. */
+.cta-on-band > button {
+  background-color: #ffffff;
+  color: var(--color-primary-active);
+}
+.cta-on-band > button:hover {
+  background-color: var(--color-primary-weak);
+}
