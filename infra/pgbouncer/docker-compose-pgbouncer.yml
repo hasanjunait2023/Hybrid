@@ -1,0 +1,32 @@
+# PgBouncer — reference docker-compose snippet for integration into docker-compose.prod.yml
+# Phase-A/B infrastructure prep — NOT YET APPLIED
+
+version: '3.8'
+
+services:
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: hybrid-pgbouncer
+    volumes:
+      # pgbouncer.ini and userlist.txt MUST be pre-created at /opt/pgbouncer/
+      - /opt/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - /opt/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    ports:
+      # Internal only: accessed by web containers on the Supabase network
+      - "6432:6432"
+    networks:
+      - pe9o2li2n3bns3wnofob49uw
+    depends_on:
+      - supabase-db-pe9o2li2n3bns3wnofob49uw
+    restart: unless-stopped
+    # PgBouncer runs as the pgbouncer user inside the container
+    command: pgbouncer -u pgbouncer /etc/pgbouncer/pgbouncer.ini
+    healthcheck:
+      test: ["CMD", "psql", "-h", "localhost", "-p", "6432", "-U", "postgres", "-d", "pgbouncer", "-c", "SHOW STATS"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  pe9o2li2n3bns3wnofob49uw:
+    external: true

@@ -1,0 +1,11 @@
+# PgBouncer userlist.txt — credential template
+# NEVER commit real passwords — use env variables during deploy
+#
+# Format: "username" "password"
+#
+# Populate at deploy time from:
+#   POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' /data/coolify/.../pe9o2li2n3bns3wnofob49uw/.env | cut -d= -f2-)
+#   APP_USER_PASS=$(grep '^DB_POSTGRES_PASSWORD=' /opt/hybrid/.env.deploy | cut -d= -f2-)
+
+"postgres" "REPLACE_WITH_SUPABASE_POSTGRES_PASSWORD"
+"app_runtime_login" "REPLACE_WITH_APP_RUNTIME_PASSWORD"
