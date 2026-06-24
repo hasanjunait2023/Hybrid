@@ -6,8 +6,10 @@ workers next. Connects to the **same self-hosted Supabase Postgres** as the web
 app and honors the **same RLS discipline**.
 
 > Production reality: see [`docs/INFRA_SUPABASE.md`](../../docs/INFRA_SUPABASE.md).
-> This service is **scaffolded, not yet deployed** — wire it into the prod compose +
-> a scheduler when courier creds go live.
+> **Deployed + validated** on the VPS — `hybrid-jobs` container on the Supabase network,
+> `/healthz/db` green against `supabase-db`, the RLS sweep runs. Currently **idle**: no
+> scheduler triggers it yet and live Steadfast is deferred (no merchant creds). Add a cron
+> to `POST /jobs/courier-sync` when couriers go live.
 
 ## The Golden Rule still applies
 

@@ -27,6 +27,7 @@ deployed via `deploy.sh` (`docker compose --env-file .env.deploy ... up -d --bui
 | `hybrid-web` | Next.js (`next start`, :3000). On networks `hybrid_default` + the Supabase net. |
 | `hybrid-caddy` | reverse proxy :80/:443 → `web:3000`, and `cdn.*` → `supabase-minio`. On both networks. |
 | `hybrid-redis` | ioredis cache (host→tenant, sessions) |
+| `hybrid-jobs` | FastAPI async jobs (`apps/api`) — courier sync / reconciliation. On the Supabase net; connects to `supabase-db` as `app_runtime_login` (RLS). Image `hybrid-jobs:latest`; run with `--env-file /opt/hybrid/.env.deploy`. Deployed + validated 2026-06-25; **idle** until a scheduler triggers `POST /jobs/courier-sync` (needs CRON_SECRET bearer). |
 | `hybrid-postgres` | **legacy — STOPPED/retired 2026-06-25.** Volume `hybrid_hybrid_pgdata` kept as a rollback net. To fully remove later: `docker rm hybrid-postgres` + drop the volume. |
 
 **2. Supabase** — Coolify-generated, project ref `pe9o2li2n3bns3wnofob49uw`, run **lean** from
