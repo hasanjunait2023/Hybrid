@@ -15,8 +15,9 @@ import { join } from "node:path";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB cap — 3G upload budget.
 
-// image/* mimes we accept, mapped to the canonical extension we write.
-const ALLOWED_MIME: Record<string, string> = {
+// image/* mimes we accept, mapped to the canonical extension we write. Exported
+// so the S3 store can map the mime to a Content-Type without re-deriving it.
+export const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
@@ -52,7 +53,8 @@ export class BlobValidationError extends Error {
 
 // Validate + resolve the on-disk extension. Throws BlobValidationError (friendly
 // Bengali message) on a bad mime / oversize payload — callers surface it to the UI.
-function validate(input: PutInput): string {
+// Exported so S3BlobStore reuses the identical validation (one source of truth).
+export function validate(input: PutInput): string {
   const ext = ALLOWED_MIME[input.mimeType];
   if (!ext) {
     throw new BlobValidationError("শুধু ছবি আপলোড করা যাবে (JPG, PNG, WebP, AVIF, GIF)।");
@@ -71,7 +73,9 @@ function validate(input: PutInput): string {
 // root via path traversal.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function assertTenantId(tenantId: string): void {
+// Exported so S3BlobStore can hard-validate the tenant id with the same rule
+// (prevents a crafted value escaping the tenant key prefix).
+export function assertTenantId(tenantId: string): void {
   if (!UUID_RE.test(tenantId)) {
     throw new BlobValidationError("অবৈধ স্টোর আইডি।");
   }
@@ -113,17 +117,30 @@ export class LocalBlobStore implements BlobStore {
 
 let cached: BlobStore | null = null;
 
-/** Factory by BLOB_DRIVER (default "local"). Memoized per process. */
-export function getBlobStore(): BlobStore {
+/**
+ * Factory by BLOB_DRIVER (default "local"). Memoized per process.
+ *
+ *   local → LocalBlobStore (dev default; writes apps/web/public/uploads)
+ *   s3    → S3BlobStore (production; @aws-sdk/client-s3 with endpoint override,
+ *           works against R2/B2/MinIO/S3). Async because the AWS SDK is loaded
+ *           via a dynamic import to keep it off the default cold-start path.
+ */
+export async function getBlobStore(): Promise<BlobStore> {
   if (cached) return cached;
   const driver = process.env.BLOB_DRIVER ?? "local";
   switch (driver) {
     case "local":
       cached = new LocalBlobStore();
       return cached;
+    case "s3": {
+      // Dynamic import: @aws-sdk/client-s3 is ~450KB gzipped; only load it when
+      // the s3 driver is actually selected.
+      const { createS3BlobStore } = await import("./s3");
+      cached = createS3BlobStore();
+      return cached;
+    }
     default:
-      // SupabaseBlobStore lands in Phase 2; fail loudly rather than silently
-      // misrouting uploads.
+      // Fail loudly rather than silently misrouting uploads.
       throw new Error(`Unknown BLOB_DRIVER: ${driver}`);
   }
 }

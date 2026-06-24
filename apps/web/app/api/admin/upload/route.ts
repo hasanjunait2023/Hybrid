@@ -38,7 +38,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   const bytes = Buffer.from(await file.arrayBuffer());
 
   try {
-    const { url } = await getBlobStore().put({
+    const store = await getBlobStore();
+    const { url } = await store.put({
       tenantId,
       bytes,
       mimeType: file.type,

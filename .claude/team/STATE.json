@@ -1,10 +1,10 @@
 {
   "project": "Hybrid",
   "chartered": "2026-06-23",
-  "phase": "SHIP",
-  "active_milestone": "M2",
+  "phase": "BUILD",
+  "active_milestone": "M3",
   "awaiting_gate": null,
   "autonomous": true,
-  "last_updated": "2026-06-23",
-  "notes": "AUTONOMOUS. M2/Phase 1. BUILD+HARDEN COMPLETE, GATE2 self-approved. Commits: Wave0 9b2d391, Wave1 0ab5e99, Wave2 4975b16, Wave3 6bde8db, HARDEN fixes 031f925. Gauntlet cleared (2 blockers+4 majors+1 HIGH+3 med all fixed+re-verified). Final green: typecheck 5/5, lint 5/5, db 63/63 (10 files), web build OK. NOW SHIP (local-first, NO push): devops-deployer milestone tag phase-1 + health gate + deploy-seam doc; docs-dx CHANGELOG/README/ARCHITECTURE/CLAUDE.md → Phase 1. Then RETRO → LOOP M3 (Phase 2). Deferrals (account/infra-gated): bKash live, Steadfast live, SMS live, Supabase cloud auth, Bangla-UTF8 render verify."
+  "last_updated": "2026-06-24",
+  "notes": "2026-06-24 founder re-invoked /ceo 'complete rest of phases' — confirms full M3+M4+M5 sweep, self-approve gates + notify. M3 RESEARCH re-dispatched (phase2-brief.md was a stub — never landed). Two parallel research tracks: (A) arch shifts = drop-Supabase own-auth(Argon2id+OTP)+S3 storage+per-tenant creds+PG-provider-agnostic; (B) Phase-2 features = Vercel custom domains+SSL, theme catalog+customizer state model, discounts, multi-courier unify, COD reconciliation, GA4/CAPI analytics, WhatsApp. Then architect+designer PLAN → GATE1. --- PRIOR: AUTONOMOUS. M2/Phase 1 CLOSED (tag phase-1 @031f925). LOOP -> M3/M4/M5 full sweep (Phase 2+3+4 to DoD). TWO ARCHITECTURAL SHIFTS THIS RUN: (1) DROP Supabase entirely. Postgres provider-agnostic (Neon/Railway/RDS/self-hosted/any); own auth = extend HMAC dev-login seam to durable session w/ Argon2id passwords + email+phone OTP; S3-compatible storage driver (R2/B2/S3/MinIO) replacing planned SupabaseBlobStore; remove SUPABASE_* env; gate or drop 05_auth.sql trigger. RLS+withTenant unchanged (works on any PG). (2) PER-TENANT CRED MODEL. Every gateway/courier/SMS provider's creds owned by tenant, sealed via APP_ENCRYPTION_KEY, configured via admin Settings UI. M3 = Phase 2 (custom domains/themes/customizer/discounts/couriers/COD recon/analytics/WhatsApp). M4 = Phase 3 (funnels/self-serve billing/limits+staff). M5 = Phase 4 (section editor/upsells+A/B/abandoned cart/scale). RESEARCH dispatched for M3 first."
 }

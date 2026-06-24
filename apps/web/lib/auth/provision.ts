@@ -79,18 +79,21 @@ export interface CreateAppUserResult {
   created: boolean;
 }
 
-// Create a standalone app_user (the dev signup path, where there is no Supabase
-// auth.users trigger to mirror the identity). Idempotent on email so a retried
-// signup matches the existing user instead of erroring; the `created` flag lets
-// callers tell new-vs-existing apart (the signup action refuses the latter).
+// Create a standalone app_user. Own auth (SHIFT 1) makes this the ONLY identity
+// path: signup OTP-verifies, then calls createAppUser with the Argon2id
+// passwordHash. Idempotent on email so a retried signup matches the existing
+// user instead of erroring; the `created` flag lets callers tell new-vs-existing
+// apart (the signup action refuses the latter — account-takeover guard).
 //
-// NOTE: callers must keep this OUT of provisionTenant's transaction in the dev
-// path is fine — it opens its own asPlatformAdmin txn. Under the Supabase
-// provider the trigger already inserted app_user, so this is not called.
+// passwordHash is optional so the dev-login path (no password) and a phone-only
+// identity still work. On a matched (existing) row the hash is only overwritten
+// when a new one is supplied (coalesce), so a re-run never clobbers a set
+// password with null.
 export async function createAppUser(input: {
   email: string;
   fullName?: string | null;
   phone?: string | null;
+  passwordHash?: string | null;
 }): Promise<CreateAppUserResult> {
   return asPlatformAdmin(async (tx) => {
     // xmax = 0 on the returned row iff the row was freshly inserted (no prior
@@ -98,11 +101,15 @@ export async function createAppUser(input: {
     // an existing row. This is the standard Postgres upsert created-vs-matched
     // discriminator and avoids a second round-trip.
     const rows = await tx<{ id: string; created: boolean }[]>`
-      insert into app_user (email, full_name, phone)
-      values (${input.email}, ${input.fullName ?? null}, ${input.phone ?? null})
+      insert into app_user (email, full_name, phone, password_hash)
+      values (
+        ${input.email}, ${input.fullName ?? null}, ${input.phone ?? null},
+        ${input.passwordHash ?? null}
+      )
       on conflict (email) do update set
         full_name = coalesce(excluded.full_name, app_user.full_name),
         phone = coalesce(excluded.phone, app_user.phone),
+        password_hash = coalesce(excluded.password_hash, app_user.password_hash),
         updated_at = now()
       returning id, (xmax = 0) as created
     `;

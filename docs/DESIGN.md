@@ -838,3 +838,348 @@ On top of §9, every Phase-1 surface must also pass:
 - [ ] **Mobile admin nav = bottom tabs**, every control ≥ 44px, dialogs = bottom sheets (§7.3).
 - [ ] **Print layouts are black-on-white**, COD amount unmissable, tracking code mono/scannable.
 - [ ] **Provisioning shows real progress**, lands the seller on "add first product" (activation KPI).
+
+---
+
+# Phase 2 Surfaces (M3)
+
+> Extends Bazaar Modern (§0–§10) and the Phase-1 surfaces (§P0–§P9) to the seven Phase-2 (M3)
+> surfaces: visual customizer, theme catalog, COD & settlements, per-provider settings, custom-domain
+> connect, discounts, and own-auth. **Zero new color/type/radius/motion tokens are required** — every
+> surface composes from §3 (+ §P0). The only genuinely-new primitives are a small set of **shared
+> components** (§Q0), justified below. Everything else (warm neutrals, indigo primary, 44px floor,
+> light-only, Bangla-body ≥16px/1.7, the numeral split, bottom-sheet dialogs, status-via-`<StatusBadge>`)
+> carries over unchanged. Surface numerals follow §4.4: **operator-facing admin = Latin + `tabular-nums`;
+> buyer-facing (auth, storefront preview content) = Bangla digits.**
+
+## Q0. New shared components (build once, reuse everywhere)
+
+These earn their keep by appearing on 3+ Phase-2 surfaces. Anything used once stays a one-off inside its
+page — do **not** abstract single-use markup. Each new component is light, presentational, and lives in
+`packages/ui/src/components/` so admin and (where noted) storefront share it.
+
+| Component | Why it's shared (not a one-off) | Used by |
+|---|---|---|
+| **`<ProviderCard>`** | The single integration-config pattern: header row (logo + title + "configured/not" hint + enable toggle) → optional sandbox/mode chip → masked write-only credential fields → optional **copy-able callback/IPN URL row** → **"সংযোগ পরীক্ষা করুন" (Test Connection)** button with result states → save bar. Generalizes the existing `BkashForm`/`SteadfastForm` into one contract so bKash, Nagad, SSLCommerz, Steadfast, Pathao, RedX, Paperfly, SMS, WhatsApp, GA4/Pixel all look and behave identically. | §Q4 (all providers) |
+| **`<CopyField>`** | Read-only mono value + copy-to-clipboard button with a "কপি হয়েছে ✓" 1.5s confirm. **Load-bearing**: Nagad/SSLCommerz IPN URLs, custom-domain DNS records, and subdomain all require error-free copy or the integration silently breaks. One accessible, keyboard-operable copy primitive beats five hand-rolled ones. | §Q4, §Q5, §P6 |
+| **`<ToggleSwitch>`** | The enable/disable toggle is currently a raw `<input type=checkbox>` styled inline in each form. Promote to one 44px-target, focus-ringed, labelled switch (on=`primary`, bKash row=`bkash`). | §Q1, §Q4, §Q6, §P6 |
+| **`<TestConnectionButton>`** | Async test with four explicit visual states (idle / testing / success / fail-with-reason). Distinct from a generic submit button because the **result is the point** — sellers must see proof the creds work before they trust a payment rail. | §Q4 |
+| **`<DiscrepancyStat>` / `<DeltaAmount>`** | Signed amount renderer: `+` over-remit = `st-shipped`/info, `−` under-remit = `warning`, missing = `danger`, matched = `cod` green. Mono, tnum, sign always shown. The reconciliation moat lives or dies on these reading unambiguously. | §Q3 |
+| **`<SectionToggleRow>`** | A reorder-up/down + enable-toggle row for the fixed customizer section list. Deliberately **buttons, not free drag** (see §Q1 scope guard) — encapsulating it keeps the constraint enforced in one place. | §Q1 |
+| **`<OtpInput>`** | 6-box one-time-code input (auto-advance, paste-fill, `inputmode=numeric`, Bangla-digit display, Latin value). Used on signup verify + login-via-OTP + (later) phone-change. | §Q7 |
+
+`<EmptyState>` (icon + Bangla headline + one-line guidance + optional primary action) and a `<Skeleton>`
+shimmer are also promoted to shared, since every Phase-2 list/table needs the empty + loading states
+spelled out below.
+
+---
+
+## Q1. Visual Customizer (the big one — constrained, NOT a page builder)
+
+Operator-facing chrome (Latin numerals in controls); the **preview pane renders the storefront** so its
+content shows Bangla digits. This is the surface most at risk of scope creep — the discipline below is the
+design, not a footnote. Edits a **draft** `tenant_theme_settings` row; **Publish** swaps `is_active` atomically
+and `revalidateTag(tenant:{id}:theme)` (brief §2.2/2.3).
+
+### Q1.1 The hard scope guard (design refuses these)
+The customizer exposes exactly **four** control groups, mapping 1:1 to the settings JSON (brief: `colors` /
+`typography` / `content` / `sections`). **No free-form anything.**
+
+- ✅ Allowed: pick from a **5-swatch color set**, choose from **3–4 pre-approved fonts**, fill **fixed hero
+  content fields**, pick **one featured collection**, and **toggle + reorder a FIXED set of ≤5 home sections**.
+- 🚫 Refused (these are Phase 4, flag on sight): drag-and-drop canvas, free element positioning, custom
+  HTML/CSS input, arbitrary font URLs, adding/duplicating section types, nested sections, per-section style
+  overrides, image-anywhere placement. **Any control that implies a blank canvas or pixel-positioning is out.**
+  The reorder control is **up/down buttons (`<SectionToggleRow>`), not a drag handle** — this is the single
+  most important anti-creep decision; a drag handle is the gateway drug to a page builder.
+
+### Q1.2 Layout — the panel/preview split (mobile-first is the whole problem here)
+A seller customizing a store **on a phone** can't see controls and a live preview side-by-side. The split:
+
+- **Mobile (base–md): preview-first, controls in a bottom sheet.** The storefront **draft preview fills the
+  screen** (in a scaled, non-interactive frame). A sticky bottom bar shows: `[কাস্টমাইজ করুন]` (opens the
+  controls **bottom sheet**, §7.3) on the left + **`[প্রকাশ করুন]` (Publish)** primary on the right. The
+  controls sheet opens to ~70vh over the live preview, organized as an **accordion of the 4 groups** (রং /
+  ফন্ট / কন্টেন্ট / সেকশন). Editing a control updates the preview **behind the sheet in real time** — the
+  seller drags the sheet down a touch to peek, edits, pushes it back up. This "edit over a live preview"
+  pattern is the mobile answer; a cramped side-by-side is not.
+- **Desktop (≥ lg): classic left rail + live preview.** Fixed **left controls panel (`360px`, scrollable,
+  the 4 groups as collapsible sections)** + **live preview filling the rest**, with a device-size toggle
+  (📱 360 / 💻 1280) above the preview so the seller checks mobile — because **their buyers are on mobile**.
+  Sticky footer on the panel: **draft status chip + `[প্রকাশ করুন]`**.
+
+### Q1.3 The four control groups
+1. **রং (Colors)** — 5 fields (primary, accent, background, surface, text). Each = a labelled swatch button
+   opening a small picker; show a **contrast warning chip** (`warning`) if text-on-background fails AA, because
+   a seller can otherwise ship an unreadable store. Offer **3–4 curated palette presets** ("দরজা ক্লাসিক",
+   "সবুজ", "নীল-সোনা") as one-tap starting points — most sellers will never touch individual swatches.
+2. **ফন্ট (Typography)** — `headingFont` + `bodyFont`, each a **radio list of the 3–4 pre-approved Bangla
+   fonts** (Hind Siliguri default) with a live "আপনার দোকান" sample rendered in each. No upload, no URL.
+3. **কন্টেন্ট (Content)** — storeName, **logo upload** (`<CopyField>`-adjacent upload tile, client-resize,
+   progress on tile per §P4), heroHeadline, heroSubline, heroCta, heroImage, **featured collection** (single
+   select from the tenant's collections). Bangla labels above each field; char-count hint on headline.
+4. **সেকশন (Sections)** — the fixed list (`announcement_bar`, `hero`, `featured_products`, `collections_grid`,
+   `trust_band`) as `<SectionToggleRow>`s: section name + enable toggle + up/down reorder. **`trust_band`'s
+   toggle carries a soft warning** if disabled ("COD ট্রাস্ট সেকশন বন্ধ করলে বিশ্বাসযোগ্যতা কমে") — trust
+   signals are load-bearing in this market (§9).
+
+### Q1.4 Draft / preview / publish states
+- **Draft (default working state):** an always-visible chip near Publish — `"খসড়া · অপ্রকাশিত পরিবর্তন আছে"`
+  (`st-pending` weak). Edits autosave to the draft row (debounced) with a quiet "সেভ হচ্ছে…→ সেভ হয়েছে" inline.
+- **Preview integrity:** preview reads the draft via the admin-gated `?preview=<draft_id>` path (brief: **must
+  be server-side admin-session-gated** — note it in the UI as "শুধু আপনি দেখছেন" so the seller knows it's not live).
+- **Publish:** primary button → confirm sheet ("এই পরিবর্তনগুলো লাইভ স্টোরে দেখা যাবে। প্রকাশ করবেন?") →
+  success toast "🎉 লাইভ হয়েছে" + chip flips to `"প্রকাশিত · সব সেভ"` (`success` weak). One atomic swap.
+- **Empty/first-run:** if the tenant has never customized, open on the **active theme's defaults** with a one-line
+  coach mark "রং আর হিরো বদলে আপনার দোকান সাজান" — never a blank slate.
+- **Error:** save/publish failure → inline `danger` strip with retry; preview never shows a broken half-state
+  (it always renders the last good draft).
+
+---
+
+## Q2. Theme Catalog / Picker
+
+Operator-facing. A **grid of 3–5 themes** (Doreja / Megh / Bazar to start, brief §2.2). Each theme is a real
+component tree, not a recolor, so the picker must **show the difference**, not just a swatch.
+
+- **Layout:** responsive grid — **1-col mobile, 2-col md, 3-col lg** of theme cards (`--color-surface`,
+  `--radius-lg`, hairline, `--shadow-xs`; hover lift on md+ per §6.3).
+- **Theme card anatomy:** a **storefront thumbnail preview image** (1.4:1, the theme's hero+grid look) ·
+  theme name (`h3`) · one-line Bangla descriptor + a tiny **category chip** (general / fashion / electronics) ·
+  footer action. **The active theme** gets an indigo ring (`2px --color-primary`) + a **"বর্তমান থিম" check
+  badge** (top-left, `success` weak) and its action reads `[প্রিভিউ দেখুন]` instead of Activate.
+- **Preview-before-activate:** every card has **`[প্রিভিউ]`** → opens the storefront in the theme's defaults
+  via the same admin-gated `?preview` path (full-screen on mobile, large dialog on desktop, with a sticky
+  `[এই থিম চালু করুন]` bar so preview converts to activate in one place).
+- **Activate (confirm):** `[এই থিম চালু করুন]` → confirm sheet warning that **custom colors/content may need
+  re-checking** because themes differ structurally ("নতুন থিমে আপনার রং আর হিরো আবার দেখে নিন") → success →
+  lands the seller in the **§Q1 customizer** on the new theme (the natural next step). Activation creates a new
+  `tenant_theme_settings` row + revalidates (brief §2.2).
+- **States:** loading = 3 `<Skeleton>` cards; only-one-theme-ever shouldn't happen (always ≥3 shipped), but if a
+  fetch fails → `<EmptyState>` "থিম লোড হয়নি — আবার চেষ্টা করুন". No empty state in normal operation.
+
+---
+
+## Q3. COD & Settlements view (THE differentiator — make discrepancies unmissable)
+
+Operator-facing, **Latin + `tabular-nums` + `--font-mono` for every amount** (§4.4) — alignment *is* the trust
+signal here. This is the moat: sellers must believe the numbers more than they believe the courier. The whole
+surface is engineered so a **discrepancy is impossible to miss** and a **matched batch is visibly calm**.
+Money words: expected = `cod_amount`, collected = `cod_collected`, remitted = `cod_remitted`,
+discrepancy = `discrepancy_amount` (brief §2.6).
+
+### Q3.1 Summary band (top — the morning glance)
+Four metric tiles (§P2.3 metric-card pattern), 2-col mobile / 4-col md, each mono-tnum `--text-2xl`:
+- **প্রত্যাশিত COD** (expected) — neutral ink. The baseline.
+- **সংগৃহীত** (collected) — `cod` green.
+- **জমা হয়েছে** (remitted) — `cod` green.
+- **গরমিল / বকেয়া** (discrepancy delta) — **the loud one**: `danger` if net-negative/missing, `warning` if
+  unresolved-but-small, `cod` green + "✓ সব মিলেছে" if zero. This tile is the headline: a seller should know
+  in one glance whether the courier owes them money. Tappable → filters the table to discrepancies.
+
+### Q3.2 Per-shipment match table (the evidence)
+- **Desktop ≥ md:** zebra table (§7.5), sticky header. Columns: Consignment# (mono) · Order# (mono) · Customer ·
+  **Expected** (right, mono) · **Collected** (right, mono) · **Remitted** (right, mono) · **Δ Discrepancy**
+  (right, **`<DeltaAmount>`** — signed, colored) · **`<StatusBadge kind="cod">`** · Batch ref · ⋯.
+- **The unmissable treatment:** any row where `cod_status = discrepancy` gets a **`danger`-weak row tint + a 3px
+  `danger` left edge bar + the `গরমিল` chip**. "No remittance for a delivered shipment" (the most serious case)
+  additionally shows a **`⚠ রেমিট্যান্স পাওয়া যায়নি`** inline flag. Matched/`reconciled` rows stay calm
+  (`cod` green chip, no tint) so the eye is pulled only to problems. Color **+ icon + text**, never color alone (§7.4).
+- **Mobile = stacked cards** (§7.5, never a swiped table for money): consignment# + cod chip top row; a compact
+  **expected → collected → remitted** mini-ladder with the **Δ as the loud line**; discrepancy cards float to the
+  top of the list and carry the `danger` edge.
+- **Filters:** cod_status pills (সব · মিলেছে · গরমিল · সংগ্রহ বাকি · রেমিট বাকি) with counts; search by
+  consignment/order/phone; date range.
+- **Per-discrepancy action:** **`[সমাধান হয়েছে চিহ্নিত করুন]`** (Mark-Resolved, after the seller settles with
+  the courier) — manual override (brief §2.6), behind a confirm so it's deliberate; resolving clears the tint.
+
+### Q3.3 Remittance batch upload (CSV)
+- A **`[রেমিট্যান্স CSV আপলোড করুন]`** primary action opens an **upload + map sheet**: drop/select CSV →
+  show a **parsed preview table (first N rows)** → "X লাইন মিলেছে · Y লাইন মেলেনি" summary **before** commit →
+  confirm to ingest (creates the `cod_remittance` batch, brief §2.6). 500-row Phase-2 limit surfaced as a hint.
+- **States:** parsing = progress on the sheet; **partial-match result is first-class** — unmatched lines aren't
+  a silent failure, they render as a **`warning` "মেলেনি (Y)" expandable list** the seller can act on; hard parse
+  error → `danger` strip naming the bad column/row so the seller can fix the file. Empty (no batches yet) →
+  `<EmptyState>` "এখনো কোনো রেমিট্যান্স আপলোড হয়নি — কুরিয়ার থেকে CSV নামিয়ে আপলোড করুন".
+- **Batch list:** below the table — each batch = reference (mono) · provider · total (mono) · date · matched/
+  unmatched counts · status chip (pending/processed/failed). Tap → that batch's lines.
+
+### Q3.4 Trust-signal styling (this surface earns belief)
+Because this is the moat, lean into **printed-ledger calm**: hairline rules, mono-tnum columns that line up to
+the paisa, the `cod` green reserved exclusively for "money accounted for", and a small footer line
+"সব হিসাব আপনার নিজের ডেটা থেকে — Hybrid কোনো টাকা ছোঁয় না" (we never touch the money — we just reconcile it).
+That sentence is a deliberate trust lever; keep it.
+
+---
+
+## Q4. Per-provider Settings UI (one card pattern, every integration)
+
+Operator-facing. Each tenant configures **their own** bKash / Nagad / SSLCommerz / Steadfast / Pathao / RedX /
+Paperfly / SMS / WhatsApp / analytics creds. The existing `BkashForm`/`SteadfastForm` already encode the right
+DNA (masked write-only secrets, configured-hint, enable toggle, save bar). Phase 2 **generalizes that into one
+`<ProviderCard>`** so all ten providers are visually and behaviorally identical — learn it once, configure any.
+
+### Q4.1 The `<ProviderCard>` anatomy (fixed, top→bottom)
+1. **Header row:** provider logo/glyph + name + **configured hint** ("কনফিগার করা আছে" / "এখনো হয়নি") +
+   **`<ToggleSwitch>`** (on/off). bKash row uses `bkash` pink for its toggle+glyph (the **only** admin pink, §P9);
+   every other provider uses neutral/`primary`.
+2. **Mode/sandbox chip (optional):** sandbox vs live switch with the existing `warning` sandbox note (bKash,
+   SSLCommerz, Pathao stage). Honest "no sandbox" note where true (Steadfast, §P6).
+3. **Credential fields:** masked, **write-only** (render empty + "•••• সেভ করা আছে" hint, blank-keeps-saved) —
+   exactly today's pattern. Field set varies per provider (bKash: app_key/secret/username/password; Pathao:
+   client_id/secret/username/password; SMS: api_key/sender_id; WhatsApp: WABA id/phone-number-id/token).
+4. **Callback / IPN URL row (the silent-failure guard):** for **Nagad and SSLCommerz**, a **`<CopyField>`**
+   showing the exact per-tenant IPN/callback URL the seller must paste into the gateway portal, with a Bangla
+   instruction line ("এই URL আপনার [Nagad] পোর্টালে IPN হিসেবে বসান — না বসালে পেমেন্ট কনফার্ম হবে না").
+   **This is non-optional**: without it, payments succeed at the gateway but never confirm in Hybrid — a silent,
+   trust-destroying failure. bKash uses a server-set callback (no paste needed) so it shows the URL read-only as
+   reassurance, not as a required step.
+5. **Test Connection:** **`<TestConnectionButton>`** "সংযোগ পরীক্ষা করুন" → four states: idle ·
+   **testing** (spinner, "পরীক্ষা চলছে…") · **success** (`success` strip "✓ সংযোগ ঠিক আছে · ব্যালেন্স ৳N" for
+   couriers / "✓ টোকেন পাওয়া গেছে" for gateways) · **fail** (`danger` strip with the **actual reason** —
+   "ভুল app_secret" / "নেটওয়ার্ক সমস্যা" — never a generic "failed"). The result is the point: it's proof before trust.
+6. **Save bar:** the existing dirty-only "সেভ করুন" button + saved/error strips.
+
+### Q4.2 Settings information architecture
+Group the cards so the long list stays calm (§P6 pattern): **পেমেন্ট** (bKash, Nagad, SSLCommerz, COD) ·
+**কুরিয়ার** (Steadfast, Pathao, RedX, Paperfly) · **নোটিফিকেশন** (SMS, WhatsApp) · **অ্যানালিটিক্স**
+(GA4/Pixel). Mobile = section list → detail; desktop = settings left-nav + right panel. Each provider that's
+**not-yet-live in Phase 2** (RedX/Paperfly) shows a `warning` "শীঘ্রই আসছে" state with the toggle disabled —
+honest, not a dead control.
+
+---
+
+## Q5. Custom Domain Connect flow
+
+Operator-facing. Add domain → show DNS records → track verification/SSL states → set primary. The seller is
+non-technical and DNS is scary; the design's job is **calm, copy-able guidance + honest timing** so they don't
+panic or open a support ticket (brief §2.1). Backed by existing `tenant_domain` (`verified`, `ssl_status`).
+
+### Q5.1 Flow
+1. **Add domain:** single input "আপনার ডোমেইন" (`yourstore.com`, no http://, validated) → `[যোগ করুন]`.
+2. **DNS records card** (the heart): show **both records simultaneously** as **`<CopyField>` rows** —
+   - Apex: **A** · `@` · `76.76.21.21`
+   - www: **CNAME** · `www` · `<VERCEL_CNAME_TARGET>` (from env, never hardcoded — brief §2.1)
+   Each row: record-type chip + host + value-with-copy. A plain-Bangla intro: "আপনার ডোমেইন প্রোভাইডারে
+   (যেমন GoDaddy / Namecheap) নিচের রেকর্ডগুলো যোগ করুন।" Plus a **`<CopyField>`** caveat for the **CAA edge
+   case** when relevant ("CAA রেকর্ড থাকলে `0 issue letsencrypt.org` যোগ করুন — নাহলে SSL আসবে না").
+3. **Set expectations (the support-ticket preventer):** an `info`/`primary-weak` note: "DNS পরিবর্তন ছড়াতে
+   কয়েক ঘণ্টা (কখনো ৪৮ ঘণ্টা পর্যন্ত) লাগতে পারে — এটা স্বাভাবিক। আমরা নিজে থেকে চেক করতে থাকব।" Plus a manual
+   **`[স্ট্যাটাস চেক করুন]`** so the seller isn't passive while polling runs.
+
+### Q5.2 State machine (mapped to `verified` + `ssl_status`, brief §2.1)
+A **vertical 3-step status stepper** (reusing the §P3.2 stepper visual vocabulary — color+icon+label):
+- **`pending_dns`** — `st-pending` "DNS-এর অপেক্ষায়" (records shown, polling). Honest timing note visible.
+- **`dns_verified`** — `st-confirmed` "DNS মিলেছে · SSL তৈরি হচ্ছে" with a sub-line "🔒 সার্টিফিকেট আসছে (২–১০
+  মিনিট)" — **critically, DNS-verified and SSL-issued are two separate states** (brief: API may say verified
+  before the cert works), so we never claim "live" at this step.
+- **`ssl_issued`** — `st-delivered` green "✓ লাইভ · নিরাপদ (HTTPS)" — the domain is genuinely usable. Only now
+  does **`[প্রাইমারি করুন]` (Set primary)** light up.
+- **`failed`** — `danger` "সংযোগ ব্যর্থ" + the specific reason (no TXT / wrong value / CAA blocked / 48h timeout)
+  + a `[আবার চেষ্টা করুন]`. Never a dead end.
+- **Set-primary:** confirm sheet (www↔apex 308 redirect is configured server-side); the subdomain stays as a
+  permanent fallback shown read-only with `<CopyField>`.
+- **Empty state:** no custom domain yet → `<EmptyState>` showing the **current live subdomain** (`<CopyField>`)
+  + "আপনার নিজের ডোমেইন যোগ করুন (যেমন yourstore.com)" + add button. The seller always has a working URL.
+
+---
+
+## Q6. Discounts admin
+
+Operator-facing (Latin + mono for codes/amounts). Coupon list + create/edit form, backed by the existing
+`discount` table (brief §2.4). Calm CRUD — one primary action per screen (§2).
+
+- **List:** stacked cards on mobile / table ≥ md. Per row: **code** (mono, prominent) · type+value ("২০%" /
+  "৳১০০" / "ফ্রি ডেলিভারি") · usage ("12 / 100" used, mono tnum) · **active-window** as a small date range ·
+  **status `<StatusBadge>`** mapping the `status` enum (active=`success`, scheduled=`st-confirmed`,
+  expired=muted, disabled=`st-pending`) · ⋯ (edit / disable / delete-confirm). Filter pills সব · চালু · সময়সূচি ·
+  মেয়াদোত্তীর্ণ; search by code. **Empty** → `<EmptyState>` "প্রথম কুপন তৈরি করুন — বিক্রি বাড়ান" + create CTA.
+- **Create/edit form (single column ≤ md, main+aside ≥ lg):**
+  - **Code** (mono input, auto-UPPERCASE, with a **[র‍্যান্ডম কোড]** generator) + a **type segmented control**
+    (শতকরা % / নির্দিষ্ট ৳ / ফ্রি ডেলিভারি) that **swaps the value field's affix** (% suffix vs ৳ prefix vs
+    hides value for free-shipping). The dependent-field reveal is the one bit of conditional UI; keep it obvious.
+  - **value** · **min-cart** (`min_subtotal`, ৳ mono) · **usage limit** (`usage_limit`) · **per-customer limit**
+    (`per_customer_limit`) — all numeric `inputmode`, each with a Bangla helper line.
+  - **Active window:** starts_at / ends_at date-time (each a **bottom-sheet date picker** on mobile, §7.3) with a
+    plain-language live summary "১ জুন – ৩০ জুন সক্রিয় থাকবে". Blank end = "মেয়াদ নেই".
+  - **Aside / below:** status toggle (`<ToggleSwitch>`), a **live preview chip** of how the code reads to a buyer
+    ("SAVE20 দিলে ২০% ছাড়"). No client-side cart preview (brief: discount is validated server-side at checkout to
+    avoid race conditions, §2.4) — so the form never promises a total, only describes the rule.
+  - **Save bar:** dirty-only "সেভ করুন"; delete = `danger` confirm.
+
+---
+
+## Q7. Own-auth surfaces (production signup / login, replacing dev-login)
+
+Buyer-of-the-product facing — **the seller is the user**. Per §2 this is between Marketing (warm, spacious) and
+Admin (calm); treat it as **trust-forward, mobile-first, Bengali-first**, since it's the first real impression of
+product quality (extends §P8.2). **Numerals: Bangla digits** in display copy; OTP value stored Latin. Single
+column, big 44px+ inputs, labels above fields (never placeholder-only — §P1.2).
+
+### Q7.1 Signup
+- **One screen, minimal:** **phone** (`type=tel`, `inputmode=tel`, **first** — it's the BD identity channel, §P8.2)
+  · **email** (optional-but-offered) · **password** (with a show/hide toggle + a quiet strength hint, not a nag).
+  Trust line under the CTA: **"ক্রেডিট কার্ড লাগবে না · ১৪ দিন ফ্রি"** (§P8.2).
+- **Primary `[অ্যাকাউন্ট খুলুন]`** indigo, full-width 52px. Below: "আগে থেকে অ্যাকাউন্ট আছে? **লগইন করুন**".
+- **Brand reassurance, not chrome:** a slim header lockup + one line of why-trust ("বাংলাদেশের সেলারদের জন্য
+  তৈরি"). No foreign-template hero, no social-login clutter in Phase 2 (phone+password+OTP only). Light, warm,
+  Hind Siliguri — the §9 screenshot test applies hardest here.
+
+### Q7.2 OTP verification (the trust gate)
+- After signup (and as a login path), a **6-box `<OtpInput>`** screen: "আপনার ফোনে পাঠানো ৬-সংখ্যার কোডটি দিন"
+  + the masked phone ("০১৭••••১২৩৪", Bangla digits) · auto-advance + paste-fill · a **resend countdown**
+  ("আবার পাঠান (৩০ সেকেন্ড)") that re-enables on zero · a "ভুল নম্বর? বদলান" link back.
+- **States:** idle · verifying (inline spinner, boxes locked) · **error** (`danger` "ভুল কোড" + boxes shake via
+  `transform` per §8, not a layout jump) · **success** (boxes flip `success` green, brief check, → into the admin
+  dashboard / provisioning §P8.2). Rate-limit lockout shows a calm "একটু পরে আবার চেষ্টা করুন (N মিনিট)" — never a
+  scary red wall.
+
+### Q7.3 Login
+- **phone (or email)** + **password**, plus a **"কোড দিয়ে লগইন করুন" (OTP login)** alternative that routes to
+  §Q7.2. "পাসওয়ার্ড ভুলে গেছেন?" link → phone-OTP reset. Same trust-forward, single-column, big-input treatment.
+- **Errors are friendly + Bengali** (§ guardrail 4): wrong creds → "ফোন নম্বর বা পাসওয়ার্ড মিলছে না" (never leak
+  which one). No raw error codes ever reach the seller.
+
+---
+
+## Q8. Phase-2 anti-slop / consistency checklist
+
+On top of §9 and §P9, every Phase-2 surface must also pass:
+
+- [ ] **Customizer exposes ONLY the 4 fixed control groups**; reorder is **up/down buttons, never a drag handle**;
+      no free canvas / custom HTML / arbitrary fonts. Any page-builder affordance is refused (Phase 4).
+- [ ] **One `<ProviderCard>` pattern** across all 10 integrations — identical header/secret/test/save anatomy;
+      bKash is the only pink.
+- [ ] **Nagad & SSLCommerz IPN URLs are shown as copy-able `<CopyField>` rows** with a Bangla "paste this or
+      payments break" instruction. Custom-domain DNS records + subdomain are also `<CopyField>`.
+- [ ] **Every async config action (Test Connection, domain check, CSV ingest, publish) has all four states**:
+      idle / in-progress / success / **fail-with-specific-reason** — never a generic "failed".
+- [ ] **COD discrepancies are unmissable**: `danger`-weak row tint + left edge bar + chip + (for missing) an
+      explicit "রেমিট্যান্স পাওয়া যায়নি" flag; matched rows stay calm green. Δ amounts via `<DeltaAmount>`
+      (signed, colored, mono-tnum). Color + icon + text always.
+- [ ] **Custom-domain UI separates DNS-verified from SSL-issued** (never claims "live" before the cert) and
+      **states 48h propagation timing honestly** with a manual check button.
+- [ ] **Numeral split honored**: customizer controls / settings / COD / discounts admin = Latin + tnum; auth
+      display copy + storefront preview = Bangla digits. OTP value stored Latin.
+- [ ] **Every list/table has explicit empty + loading + error states** (`<EmptyState>` / `<Skeleton>` / `danger`
+      strip) — no blank screens, no infinite spinners.
+- [ ] **Mobile-first holds**: customizer = preview + controls-sheet (not side-by-side); all tables collapse to
+      stacked cards < md; dialogs/date-pickers are bottom sheets; every control ≥ 44px.
+- [ ] **Auth is trust-forward**: phone-first, labels-above-fields, friendly Bengali errors that never leak which
+      field was wrong, OTP boxes shake (transform) on error not layout-shift, passes the §9 screenshot test.
+- [ ] **Discounts form describes the rule, never promises a total** (server-side validated at checkout); the
+      type segmented control swaps the value affix clearly.
+
+---
+
+## Phase-2 Decisions Log
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-06-24 | Customizer = preview-first + controls-in-bottom-sheet on mobile, left-rail + live preview on desktop | A mobile-only seller can't see controls and preview side-by-side; "edit over a live preview" is the only honest mobile pattern. Desktop gets the classic split with a device-size toggle so sellers check the mobile their buyers actually use. |
+| 2026-06-24 | Section reorder = up/down buttons (`<SectionToggleRow>`), NOT a drag handle | A drag handle is the gateway to a free page builder (Phase 4). Buttons enforce the constrained-customizer scope in one component. The single most important anti-creep decision. |
+| 2026-06-24 | One `<ProviderCard>` generalizing BkashForm/SteadfastForm for all 10 integrations | Sellers learn one config pattern; reduces surface area and visual drift; keeps bKash-pink confined to one row. |
+| 2026-06-24 | Nagad/SSLCommerz IPN URL shown as a copy-able `<CopyField>` with a "paste this or payments break" Bangla note | These gateways confirm payment via IPN; a missing/mis-pasted URL is a silent, trust-destroying failure. Making the URL impossible to miss is a payment-integrity design requirement, not polish. |
+| 2026-06-24 | COD discrepancies get row tint + edge bar + flag; matched rows stay calm green; signed `<DeltaAmount>` | The reconciliation engine is the moat — its trust depends entirely on a discrepancy being impossible to miss and a clean batch being visibly calm. Printed-ledger calm + reserved COD-green = belief. |
+| 2026-06-24 | Custom-domain UI tracks DNS-verified and SSL-issued as separate states; states 48h timing honestly | The Vercel API can report verified before the cert is usable; claiming "live" early breaks trust. Honest timing + a manual check button prevents support tickets from non-technical sellers. |
+| 2026-06-24 | Own-auth = phone-first, OTP via `<OtpInput>`, friendly Bengali errors that never leak which field failed | Phone is the BD identity channel; this is the first real impression of product quality, so it gets the trust-forward treatment, not a generic template login. |
+| 2026-06-24 | Discounts form describes the rule, shows no cart-total preview | Discount validity (FOR UPDATE row lock, usage/min-cart/scope) is enforced server-side at checkout to avoid race conditions; a client preview would lie. |

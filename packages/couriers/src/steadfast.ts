@@ -36,6 +36,11 @@ export class SteadfastProvider implements CourierAdapter {
   }
 
   private headers(creds: CourierCreds): Record<string, string> {
+    // apiKey/secretKey are optional on the widened CourierCreds (Pathao reuses
+    // the shape); Steadfast requires both — fail fast if a caller omits them.
+    if (!creds.apiKey || !creds.secretKey) {
+      throw new Error("Steadfast credentials incomplete (apiKey/secretKey required)");
+    }
     return {
       "Api-Key": creds.apiKey,
       "Secret-Key": creds.secretKey,

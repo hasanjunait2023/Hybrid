@@ -196,7 +196,8 @@ export async function uploadProductImage(formData: FormData): Promise<UploadResu
   if (!(file instanceof File)) return { ok: false, error: "ফাইল পাওয়া যায়নি।" };
 
   try {
-    const { url } = await getBlobStore().put({
+    const store = await getBlobStore();
+    const { url } = await store.put({
       tenantId: auth.tenantId,
       bytes: Buffer.from(await file.arrayBuffer()),
       mimeType: file.type,

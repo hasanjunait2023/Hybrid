@@ -95,4 +95,34 @@ describe("credential crypto (AES-256-GCM)", () => {
     const { sealCredentials: sealBadKey } = await import("../src/crypto");
     expect(() => sealBadKey({ a: "b" })).toThrow(/32 bytes/);
   });
+
+  // Nagad seals a ~1.7KB PEM private key + a PEM public key in one credential
+  // map. AES-256-GCM handles arbitrary JSON size; this guards that a large PEM
+  // payload round-trips and never appears in the envelope in plaintext.
+  it("round-trips a large PEM payload (Nagad merchant keypair, ~1.7KB)", () => {
+    const merchantPrivateKey =
+      "-----BEGIN PRIVATE KEY-----\n" +
+      // 24 base64 lines ≈ 1.5KB of key body — representative of a 2048-bit PKCS8 PEM.
+      Array.from({ length: 24 }, (_, i) =>
+        Buffer.from(`nagad-merchant-private-key-line-${i}-`.repeat(2)).toString("base64"),
+      ).join("\n") +
+      "\n-----END PRIVATE KEY-----\n";
+    const nagadPublicKey =
+      "-----BEGIN PUBLIC KEY-----\n" +
+      Buffer.from("nagad-public-key-material").toString("base64") +
+      "\n-----END PUBLIC KEY-----\n";
+
+    const plain = {
+      merchant_id: "683002007104225",
+      merchant_private_key: merchantPrivateKey,
+      nagad_public_key: nagadPublicKey,
+    };
+    expect(merchantPrivateKey.length).toBeGreaterThan(1500);
+
+    const sealed = sealCredentials(plain);
+    expect(isSealed(sealed)).toBe(true);
+    // The PEM body must not be readable in the sealed envelope.
+    expect(JSON.stringify(sealed)).not.toContain("BEGIN PRIVATE KEY");
+    expect(openCredentials(sealed)).toEqual(plain);
+  });
 });

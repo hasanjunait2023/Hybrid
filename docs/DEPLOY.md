@@ -133,3 +133,41 @@ These run against **sandbox/dev** in Phase 1 and require real accounts before pr
 - **SMS live** — needs a live SMS provider account + sender ID.
 - **Supabase cloud auth** — `getSession()` is a clean seam; swap the HMAC dev cookie for
   the Supabase Auth lookup when the cloud project is provisioned (`AUTH_PROVIDER`).
+
+---
+
+## 8. Phase 2 (M3) deploy delta — Supabase dropped; own-auth + S3 + per-tenant creds
+
+Phase 2 drops Supabase entirely in favour of **own auth** (opaque DB session tokens,
+Argon2id password hashing) and an **S3-compatible blob store**. Provider credentials
+(bKash, Nagad, SSLCommerz, Steadfast, Pathao, tenant SMS, WhatsApp) are **per-tenant,
+sealed in the DB** — they are NOT env vars. The base seam in §1–§6 still holds.
+
+### Removed env vars (Supabase-only)
+
+`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. The `AUTH_PROVIDER=supabase`
+and `BLOB_DRIVER=supabase` options are gone.
+
+### New / changed env vars
+
+| Var | Purpose | Notes |
+|-----|---------|-------|
+| `AUTH_PROVIDER` | Selects the auth backend | Phase 2 adds `password` (own auth, production default). `dev` (HMAC cookie) stays for local; `supabase` removed. |
+| `SESSION_SECRET` | Signs/derives own-auth session tokens | 32+ random bytes (`openssl rand -base64 32`). Fail-fast if unset in production. |
+| `SESSION_MAX_AGE_SECONDS` | Session lifetime | Default `604800` (7 days). |
+| `SMS_API_KEY` / `SMS_SENDER_ID` / `SMS_LIVE` | **Platform** sms.net.bd key for signup OTP only | Per-tenant SMS keys are pasted in Settings and sealed in the DB. |
+| `BLOB_DRIVER` | Blob backend | `local` (dev) or `s3` (production). The `supabase` option is removed. |
+| `S3_BUCKET` / `S3_ENDPOINT` / `S3_REGION` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_PUBLIC_URL` | S3-compatible product-image storage (`BLOB_DRIVER=s3`) | `S3_ENDPOINT` empty = AWS S3; full URL for R2/B2/MinIO. Recommended: Cloudflare R2 (`region=auto`, no egress). |
+| `PLATFORM_S3_*` | Separate bucket for theme previews / platform assets | Same shape as `S3_*`. |
+| `VERCEL_DOMAINS_ENABLED` | Custom-domain flag | `false` by default — domain rows + DNS instructions are written without calling Vercel. Flip to `true` with `VERCEL_API_TOKEN` set to activate the live Domains API path. |
+
+### Build config
+
+`apps/web/next.config.mjs` adds `@node-rs/argon2` to `serverExternalPackages` (alongside
+`postgres`) so the napi-rs native binary is not bundled. `@aws-sdk/client-s3` is loaded via
+**dynamic import** inside `getBlobStore()` (s3 case) — no externalization needed, and it
+stays out of the bundle until `BLOB_DRIVER=s3`.
+
+Every var the app reads is declared in `turbo.json` `globalEnv` (otherwise Turborepo strips
+it from the task environment and production breaks — the exact failure class seen in Phase 1).

@@ -25,6 +25,9 @@ export type FetchLike = (
 // Provider credentials. Pulled from the (decrypted) payment_account.credentials
 // jsonb by the caller and passed in per-call. mode selects sandbox vs live base
 // URL. cod has no creds (creds optional at the provider boundary).
+//
+// Each provider reads only the fields it needs; the extra optional fields keep a
+// single ProviderCreds shape (existing bKash/COD callers are unaffected).
 export interface ProviderCreds {
   mode: "sandbox" | "live";
   // bKash Tokenized creds. Required for the bkash provider; absent for cod.
@@ -32,6 +35,14 @@ export interface ProviderCreds {
   password?: string;
   appKey?: string;
   appSecret?: string;
+  // Nagad creds. Per-merchant RSA keypair (NOT OAuth). merchantPrivateKey /
+  // nagadPublicKey are PEM blocks (~1.7KB) — AES-256-GCM seals them verbatim.
+  merchantId?: string;
+  merchantPrivateKey?: string;
+  nagadPublicKey?: string;
+  // SSLCommerz creds.
+  storeId?: string;
+  storePassword?: string;
 }
 
 // --- create -----------------------------------------------------------------
@@ -104,7 +115,7 @@ export interface RefundPaymentResult {
 // The provider contract every gateway implements. createPayment/executePayment/
 // queryPayment are mandatory; refund is optional (bKash has it, COD does not).
 export interface PaymentProvider {
-  provider: "bkash" | "cod";
+  provider: "bkash" | "cod" | "nagad" | "sslcommerz";
   createPayment(input: CreatePaymentInput, creds: ProviderCreds): Promise<CreatePaymentResult>;
   executePayment(input: ExecutePaymentInput, creds: ProviderCreds): Promise<ExecutePaymentResult>;
   queryPayment(input: QueryPaymentInput, creds: ProviderCreds): Promise<QueryPaymentResult>;

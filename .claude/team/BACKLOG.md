@@ -4,14 +4,14 @@
 > Status: `todo` | `active` | `blocked` | `done`
 
 ## Active milestone
-- [ ] M2: Phase 1 — MVP Wedge (products/orders/COD+bKash/Steadfast courier, sellable) — status: active
+- [ ] M3: Phase 2 — Custom domains + themes + customizer + COD reconciliation — status: active
 
 ## Queue (priority order)
-- [ ] M3: Phase 2 — Custom domains + themes + customizer + COD reconciliation — status: todo
 - [ ] M4: Phase 3 — Funnel builder + self-serve bKash billing — status: todo
 - [ ] M5: Phase 4 — Full editor, upsells, A/B, scale hardening — status: todo
 
 ## Done
+- [x] M2: Phase 1 — MVP Wedge — DONE 2026-06-23 (tag phase-1 @031f925; signup→live trial subdomain→COD+bKash checkout→Steadfast wire→billing→super-admin; gauntlet cleared 2 blockers+1 HIGH+4 majors+3 med; typecheck/lint 5/5, db 63/63, build OK; local-first, not pushed).
 - [x] M1: Phase 0 — Foundation / Infra Spine — DONE 2026-06-23 (commit phase-0 tag 4f72e4d; DoD a/b/c/d all met; RLS 5/5).
 
 ## HARDEN blockers (M1)

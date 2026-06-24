@@ -122,7 +122,7 @@ grants). A `NOLOGIN` role cannot open a connection. The fix is two bookend files
 │   │   │   └── store-not-found/       branded 404 for unknown/suspended hosts
 │   │   └── lib/
 │   │       ├── auth/
-│   │       │   ├── session.ts         getSession() — dev-login default; Supabase seam (AUTH_PROVIDER=supabase)
+│   │       │   ├── session.ts         getSession() — dev-login default; own-auth seam (AUTH_PROVIDER=password)
 │   │       │   └── provision.ts       provisionTenant() — asPlatformAdmin atomic new-tenant insert
 │   │       ├── billing/
 │   │       │   ├── status.ts          evaluateTenantBilling() — trialing→past_due→suspended (pure)
@@ -360,10 +360,13 @@ to `lib/storefront/data.ts`, so the handler swap is one file change).
 compare prevents timing oracles. `DEV_SESSION_SECRET` must be set. **Production-gated** —
 returns null immediately when `NODE_ENV === 'production'`.
 
-**Supabase branch (Phase 1, dormant):** Set `AUTH_PROVIDER=supabase` to activate the
-`@supabase/ssr` path. `packages/db/sql/05_auth.sql` provides the `on_auth_user_created`
-trigger. Requires a Supabase instance (Docker or cloud). Callers are unchanged — the seam is
-intentional.
+**Password branch (Phase 2, production default):** Set `AUTH_PROVIDER=password` for own auth
+— Argon2id hashing (`@node-rs/argon2`) and opaque DB session tokens (`user_session`, SHA-256
+of the cookie token). `SESSION_SECRET` (32+ bytes) signs/derives the token and
+`SESSION_MAX_AGE_SECONDS` (default 604800) sets the lifetime; both fail-fast if unset in
+production. Callers are unchanged — the seam is intentional. Supabase is dropped in Phase 2:
+`AUTH_PROVIDER=supabase`, `@supabase/ssr`, the `SUPABASE_*` env vars, and `05_auth.sql` are
+removed.
 
 ---
 
@@ -419,13 +422,13 @@ See `docs/DESIGN.md` for the full spec. Key decisions for every UI task:
 ```
 Phase 0 (DONE) — multi-tenant spine: withTenant RLS layer, host middleware, Doreja storefront, admin→ISR loop
 Phase 1 (DONE) — sellable MVP: products CRUD, orders, COD + bKash(sandbox) checkout, Steadfast courier, SMS, billing, super-admin, signup
-Phase 2 (next)  — custom domains, theme catalog, visual customizer, COD reconciliation, Supabase Storage blob driver
+Phase 2 (next)  — custom domains, theme catalog, visual customizer, COD reconciliation, own auth + S3 blob driver (Supabase dropped)
 Phase 3         — funnel builder, self-serve bKash billing, plan limits
 Phase 4         — full section editor, multi-step funnels, scale hardening
 ```
 
 Open Phase-1→2 decisions:
-- Activate Supabase Auth cloud (requires founder to provision a Supabase project; `AUTH_PROVIDER=supabase`)
+- Own auth in Phase 2 replaces Supabase Auth (`AUTH_PROVIDER=password`; set `SESSION_SECRET`); S3-compatible blob store (`BLOB_DRIVER=s3`, R2 recommended)
 - bKash production credential onboarding (~2–4 week merchant process)
 - Steadfast merchant account (no sandbox; live after account)
 - SMS sender-ID masking approval (sms.net.bd, 6–7 days)

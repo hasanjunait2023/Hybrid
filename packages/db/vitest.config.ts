@@ -18,6 +18,14 @@ export default defineConfig({
       // The admin dashboard helper imports "next/cache" (unstable_cache /
       // revalidateTag). Stub it to a passthrough so the data path is testable.
       { find: "next/cache", replacement: fileURLToPath(new URL("./test/next-cache-stub.ts", import.meta.url)) },
+      // The auth session module reads/writes cookies via "next/headers". Stub it
+      // with an in-memory cookie/header store so the session lifecycle is
+      // testable outside the Next request runtime.
+      { find: "next/headers", replacement: fileURLToPath(new URL("./test/next-headers-stub.ts", import.meta.url)) },
+      // The OTP issuance path rate-limits via "@/lib/redis/client". Back it with
+      // an in-memory ioredis-shaped stub so the BLOCK path is deterministic
+      // without a real Redis. Must precede the broad "@/*" rule below.
+      { find: "@/lib/redis/client", replacement: fileURLToPath(new URL("./test/redis-client-stub.ts", import.meta.url)) },
       // The checkout payment wiring marks itself "server-only" (a Next build
       // guard). Outside Next, alias it to a no-op so the module imports cleanly.
       { find: "server-only", replacement: fileURLToPath(new URL("./test/server-only-stub.ts", import.meta.url)) },

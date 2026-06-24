@@ -2,19 +2,23 @@
 // the AUTH_PROVIDER env var:
 //
 //   AUTH_PROVIDER=dev      (DEFAULT) — HMAC-signed dev-login cookie. Local-first;
-//                                      needs NO Supabase. UNCHANGED from P0.
-//   AUTH_PROVIDER=supabase           — @supabase/ssr getUser() → app_user lookup.
-//                                      Activated on Docker (`supabase start`) or
-//                                      a Supabase cloud project.
+//                                      needs NO external services. UNCHANGED.
+//   AUTH_PROVIDER=password           — own auth (SHIFT 1). Opaque DB-backed
+//                                      session token in user_session, SHA-256
+//                                      hashed at rest. Production default.
 //
-// Callers stay identical: both return Session{userId, tenantId}. The supabase
-// branch is import-safe — @supabase/ssr is only loaded (dynamic import) when
-// AUTH_PROVIDER=supabase, so local dev never needs the package or its env vars.
+// Callers stay identical: both return Session{userId, tenantId}. The Supabase
+// branch was REMOVED in Phase 2 (own auth replaces it).
 //
 // Dev cookie format: "<userId>.<hmac>" where hmac = HMAC-SHA256(userId, secret).
 // We RECOMPUTE the HMAC and constant-time compare before trusting the userId —
 // the signature, not the UUID shape, is what authenticates the session.
-import { createHmac, timingSafeEqual } from "node:crypto";
+//
+// Password cookie (hybrid_session): an opaque base64url(randomBytes(32)) token.
+// We SHA-256 it and look up user_session by token_hash; the raw token is never
+// stored. HttpOnly + Secure + SameSite=Lax (Lax required so the cookie rides
+// admin.* / app.* subdomain navigation; Strict would break it).
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
 export interface Session {
@@ -23,6 +27,17 @@ export interface Session {
 }
 
 export const DEV_SESSION_COOKIE = "hybrid_dev_session";
+export const SESSION_COOKIE = "hybrid_session";
+
+// 7 days (research brief §Topic 2, GATE-1 #B). Overridable via env for ops.
+const DEFAULT_SESSION_MAX_AGE_SECONDS = 604800;
+
+function sessionMaxAgeSeconds(): number {
+  const raw = process.env.SESSION_MAX_AGE_SECONDS;
+  if (!raw) return DEFAULT_SESSION_MAX_AGE_SECONDS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_SESSION_MAX_AGE_SECONDS;
+}
 
 // Seeded dev identities (mirrors sql/03_seed.sql).
 export const DEV_USERS = {
@@ -48,10 +63,10 @@ export function signDevCookie(userId: string): string {
 }
 
 // Provider dispatch. Defaults to 'dev' so an unset AUTH_PROVIDER keeps the
-// local HMAC dev-login path — local dev needs no Supabase config.
+// local HMAC dev-login path — local dev needs no external auth config.
 export async function getSession(): Promise<Session | null> {
-  if (process.env.AUTH_PROVIDER === "supabase") {
-    return getSupabaseSession();
+  if (process.env.AUTH_PROVIDER === "password") {
+    return getPasswordSession();
   }
   return getDevSession();
 }
@@ -73,54 +88,125 @@ async function getDevSession(): Promise<Session | null> {
   return { userId, tenantId: null };
 }
 
-// Supabase provider. getUser() (NOT getSession) is used deliberately: it
-// revalidates the JWT against the auth server instead of trusting an unverified
-// cookie. The auth user id IS the app_user id (the on_auth_user_created trigger
-// guarantees the row exists), and the active tenant is the user's owner/admin
-// membership — looked up via asPlatformAdmin (membership lookup spans tenants,
-// so it cannot run under a single-tenant withTenant context).
-//
-// @supabase/ssr is imported dynamically so the dev branch never pulls it in and
-// missing SUPABASE_* env vars cannot crash a dev-only deployment.
-async function getSupabaseSession(): Promise<Session | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    throw new Error(
-      "AUTH_PROVIDER=supabase requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    );
-  }
+// --- Own-auth (password) provider ---------------------------------------------
 
-  const { createServerClient } = await import("@supabase/ssr");
-  const store = await cookies();
-
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return store.getAll();
-      },
-      // In a Server Component the cookie store is read-only; token refresh is
-      // performed by middleware (supabase branch only). Swallowing the write
-      // here is the documented @supabase/ssr pattern.
-      setAll() {
-        /* no-op: handled by middleware on the supabase branch */
-      },
-    },
-  });
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) return null;
-
-  // app_user.id = auth.users.id. Resolve the active tenant from membership
-  // (owner first, then admin). tenantId stays null if the user has provisioned
-  // no store yet — callers pair identity with the host-resolved tenant.
-  const tenantId = await resolveActiveTenantId(user.id);
-  return { userId: user.id, tenantId };
+function hashToken(rawToken: string): string {
+  return createHash("sha256").update(rawToken).digest("hex");
 }
 
+// Read the hybrid_session cookie, hash it, and resolve a live (unexpired,
+// unrevoked) user_session via asPlatformAdmin. Cross-user lookup precedes tenant
+// resolution, so it cannot run under a single-tenant withTenant context — the
+// same rationale as resolveActiveTenantId. Returns null on any miss (fail-closed).
+async function getPasswordSession(): Promise<Session | null> {
+  const store = await cookies();
+  const raw = store.get(SESSION_COOKIE)?.value;
+  if (!raw) return null;
+
+  const { asPlatformAdmin } = await import("@hybrid/db");
+  const rows = await asPlatformAdmin((tx) =>
+    tx<{ user_id: string }[]>`
+      select user_id
+        from user_session
+       where token_hash = ${hashToken(raw)}
+         and revoked_at is null
+         and expires_at > now()
+       limit 1
+    `,
+  );
+  const userId = rows[0]?.user_id;
+  if (!userId) return null;
+
+  const tenantId = await resolveActiveTenantId(userId);
+  return { userId, tenantId };
+}
+
+export interface SessionRequestMeta {
+  ip?: string | null;
+  userAgent?: string | null;
+}
+
+// Mint a new opaque session for `userId`, persist its SHA-256 hash, set the
+// HttpOnly cookie, and return the raw token. The raw token is what the browser
+// holds; the DB only ever sees the hash. Secure is on outside dev so the cookie
+// never rides plain HTTP in production.
+export async function createSession(
+  userId: string,
+  meta: SessionRequestMeta = {},
+): Promise<string> {
+  const rawToken = randomBytes(32).toString("base64url"); // 256 bits entropy
+  const tokenHash = hashToken(rawToken);
+  const maxAge = sessionMaxAgeSeconds();
+
+  const { asPlatformAdmin } = await import("@hybrid/db");
+  await asPlatformAdmin(async (tx) => {
+    await tx`
+      insert into user_session (user_id, token_hash, expires_at, ip, user_agent)
+      values (
+        ${userId}, ${tokenHash},
+        now() + ${`${maxAge} seconds`}::interval,
+        ${meta.ip ?? null}, ${meta.userAgent ?? null}
+      )
+    `;
+  });
+
+  const store = await cookies();
+  store.set(SESSION_COOKIE, rawToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge,
+    domain: sessionCookieDomain(),
+  });
+
+  return rawToken;
+}
+
+// Revoke a session by its raw token (logout). Sets revoked_at so the row is kept
+// for audit; the lookup in getPasswordSession filters on revoked_at is null.
+// Idempotent — revoking an unknown/already-revoked token is a no-op.
+export async function revokeSession(rawToken: string): Promise<void> {
+  if (!rawToken) return;
+  const { asPlatformAdmin } = await import("@hybrid/db");
+  await asPlatformAdmin(async (tx) => {
+    await tx`
+      update user_session
+         set revoked_at = now()
+       where token_hash = ${hashToken(rawToken)}
+         and revoked_at is null
+    `;
+  });
+}
+
+// Clear the session cookie and revoke the underlying row. Reads the current
+// cookie, so call this from a Route Handler / Server Action with cookie access.
+export async function destroySession(): Promise<void> {
+  const store = await cookies();
+  const raw = store.get(SESSION_COOKIE)?.value;
+  if (raw) await revokeSession(raw);
+  store.set(SESSION_COOKIE, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+    domain: sessionCookieDomain(),
+  });
+}
+
+// The session cookie is set on the parent domain (.{ROOT}) so it is readable
+// across admin.* / app.* / store.* subdomains. In dev (lvh.me) and when the root
+// is unset we omit domain so the host-only cookie still works locally.
+function sessionCookieDomain(): string | undefined {
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+  if (!root || root.includes("lvh.me") || root.includes("localhost")) return undefined;
+  return `.${root}`;
+}
+
+// Resolve the user's active tenant from membership (owner first, then admin).
+// Spans tenants, so it runs via asPlatformAdmin (cannot use a single-tenant
+// withTenant context). Shared by the password provider; kept stable for callers.
 async function resolveActiveTenantId(userId: string): Promise<string | null> {
   const { asPlatformAdmin } = await import("@hybrid/db");
   const rows = await asPlatformAdmin((tx) =>

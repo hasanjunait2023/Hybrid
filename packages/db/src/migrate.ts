@@ -1,8 +1,13 @@
 // Apply SQL files in lexical order over the DIRECT_URL (superuser) connection,
 // recording each in a `_migrations` ledger so re-runs are idempotent.
 //
-//   db:migrate -> applies 00,01,02,04 (roles, schema, policies, grant)
+//   db:migrate -> applies 00,01,02,04,06 (roles, schema, policies, grant, own-auth)
 //   db:seed    -> applies 03 (seed)
+//
+// Phase 2 (SHIFT 1): 05_auth.sql (the Supabase on_auth_user_created trigger) was
+// removed from disk; own auth ships in 06_own_auth.sql (user_session/otp_code +
+// app_user.password_hash). pickFiles globs by prefix, so 06 is picked up by the
+// migrate set automatically and 05 simply no longer exists to apply.
 //
 // docker-compose also auto-applies the same files on first boot via
 // /docker-entrypoint-initdb.d; this script is the explicit/CI path and is safe
