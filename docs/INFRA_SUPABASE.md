@@ -89,6 +89,60 @@ ssh mt5vps 'docker exec -it supabase-db-pe9o2li2n3bns3wnofob49uw psql -U postgre
 ssh mt5vps 'docker run --rm --network pe9o2li2n3bns3wnofob49uw --entrypoint /bin/sh minio/mc -c "mc alias set m http://supabase-minio:9000 <user> <pass>; mc ls m/hybrid-media"'
 ```
 
+## Production procedures
+
+### A. Apply a DB schema change to production
+
+The canonical SQL lives in `packages/db/sql/` (numbered, applied in lexical order; `01_schema.sql`
+and `02_policies.sql` are "do not edit"). `migrate.ts` applies **whole files** by prefix (skips
+`03_`), ledger-tracked in `_migrations` — it is forward-only provisioning, NOT an ALTER engine.
+
+For a new change (e.g. add a column), do BOTH — commit it to the repo AND apply it to the live DB:
+
+1. **Add a new numbered, idempotent file** `packages/db/sql/08_<name>.sql` (don't edit 01/02):
+   ```sql
+   alter table product add column if not exists subtitle text;
+   -- grants/policies if the table is new; existing tables inherit app_runtime grants
+   ```
+2. **Apply to prod** against the superuser (`DIRECT_URL`). On the box:
+   ```bash
+   cat packages/db/sql/08_<name>.sql | ssh mt5vps 'docker exec -i supabase-db-pe9o2li2n3bns3wnofob49uw psql -U postgres -d postgres -v ON_ERROR_STOP=1'
+   # then record it in the ledger so a future `pnpm db:migrate` skips it:
+   ssh mt5vps "docker exec supabase-db-pe9o2li2n3bns3wnofob49uw psql -U postgres -d postgres -c \"insert into _migrations(filename) values ('08_<name>.sql') on conflict do nothing\""
+   ```
+   (`-i` is required to pipe SQL; idempotent DDL so re-runs are safe.)
+3. **Regenerate types**: `pnpm db:gen` with `DIRECT_URL` pointing at the VPS DB, commit
+   `packages/db/src/types.ts`.
+4. If app code changed too, redeploy `web` (see deploy command above).
+
+### B. Create a production login user
+
+A working login = **a GoTrue identity** (`auth.users`, the credential) **+ a matching `app_user`
+row** keyed **by email**, **+ a `tenant_member` link** (for store owners) or
+`is_platform_admin=true` (for platform admins). The app maps GoTrue → `app_user` by email.
+
+Normal seller signup does all of this automatically via `/api/auth/signup`. For a MANUAL admin/
+owner, do both sides with the same email:
+
+```bash
+# 1. GoTrue credential (service_role via Kong; email_confirm so they can log in now)
+SROLE=$(ssh mt5vps "grep '^SERVICE_SUPABASESERVICE_KEY=' /data/coolify/services/pe9o2li2n3bns3wnofob49uw/.env | cut -d= -f2-")
+ssh mt5vps "docker run --rm --network pe9o2li2n3bns3wnofob49uw curlimages/curl -s -X POST \
+  http://supabase-kong:8000/auth/v1/admin/users \
+  -H 'apikey: $SROLE' -H 'Authorization: Bearer $SROLE' -H 'Content-Type: application/json' \
+  -d '{\"email\":\"new@admin.com\",\"password\":\"<strong>\",\"email_confirm\":true}'"
+
+# 2a. app_user row (platform admin example)
+ssh mt5vps "docker exec supabase-db-pe9o2li2n3bns3wnofob49uw psql -U postgres -d postgres -c \
+  \"insert into app_user (email, full_name, is_platform_admin) values ('new@admin.com','Name',true)\""
+
+# 2b. OR a store owner: insert app_user, then link to a tenant
+#   insert into tenant_member (user_id, tenant_id, role) values (<app_user.id>, <tenant.id>, 'owner');
+```
+
+(Studio at `supabase-studio` can also create the GoTrue user via UI; the `app_user`/`tenant_member`
+rows still need the SQL above.)
+
 ## Gotchas (learned the hard way)
 
 1. **Auth-gated route segments must be `force-dynamic`.** `(admin)/admin/layout.tsx` and

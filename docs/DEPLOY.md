@@ -1,5 +1,11 @@
 # Deploy Seam — local-first → cloud
 
+> ⛔ **SUPERSEDED (2026-06-25).** This document describes an OLD planned target
+> (**Vercel for Platforms + Supabase Cloud + Upstash**) that was **NOT** the path taken.
+> Production now runs **self-hosted Supabase on a single VPS** (Docker + Caddy). For the
+> live architecture and all operational procedures, read **[INFRA_SUPABASE.md](INFRA_SUPABASE.md)**.
+> Keep this file only as historical reference / a possible future Vercel migration path.
+
 Phase 0 runs entirely local-first (docker-compose Postgres + Redis, `lvh.me` wildcard).
 Nothing here is provisioned in cloud yet. This document is the exact checklist for the
 day cloud lands: **Vercel for Platforms + Supabase + Upstash**. It maps every seam that
