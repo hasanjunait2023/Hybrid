@@ -1,0 +1,91 @@
+# Hybrid — production stack (single VPS, IP:port access).
+# Postgres + Redis internal; web exposed on :3000.
+# Secrets come from a sibling `.env.deploy` file (compose --env-file).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hybrid-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hybrid
+    volumes:
+      - hybrid_pgdata:/var/lib/postgresql/data
+      - ./packages/db/sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hybrid"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: hybrid-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    container_name: hybrid-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_ROOT_DOMAIN: ${NEXT_PUBLIC_ROOT_DOMAIN}
+        DATABASE_URL: ${DATABASE_URL}
+        DIRECT_URL: ${DIRECT_URL}
+        APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
+        DEV_SESSION_SECRET: ${DEV_SESSION_SECRET}
+        SESSION_SECRET: ${SESSION_SECRET}
+        REDIS_URL: ${REDIS_URL}
+        CRON_SECRET: ${CRON_SECRET}
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_ROOT_DOMAIN: ${NEXT_PUBLIC_ROOT_DOMAIN}
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
+      DEV_SESSION_SECRET: ${DEV_SESSION_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      REDIS_URL: ${REDIS_URL}
+      CRON_SECRET: ${CRON_SECRET}
+      AUTH_PROVIDER: dev
+      BLOB_DRIVER: local
+      SMS_LIVE: "false"
+      # Staging box: re-enable HMAC dev-login under NODE_ENV=production so the
+      # founder can check admin + platform. The /dev-login route additionally
+      # requires ?key=${DEV_LOGIN_KEY} (timing-safe) so it can't mint a session
+      # without the secret. Remove BOTH for a real public launch.
+      ALLOW_DEV_LOGIN: "true"
+      DEV_LOGIN_KEY: ${DEV_LOGIN_KEY}
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: hybrid-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  hybrid_pgdata:
+  caddy_data:
+  caddy_config:

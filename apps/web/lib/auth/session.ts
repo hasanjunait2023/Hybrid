@@ -73,7 +73,9 @@ export async function getSession(): Promise<Session | null> {
 
 async function getDevSession(): Promise<Session | null> {
   // Dev auth is disabled in production; never trust this cookie there.
-  if (process.env.NODE_ENV === "production") return null;
+  // Staging override: ALLOW_DEV_LOGIN=true re-enables dev-login on a deployed
+  // (NODE_ENV=production) box for founder check/QA. Default OFF — real prod stays closed.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_LOGIN !== "true") return null;
 
   const store = await cookies();
   const raw = store.get(DEV_SESSION_COOKIE)?.value;

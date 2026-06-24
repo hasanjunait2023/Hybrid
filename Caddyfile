@@ -1,0 +1,11 @@
+# Hybrid — Caddy reverse proxy with automatic HTTPS (Let's Encrypt HTTP-01).
+# Each listed hostname gets its own cert on first use. Host header is preserved
+# (Caddy default), which the app's host->tenant middleware depends on.
+hybrid.ecomex.cloud,
+admin.hybrid.ecomex.cloud,
+app.hybrid.ecomex.cloud,
+store-a.hybrid.ecomex.cloud,
+store-b.hybrid.ecomex.cloud {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
