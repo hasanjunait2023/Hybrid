@@ -86,10 +86,11 @@ export async function signupAction(
     return { ok: false, errors, values };
   }
 
-  // Dev signup mints a session cookie and is disabled in production — Supabase
-  // will own prod signup (the seam in lib/auth/session.ts). Mirror getSession /
-  // impersonateTenantOwner: never sign anyone in outside non-prod.
-  if (process.env.NODE_ENV === "production") {
+  // Dev signup mints a session cookie and is disabled in production. Staging
+  // override: ALLOW_DEV_LOGIN=true re-enables it on a deployed box so the founder
+  // can test the create-store flow (rate-limited below). Default OFF — real prod
+  // stays closed until own-auth (OTP) owns signup.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_LOGIN !== "true") {
     throw new Error("dev signup is disabled in production");
   }
 

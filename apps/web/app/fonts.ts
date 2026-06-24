@@ -10,7 +10,14 @@
 // result (no client hot-link). Drop the woff2 files into ./fonts and switch to
 // localFont when they land; the variable names stay identical, so nothing else
 // changes.
-import { Hind_Siliguri, Noto_Sans_Bengali, IBM_Plex_Mono, Inter_Tight } from "next/font/google";
+import {
+  Hind_Siliguri,
+  Noto_Sans_Bengali,
+  IBM_Plex_Mono,
+  Inter_Tight,
+  Noto_Serif_Bengali,
+  Noto_Serif,
+} from "next/font/google";
 
 // Primary Bangla UI face. Weights 400/500/600/700 only (DESIGN §4.1).
 export const hindSiliguri = Hind_Siliguri({
@@ -55,4 +62,35 @@ export const fontVariables = [
   notoSansBengali.variable,
   ibmPlexMono.variable,
   interTight.variable,
+].join(" ");
+
+// ---- Marketing-only editorial serif faces (NOT applied app-wide) ----
+// The marketing landing page uses confident serif headlines (Shopify-style
+// restraint). These are scoped to app/(marketing)/layout.tsx via
+// `marketingFontVariables` — admin and storefront keep Hind Siliguri.
+
+// Bengali editorial serif (default locale).
+export const notoSerifBengali = Noto_Serif_Bengali({
+  subsets: ["bengali"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-noto-serif-bengali",
+  display: "swap",
+  preload: true,
+  fallback: ["Noto Sans Bengali", "serif"],
+});
+
+// Latin editorial serif (English locale).
+export const notoSerif = Noto_Serif({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-noto-serif",
+  display: "swap",
+  preload: false,
+  fallback: ["Georgia", "serif"],
+});
+
+/** Serif CSS-variable classes scoped to the marketing layout only. */
+export const marketingFontVariables = [
+  notoSerifBengali.variable,
+  notoSerif.variable,
 ].join(" ");

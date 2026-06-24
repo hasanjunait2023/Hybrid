@@ -1,0 +1,20 @@
+/* Marketing-only typography helpers.
+ *
+ * Editorial serif faces scoped to the landing page. The serif family is chosen
+ * by document language: Bangla copy renders in Noto Serif Bengali, English copy
+ * in Noto Serif. Body text stays on the existing sans stack (--font-bangla /
+ * --font-latin) for readability; only headlines and lead copy go serif.
+ *
+ * The font variables are provided by app/(marketing)/layout.tsx
+ * (marketingFontVariables) — admin and storefront never see these classes. */
+
+.font-serif-display {
+  font-family: var(--font-noto-serif-bengali), "Noto Serif", "Noto Sans Bengali", serif;
+  line-height: var(--leading-bangla-tight);
+  letter-spacing: -0.01em;
+}
+
+/* English documents swap to the Latin editorial serif. */
+:lang(en) .font-serif-display {
+  font-family: var(--font-noto-serif), Georgia, serif;
+}
