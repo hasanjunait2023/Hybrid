@@ -5,10 +5,15 @@
 
 ## Active milestone
 - [ ] M3: Phase 2 — Custom domains + themes + customizer + COD reconciliation — status: active
+      + small adds from gap analysis: shipping rate calculator at checkout (Division→District→Thana + volumetric weight + auto COD-commission deduct) · Unicode Bangla SMS validation (reject Banglish, BTRC). Source: docs/research/roadmap-gap-plan.md.
 
 ## Queue (priority order)
+- [ ] M3.5: Phase 2.5 — Regulatory + F-commerce wedge (BD-specific moat) — status: todo
+      F-commerce automation (Meta Graph API comment-to-inbox + checkout link) · COD Fraud/Delivery Success Score · Escrow integration hook · DBID Compliance Wizard · SLA deadline timers + Bangla alerts. Source: docs/research/roadmap-gap-plan.md (gap analysis vs 2 market-research papers, 2026-06-24).
 - [ ] M4: Phase 3 — Funnel builder + self-serve bKash billing — status: todo
+      + freemium/low-tier pricing lock · ShurjoPay + AamarPay gateways · affiliate/agency partner program (see roadmap-gap-plan.md §3).
 - [ ] M5: Phase 4 — Full editor, upsells, A/B, scale hardening — status: todo
+      + merchant financing/capital advance once transaction history matures (see roadmap-gap-plan.md §3).
 
 ## Done
 - [x] M2: Phase 1 — MVP Wedge — DONE 2026-06-23 (tag phase-1 @031f925; signup→live trial subdomain→COD+bKash checkout→Steadfast wire→billing→super-admin; gauntlet cleared 2 blockers+1 HIGH+4 majors+3 med; typecheck/lint 5/5, db 63/63, build OK; local-first, not pushed).
