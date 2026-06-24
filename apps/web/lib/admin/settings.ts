@@ -221,6 +221,7 @@ export interface SmsSettings {
 
 interface NotificationsJson {
   sms?: { enabled?: boolean; credentials?: unknown; senderId?: string };
+  whatsapp?: { enabled?: boolean; credentials?: unknown };
 }
 
 export async function getSmsSettings(
@@ -239,6 +240,90 @@ export async function getSmsSettings(
     configured: Boolean(creds.apiKey),
     apiKeyHint: maskTail(creds.apiKey),
     senderId: typeof sms?.senderId === "string" ? sms.senderId : "",
+  };
+}
+
+// ---- WhatsApp (tenant-side) ------------------------------------------------
+// The tenant pastes its OWN WhatsApp Cloud API credentials (manual entry in
+// Phase 2; Embedded Signup is Phase 3). { wabaId, phoneNumberId, accessToken }
+// are sealed AES-256-GCM in tenant.settings.notifications.whatsapp (jsonb).
+// WhatsApp is ADDITIVE to SMS and per-tenant opt-in.
+export interface WhatsAppSettings {
+  enabled: boolean;
+  /** true once wabaId + phoneNumberId + accessToken are sealed. */
+  configured: boolean;
+  wabaIdHint: string | null;
+  phoneNumberIdHint: string | null;
+}
+
+export async function getWhatsAppSettings(
+  tenantId: string,
+  userId: string,
+): Promise<WhatsAppSettings> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ settings: { notifications?: NotificationsJson } }[]>`
+      select settings from tenant where id = ${tenantId} limit 1
+    `,
+  );
+  const whatsapp = rows[0]?.settings?.notifications?.whatsapp;
+  const creds = openIfSealed(whatsapp?.credentials);
+  return {
+    enabled: whatsapp?.enabled ?? false,
+    configured:
+      Boolean(creds.wabaId) && Boolean(creds.phoneNumberId) && Boolean(creds.accessToken),
+    wabaIdHint: maskTail(creds.wabaId),
+    phoneNumberIdHint: maskTail(creds.phoneNumberId),
+  };
+}
+
+// ---- Analytics (tenant-side) -----------------------------------------------
+// GA4 + Meta Pixel/CAPI config (Phase 2.7). Public IDs (ga4MeasurementId,
+// fbPixelId) are plaintext; the secret pair (ga4ApiSecret, fbAccessToken) is
+// sealed AES-256-GCM in tenant.settings.analytics.credentials. fbTestEventCode is
+// a non-secret Meta Test-Events label. Like every settings getter, this NEVER
+// returns raw secrets — only "configured" booleans + masked hints + the public
+// IDs (which are safe to render, they ship to the browser anyway).
+export interface AnalyticsSettings {
+  enabled: boolean;
+  ga4MeasurementId: string;
+  fbPixelId: string;
+  fbTestEventCode: string;
+  /** true once ga4ApiSecret is sealed. */
+  ga4Configured: boolean;
+  /** true once fbAccessToken is sealed. */
+  fbConfigured: boolean;
+  ga4ApiSecretHint: string | null;
+  fbAccessTokenHint: string | null;
+}
+
+interface AnalyticsJson {
+  enabled?: boolean;
+  ga4MeasurementId?: string;
+  fbPixelId?: string;
+  fbTestEventCode?: string;
+  credentials?: unknown;
+}
+
+export async function getAnalyticsSettings(
+  tenantId: string,
+  userId: string,
+): Promise<AnalyticsSettings> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ settings: { analytics?: AnalyticsJson } }[]>`
+      select settings from tenant where id = ${tenantId} limit 1
+    `,
+  );
+  const a = rows[0]?.settings?.analytics ?? {};
+  const creds = openIfSealed(a.credentials);
+  return {
+    enabled: a.enabled ?? false,
+    ga4MeasurementId: typeof a.ga4MeasurementId === "string" ? a.ga4MeasurementId : "",
+    fbPixelId: typeof a.fbPixelId === "string" ? a.fbPixelId : "",
+    fbTestEventCode: typeof a.fbTestEventCode === "string" ? a.fbTestEventCode : "",
+    ga4Configured: Boolean(creds.ga4ApiSecret),
+    fbConfigured: Boolean(creds.fbAccessToken),
+    ga4ApiSecretHint: maskTail(creds.ga4ApiSecret),
+    fbAccessTokenHint: maskTail(creds.fbAccessToken),
   };
 }
 

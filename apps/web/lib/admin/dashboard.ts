@@ -15,8 +15,14 @@ export interface DashboardData {
   yesterdayOrders: number;
   codPendingAmount: number;
   codPendingCount: number;
+  codCollectedAmount: number;
+  monthRevenue: number;
   lowStockCount: number;
   pendingConfirmCount: number;
+  /** Last 14 Dhaka-local days, oldest→newest, for the revenue trend chart. */
+  revenueSeries: { day: string; orders: number; revenue: number }[];
+  /** Fulfillment-status mix across all orders, for the side panel. */
+  statusBreakdown: { status: string; count: number }[];
   recentOrders: {
     id: string;
     orderNumber: number;
@@ -89,6 +95,45 @@ async function loadDashboard(tenantId: string, userId: string): Promise<Dashboar
       select count(*)::int as n from orders where fulfillment_status = 'pending'
     `;
 
+    // Month-to-date revenue + COD already collected (paid COD orders). Dhaka month.
+    const month = await tx<{ month_revenue: string; cod_collected: string }[]>`
+      select
+        coalesce(sum(grand_total) filter (
+          where fulfillment_status <> 'cancelled'
+            and date_trunc('month', placed_at at time zone 'Asia/Dhaka')
+                = date_trunc('month', now() at time zone 'Asia/Dhaka')
+        ), 0) as month_revenue,
+        coalesce(sum(cod_amount) filter (
+          where cod_amount > 0 and payment_status = 'paid'
+        ), 0) as cod_collected
+      from orders
+    `;
+
+    // 14-day daily series (Dhaka-local), zero-filled via generate_series so the
+    // chart always has 14 bars even on quiet days.
+    const series = await tx<{ day: string; orders: number; revenue: string }[]>`
+      select
+        d::date::text as day,
+        count(o.id)::int as orders,
+        coalesce(sum(o.grand_total) filter (where o.fulfillment_status <> 'cancelled'), 0) as revenue
+      from generate_series(
+        (now() at time zone 'Asia/Dhaka')::date - 13,
+        (now() at time zone 'Asia/Dhaka')::date,
+        interval '1 day'
+      ) d
+      left join orders o
+        on (o.placed_at at time zone 'Asia/Dhaka')::date = d::date
+      group by d
+      order by d
+    `;
+
+    const statuses = await tx<{ status: string; n: number }[]>`
+      select fulfillment_status as status, count(*)::int as n
+      from orders
+      group by fulfillment_status
+      order by count(*) desc
+    `;
+
     const recent = await tx<
       {
         id: string;
@@ -109,8 +154,16 @@ async function loadDashboard(tenantId: string, userId: string): Promise<Dashboar
       yesterdayOrders: today[0]?.yesterday_orders ?? 0,
       codPendingAmount: Number(cod[0]?.amount ?? 0),
       codPendingCount: cod[0]?.n ?? 0,
+      codCollectedAmount: Number(month[0]?.cod_collected ?? 0),
+      monthRevenue: Number(month[0]?.month_revenue ?? 0),
       lowStockCount: lowStock[0]?.n ?? 0,
       pendingConfirmCount: pendingConfirm[0]?.n ?? 0,
+      revenueSeries: series.map((s) => ({
+        day: s.day,
+        orders: s.orders,
+        revenue: Number(s.revenue),
+      })),
+      statusBreakdown: statuses.map((s) => ({ status: s.status, count: s.n })),
       recentOrders: recent.map((r) => ({
         id: r.id,
         orderNumber: Number(r.order_number),

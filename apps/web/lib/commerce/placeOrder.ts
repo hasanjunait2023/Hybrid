@@ -17,6 +17,7 @@
 //     bKash create-payment API call + webhook are done by the CHECKOUT slice
 //     AFTER this commits; here we just set status 'pending' and return
 //     bkashRequired so the caller knows to kick off the popup flow.
+import { randomUUID } from "node:crypto";
 import { withTenant } from "@hybrid/db";
 import type { Tx } from "@hybrid/db";
 import { upsertCustomerByPhone } from "./customer";
@@ -77,6 +78,12 @@ export interface PlaceOrderResult {
   bkashRequired: boolean;
   /** Applied discount (Phase 2.4), or null when no code was applied. */
   discount: AppliedDiscount | null;
+  /**
+   * Shared purchase-event dedup key (UUID v4, Phase 2.7). Minted here so the
+   * server CAPI/GA4-MP fire and the client Pixel/gtag fire use the SAME id. Also
+   * persisted to payment.payload.analytics.eventId for audit + success-page read.
+   */
+  analyticsEventId: string;
 }
 
 /** Server-computed discount applied to an order (Phase 2.4). */
@@ -432,11 +439,17 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     // COD: provider 'cod', amount = grand_total; order stays payment_status
     // 'unpaid' with cod_amount set (collected on delivery). bKash: status
     // 'pending' — the checkout slice runs createPayment/execute after commit.
+    // payload.analytics.eventId carries the shared purchase-event dedup key
+    // (Phase 2.7): the success page reads it for the client Pixel eventID and the
+    // server CAPI/GA4-MP fire so both sides share one id. (The bKash checkout
+    // slice later merges create-payment data into the same payload jsonb.)
+    const analyticsEventId = randomUUID();
     const paymentRows = await tx<{ id: string }[]>`
-      insert into payment (tenant_id, order_id, provider, status, amount)
+      insert into payment (tenant_id, order_id, provider, status, amount, payload)
       values (
         ${input.tenantId}, ${order.id}, ${input.paymentMethod},
-        'pending', ${grandTotal}
+        'pending', ${grandTotal},
+        ${tx.json({ analytics: { eventId: analyticsEventId } })}
       )
       returning id
     `;
@@ -464,6 +477,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       paymentId,
       bkashRequired: input.paymentMethod === "bkash",
       discount: appliedDiscount,
+      analyticsEventId,
     };
   });
 }

@@ -31,7 +31,10 @@
     "VERCEL_API_TOKEN",
     "VERCEL_PROJECT_ID",
     "VERCEL_TEAM_ID",
-    "VERCEL_CNAME_TARGET"
+    "VERCEL_CNAME_TARGET",
+    "WHATSAPP_ENABLED",
+    "GA4_ENABLED",
+    "CAPI_ENABLED"
   ],
   "tasks": {
     "build": {

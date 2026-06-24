@@ -42,6 +42,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const storeName = store[0]?.name ?? "";
       const sellerPhone = store[0]?.settings?.contact?.phone ?? null;
       await sendOrderNotifications({
+        tenantId: ctx.tenantId,
         storeName,
         orderNumber: ctx.orderNumber,
         total: ctx.total,

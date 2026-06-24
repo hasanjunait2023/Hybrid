@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import {
   CheckCircleIcon,
   PhoneIcon,
@@ -7,7 +8,9 @@ import {
   toBnDigits,
 } from "@hybrid/ui";
 import { getStorefrontOrder, getTenantContextBySlug } from "@/lib/storefront/data";
+import { preparePurchaseFire } from "@/lib/analytics/purchase";
 import { OrderLookup } from "./OrderLookup";
+import { PurchaseTracker } from "./PurchaseTracker";
 
 interface OrderPageProps {
   params: Promise<{ tenant: string; orderNumber: string }>;
@@ -39,8 +42,24 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
 
   const isCod = order.paymentMethod === "cod";
 
+  // Deduped purchase fire (Phase 2.7). Fires the SERVER half (CAPI + GA4-MP +
+  // internal order.placed) once — gated on payment.payload.analytics.serverFired
+  // so revisiting this page never double-fires — and returns the client bundle so
+  // the PurchaseTracker island fires the BROWSER half (Pixel + gtag) with the same
+  // event_id. Forward the _ga cookie for GA4 client_id attribution. Returns null
+  // when the tenant has no analytics configured / enabled.
+  const gaCookie = (await cookies()).get("_ga")?.value ?? null;
+  const purchaseFire = await preparePurchaseFire(ctx.id, orderNumber, phone, gaCookie);
+
   return (
     <div className="mx-auto max-w-[480px] px-4 py-8">
+      {purchaseFire && (
+        <PurchaseTracker
+          ga4MeasurementId={purchaseFire.publicIds.ga4MeasurementId}
+          fbPixelId={purchaseFire.publicIds.fbPixelId}
+          payload={purchaseFire.payload}
+        />
+      )}
       {/* Hero confirmation. */}
       <div className="flex flex-col items-center gap-3 text-center">
         <span className="grid h-16 w-16 place-items-center rounded-full bg-cod-weak text-cod">

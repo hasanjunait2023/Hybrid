@@ -96,3 +96,79 @@ export async function saveSms(
   revalidateTag(`tenant:${auth.tenantId}:settings`);
   return { ok: true };
 }
+
+// ---- WhatsApp --------------------------------------------------------------
+// The tenant pastes its OWN WhatsApp Cloud API creds (manual entry — Phase 2;
+// Embedded Signup is Phase 3). { wabaId, phoneNumberId, accessToken } are sealed
+// AES-256-GCM and stored in tenant.settings.notifications.whatsapp. WhatsApp is
+// ADDITIVE to SMS and per-tenant opt-in.
+const WhatsAppInput = z.object({
+  enabled: z.coerce.boolean().default(false),
+  wabaId: z.string().trim().max(100).optional().default(""),
+  phoneNumberId: z.string().trim().max(100).optional().default(""),
+  accessToken: z.string().trim().max(1000).optional().default(""),
+});
+
+export async function saveWhatsApp(
+  _prev: SettingsResult | null,
+  formData: FormData,
+): Promise<SettingsResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return auth;
+
+  const parsed = WhatsAppInput.safeParse({
+    enabled: formData.get("enabled") === "on" || formData.get("enabled") === "true",
+    wabaId: formData.get("wabaId") ?? "",
+    phoneNumberId: formData.get("phoneNumberId") ?? "",
+    accessToken: formData.get("accessToken") ?? "",
+  });
+  if (!parsed.success) return { ok: false, error: "ইনপুট ভুল।" };
+  const input = parsed.data;
+
+  try {
+    await withTenant(auth.tenantId, auth.userId, async (tx) => {
+      const rows = await tx<{ settings: Record<string, unknown> }[]>`
+        select settings from tenant where id = ${auth.tenantId} limit 1
+      `;
+      const settings = (rows[0]?.settings ?? {}) as Record<string, unknown>;
+      const notifications = (settings.notifications ?? {}) as Record<string, unknown>;
+      const whatsapp = (notifications.whatsapp ?? {}) as { credentials?: unknown };
+
+      // Preserve previously-sealed values for any field the seller left blank
+      // (so re-saving the toggle alone doesn't wipe the access token).
+      const prev = readSealed(whatsapp.credentials);
+      const wabaId = input.wabaId || prev.wabaId || "";
+      const phoneNumberId = input.phoneNumberId || prev.phoneNumberId || "";
+      const accessToken = input.accessToken || prev.accessToken || "";
+
+      if (input.enabled && (!wabaId || !phoneNumberId || !accessToken)) {
+        throw new Error("INCOMPLETE_WHATSAPP");
+      }
+
+      const sealed = sealCredentials({ wabaId, phoneNumberId, accessToken });
+      const nextSettings = {
+        ...settings,
+        notifications: {
+          ...notifications,
+          whatsapp: { enabled: input.enabled, credentials: sealed },
+        },
+      };
+      await tx`
+        update tenant set settings = ${tx.json(nextSettings as unknown as Jsonb)}, updated_at = now()
+        where id = ${auth.tenantId}
+      `;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INCOMPLETE_WHATSAPP") {
+      return {
+        ok: false,
+        error: "WhatsApp চালু করতে WABA ID, ফোন নম্বর ID ও অ্যাক্সেস টোকেন দিন।",
+      };
+    }
+    console.error("[saveWhatsApp] failed", error);
+    return { ok: false, error: "সেভ ব্যর্থ হয়েছে।" };
+  }
+
+  revalidateTag(`tenant:${auth.tenantId}:settings`);
+  return { ok: true };
+}

@@ -10,10 +10,17 @@ import {
   sellerNewOrderAlertSms,
   type OrderNotificationData,
 } from "./templates";
+import { notifyOrderPlacedWhatsApp } from "@/lib/whatsapp/notify";
 
 export interface SendOrderNotificationsInput extends OrderNotificationData {
   /** Seller hotline to alert. Null/absent → skip the seller SMS. */
   sellerPhone: string | null;
+  /**
+   * Tenant id, used ONLY to fire the additive, per-tenant-opt-in WhatsApp
+   * confirmation alongside SMS. Optional so existing callers stay valid;
+   * absent → WhatsApp is skipped, SMS path unchanged.
+   */
+  tenantId?: string;
 }
 
 // Fire-and-await both messages, swallowing per-message errors. Awaited (not
@@ -34,6 +41,20 @@ export async function sendOrderNotifications(
       sms.send(input.sellerPhone!, sellerNewOrderAlertSms(input)),
       `seller ${input.sellerPhone} order #${input.orderNumber}`,
     );
+  }
+
+  // WhatsApp customer confirmation — ADDITIVE to SMS, per-tenant opt-in,
+  // self-contained non-blocking (notifyOrderPlacedWhatsApp swallows its own
+  // errors). Skipped when no tenantId is supplied. Never affects the SMS path.
+  if (input.tenantId) {
+    await notifyOrderPlacedWhatsApp({
+      tenantId: input.tenantId,
+      storeName: input.storeName,
+      orderNumber: input.orderNumber,
+      total: input.total,
+      customerName: input.customerName,
+      customerPhone: input.customerPhone,
+    });
   }
 }
 

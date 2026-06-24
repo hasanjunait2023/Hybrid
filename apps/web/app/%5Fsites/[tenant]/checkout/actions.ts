@@ -166,6 +166,7 @@ export async function submitCheckout(
   // COD: order is confirmed at commit. Fire SMS (non-blocking) + redirect.
   if (!placed.bkashRequired) {
     await sendOrderNotifications({
+      tenantId: ctx.id,
       storeName: ctx.store.name,
       orderNumber: placed.orderNumber,
       total,

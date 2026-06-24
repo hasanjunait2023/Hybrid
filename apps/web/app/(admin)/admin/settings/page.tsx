@@ -10,6 +10,7 @@ const SECTIONS = [
   { href: "/admin/settings/courier", bn: "কুরিয়ার", sub: "Steadfast, Pathao" },
   { href: "/admin/settings/notifications", bn: "নোটিফিকেশন", sub: "SMS সংযোগ" },
   { href: "/admin/settings/domains", bn: "কাস্টম ডোমেইন", sub: "নিজের ডোমেইন যোগ করুন" },
+  { href: "/admin/settings/analytics", bn: "অ্যানালিটিক্স", sub: "GA4, Meta Pixel/CAPI" },
   { href: "/admin/settings/store", bn: "স্টোর প্রোফাইল", sub: "নাম, ফোন, ঠিকানা, পলিসি" },
 ];
 
