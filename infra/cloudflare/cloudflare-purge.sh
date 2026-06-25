@@ -5,6 +5,15 @@
 # This script is the BACK-HALF of per-tenant cache invalidation.
 # The FRONT-HALF is code changes: app calls this after revalidateTag()
 #
+# ⚠️ PLAN NOTE — purge-by-Cache-Tag is a Cloudflare ENTERPRISE feature. On
+# Free/Pro/Business the {"tags":[...]} purge below errors. Non-Enterprise options:
+#   1. Rely on the short edge TTL (60s in cloudflare-cache-setup.sh): stale
+#      storefront HTML self-heals within ~60s of an edit. Usually good enough.
+#   2. Purge by URL: POST /purge_cache {"files":["https://store-x.hybrid.ecomex.cloud/products",...]}
+#      — enumerate the tenant's storefront URLs for instant purge.
+# The tag path below is the Enterprise option (and needs the origin to emit a
+# `Cache-Tag: tenant:{id}` header — a follow-up code change).
+#
 # NOT YET APPLIED — requires founder approval + CF_API_TOKEN / CF_ZONE_ID
 
 set -eu

@@ -1,139 +1,75 @@
-#!/bin/bash
-# Cloudflare Cache Rules Setup — Phase A infrastructure prep
-# Configures edge caching for storefronts + images via Cloudflare API
-# NOT YET APPLIED — requires founder approval + real CF_API_TOKEN / CF_ZONE_ID
+#!/usr/bin/env bash
+# Cloudflare Cache Rules — storefront edge caching (Phase A).
+# NOT YET APPLIED — needs CF_API_TOKEN (Zone:Cache Rules edit + Cache Purge) + CF_ZONE_ID.
+#
+# WHY override-origin: the storefront origin (Next.js) emits `Cache-Control:
+# no-store` because the pages are unbounded multi-tenant dynamic routes
+# (/[tenant]/...). They CANNOT be safely made static at the origin (one tenant's
+# HTML must never be served to another). So the EDGE does the HTML caching, with
+# an explicit override-origin Edge TTL + a cache key that includes the Host, and
+# hard bypass for anything user/seller-specific (session cookie, cart/checkout/
+# order/account/api/admin). Per-tenant freshness on edit comes from cloudflare-
+# purge.sh (purge by Cache-Tag `tenant:{id}`), driven by the app's existing
+# revalidateTag scheme.
+#
+# Uses the Rulesets API (phase entrypoint PUT = idempotent: re-running replaces
+# the cache-phase rules, so this is safe to run repeatedly).
+set -euo pipefail
 
-set -eu
+CF_API_TOKEN="${CF_API_TOKEN:?set CF_API_TOKEN (Zone:Cache Rules edit + Cache Purge)}"
+CF_ZONE_ID="${CF_ZONE_ID:?set CF_ZONE_ID (zone for hybrid.ecomex.cloud)}"
 
-# ==============================================================================
-# CONFIGURATION — Replace with real values before running
-# ==============================================================================
+API="https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/rulesets/phases/http_request_cache_settings/entrypoint"
 
-# Get from Cloudflare dashboard: https://dash.cloudflare.com/profile/api-tokens
-# Token MUST have permissions: Zone:Cache Purge, Zone Settings edit
-CF_API_TOKEN="${CF_API_TOKEN:-REPLACE_ME_WITH_REAL_TOKEN}"
+# Storefront host = "<sub>.hybrid.ecomex.cloud" EXCEPT admin/app/cdn/www and the apex.
+# Bypass cache for: logged-in sessions (hybrid_session cookie) and dynamic paths.
+STOREFRONT_EXPR='(http.host wildcard "*.hybrid.ecomex.cloud")
+  and not (http.host in {"admin.hybrid.ecomex.cloud" "app.hybrid.ecomex.cloud" "cdn.hybrid.ecomex.cloud" "www.hybrid.ecomex.cloud" "hybrid.ecomex.cloud"})
+  and not (any(http.request.cookies["hybrid_session"][*] != ""))
+  and not (http.request.uri.path matches "^/(cart|checkout|order|account|api|admin|dev-login|login)(/|$)")'
 
-# Get from Cloudflare dashboard: https://dash.cloudflare.com/?account=<account-id>/domains/<domain>
-# This is the zone for hybrid.ecomex.cloud (all *.hybrid.ecomex.cloud + cdn.hybrid.ecomex.cloud)
-CF_ZONE_ID="${CF_ZONE_ID:-REPLACE_ME_WITH_REAL_ZONE_ID}"
+CDN_EXPR='(http.host eq "cdn.hybrid.ecomex.cloud")'
 
-# Domain we're caching (storefront + CDN)
-DOMAIN="hybrid.ecomex.cloud"
+# Collapse the multi-line expression to one line for JSON.
+STOREFRONT_EXPR_ONELINE=$(printf '%s' "$STOREFRONT_EXPR" | tr -s '[:space:]' ' ')
 
-# ==============================================================================
-# VALIDATION
-# ==============================================================================
-
-if [ "$CF_API_TOKEN" = "REPLACE_ME_WITH_REAL_TOKEN" ] || [ "$CF_ZONE_ID" = "REPLACE_ME_WITH_REAL_ZONE_ID" ]; then
-  echo "❌ ERROR: Set CF_API_TOKEN and CF_ZONE_ID before running"
-  echo ""
-  echo "Example:"
-  echo "  export CF_API_TOKEN='your-token-here'"
-  echo "  export CF_ZONE_ID='your-zone-id-here'"
-  echo "  bash infra/cloudflare/cloudflare-cache-setup.sh"
-  exit 1
-fi
-
-# ==============================================================================
-# HELPER: Cloudflare API call
-# ==============================================================================
-
-cf_api() {
-  local method=$1
-  local endpoint=$2
-  local data=${3:-}
-
-  local url="https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}${endpoint}"
-  local cmd=(
-    curl -s -X "$method" "$url"
-    -H "Authorization: Bearer $CF_API_TOKEN"
-    -H "Content-Type: application/json"
-  )
-
-  if [ -n "$data" ]; then
-    cmd+=(-d "$data")
-  fi
-
-  "${cmd[@]}"
-}
-
-# ==============================================================================
-# CACHE RULES SETUP
-# ==============================================================================
-
-echo "Setting up Cloudflare cache rules for $DOMAIN..."
-echo ""
-
-# Rule 1: Cache storefront HTML (*.hybrid.ecomex.cloud)
-# - Honors origin Cache-Control s-maxage directive
-# - Exclude /admin, /api, /checkout, /cart, and admin./app. hosts
-echo "[1/2] Creating storefront cache rule..."
-
-storefront_rule=$(cat <<'EOF'
+read -r -d '' BODY <<JSON || true
 {
   "rules": [
     {
-      "description": "Cache storefront HTML — honor origin s-maxage, exclude admin/API",
-      "expression": "(http.host matches \"^[a-z0-9-]+\\.hybrid\\.ecomex\\.cloud$\") and not (cf.threat_score > 50) and not (http.request.uri.path matches \"^/admin(/|$)\") and not (http.request.uri.path matches \"^/api(/|$)\") and not (http.request.uri.path matches \"^/checkout(/|$)\") and not (http.request.uri.path matches \"^/cart(/|$)\")",
-      "action": "cache_on_cookie_present",
+      "description": "Storefront HTML — edge cache 60s, override origin no-store, Host in cache key, bypass sessions/dynamic",
+      "expression": "${STOREFRONT_EXPR_ONELINE}",
+      "action": "set_cache_settings",
       "action_parameters": {
         "cache": true,
-        "browser_ttl": 3600,
-        "edge_ttl": 86400,
-        "cache_control_origin": true
+        "edge_ttl": { "mode": "override_origin", "default": 60 },
+        "browser_ttl": { "mode": "override_origin", "default": 0 },
+        "respect_strong_etags": true,
+        "cache_key": { "cache_deception_armor": true, "custom_key": { "host": { "resolved": false } } }
+      }
+    },
+    {
+      "description": "CDN images (MinIO) — immutable, 1 year edge + browser",
+      "expression": "${CDN_EXPR}",
+      "action": "set_cache_settings",
+      "action_parameters": {
+        "cache": true,
+        "edge_ttl": { "mode": "override_origin", "default": 31536000 },
+        "browser_ttl": { "mode": "override_origin", "default": 31536000 }
       }
     }
   ]
 }
-EOF
-)
+JSON
 
-cf_api POST "/rules" "$storefront_rule" | jq .
-if [ $? -eq 0 ]; then
-  echo "✅ Storefront cache rule created"
-else
-  echo "⚠️  Storefront cache rule failed (may already exist)"
-fi
+echo "Applying cache ruleset to zone ${CF_ZONE_ID} ..."
+curl -fsS -X PUT "$API" \
+  -H "Authorization: Bearer ${CF_API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data "$BODY" | { command -v jq >/dev/null && jq '{success, errors, result_rules: (.result.rules | length)}' || cat; }
 
-echo ""
-
-# Rule 2: Cache CDN images (cdn.hybrid.ecomex.cloud/*)
-# - Immutable images with 1-year TTL
-echo "[2/2] Creating CDN image cache rule..."
-
-cdn_rule=$(cat <<'EOF'
-{
-  "rules": [
-    {
-      "description": "Cache CDN images immutable — 1 year TTL",
-      "expression": "http.host eq \"cdn.hybrid.ecomex.cloud\"",
-      "action": "cache_on_cookie_present",
-      "action_parameters": {
-        "cache": true,
-        "browser_ttl": 31536000,
-        "edge_ttl": 31536000,
-        "cache_control_origin": false
-      }
-    }
-  ]
-}
-EOF
-)
-
-cf_api POST "/rules" "$cdn_rule" | jq .
-if [ $? -eq 0 ]; then
-  echo "✅ CDN cache rule created"
-else
-  echo "⚠️  CDN cache rule failed (may already exist)"
-fi
-
-echo ""
-echo "Cloudflare cache rules setup complete!"
-echo ""
-echo "Next steps:"
-echo "1. Verify rules in Cloudflare dashboard → Rules → Cache Rules"
-echo "2. Update storefront responses to include Cache-Control headers:"
-echo "   - Storefront HTML: Cache-Control: s-maxage=3600, public"
-echo "   - See docs/SCALING_PLAN.md Phase A for code changes needed"
-echo "3. Watch cache hit rates in Cloudflare Analytics"
-echo ""
+echo
+echo "Done. Verify: Cloudflare dashboard -> Caching -> Cache Rules."
+echo "Test:   curl -sI https://store-a.hybrid.ecomex.cloud/products | grep -i cf-cache-status"
+echo "        (expect cf-cache-status: MISS then HIT on a 2nd request)"
+echo "Purge a tenant after edits:  CF_API_TOKEN=... CF_ZONE_ID=... TENANT_ID=<uuid> bash infra/cloudflare/cloudflare-purge.sh"

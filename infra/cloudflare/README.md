@@ -8,6 +8,18 @@ Cloudflare edge caching is the **single biggest latency win** for Hybrid. Storef
 
 **Target:** Storefront cache-hit rate > 90% after Phase A.
 
+> **PLAN NOTE (corrected 2026-06-25): the edge OVERRIDES the origin.** The
+> storefront origin emits `Cache-Control: no-store` because the pages are
+> unbounded multi-tenant dynamic routes (`/[tenant]/...`) that CANNOT be safely
+> made static at the origin (one tenant's HTML must never leak to another — we
+> deliberately did NOT add origin ISR). So `cloudflare-cache-setup.sh` uses an
+> **`edge_ttl: override_origin` (60s)** rule with the **Host in the cache key** and
+> hard bypass for the `hybrid_session` cookie + `/cart /checkout /order /account
+> /api /admin /login` paths. No origin code change is required to start caching.
+> Per-tenant instant purge needs Enterprise (Cache-Tag) — otherwise the 60s TTL
+> self-heals staleness, or purge by URL (see `cloudflare-purge.sh`). The API token
+> needs **Zone:Cache Rules edit** (for setup) + **Zone:Cache Purge** (for purge).
+
 ## Architecture
 
 ```
