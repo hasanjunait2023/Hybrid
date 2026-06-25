@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { buildLocationTree } from "@/lib/location";
+import { getDict } from "@/lib/i18n/server";
 import { ManualOrderForm } from "./ManualOrderForm";
 
 // Manual Order Entry (DESIGN §P3.4) — the F-commerce killer feature. Full-screen
@@ -16,14 +17,16 @@ export default async function NewManualOrderPage() {
   if (!tenantId) redirect("/platform");
 
   const locationTree = buildLocationTree();
+  const { d } = await getDict();
+  const t = d.admin.orders.create;
 
   return (
-    <div lang="en" className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl">
       <div className="mb-4 flex items-center gap-3">
         <a href="/admin/orders" className="text-sm font-medium text-ink-muted hover:text-primary">
-          ← অর্ডার
+          ← {t.backToOrders}
         </a>
-        <h1 className="text-xl font-bold text-ink">নতুন অর্ডার</h1>
+        <h1 className="text-xl font-bold text-ink">{t.title}</h1>
       </div>
       <ManualOrderForm locationTree={locationTree} />
     </div>

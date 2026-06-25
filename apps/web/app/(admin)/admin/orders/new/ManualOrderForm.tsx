@@ -10,8 +10,10 @@
 // Ctrl/Cmd+Enter saves. No input-delaying motion — judged in milliseconds.
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { formatBdtLatin, TrashIcon, PlusIcon } from "@hybrid/ui";
+import { TrashIcon, PlusIcon } from "@hybrid/ui";
 import type { LocationTree } from "@/lib/location";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatMoney } from "@/lib/i18n/format";
 import {
   createManualOrder,
   lookupCustomer,
@@ -41,6 +43,9 @@ const inputCls =
 
 export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }) {
   const router = useRouter();
+  const locale = useLocale();
+  const d = useDict();
+  const t = d.admin.orders.create;
   const phoneRef = useRef<HTMLInputElement>(null);
 
   const [phone, setPhone] = useState("");
@@ -68,7 +73,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
       return;
     }
     if (prefill.name && !name) setName(prefill.name);
-    setReturningChip(prefill.name ?? "আগের গ্রাহক");
+    setReturningChip(prefill.name ?? t.returningCustomer);
     const a = prefill.address;
     if (a) {
       // Match the saved Bangla titles back to the cascade values so the pickers
@@ -164,7 +169,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
     startTransition(async () => {
       const result = await createManualOrder(null, fd);
       if (!result.ok) {
-        setError(result.error ?? "অর্ডার তৈরি ব্যর্থ হয়েছে।");
+        setError(result.error ?? t.createFailed);
         return;
       }
       if (another) resetForm();
@@ -194,7 +199,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
       <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
         <div>
           <label htmlFor="phone" className="mb-1 block text-sm font-semibold text-ink">
-            ফোন নম্বর
+            {t.phone}
           </label>
           <input
             ref={phoneRef}
@@ -214,19 +219,19 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
               onClick={() => setReturningChip(null)}
               className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary-weak px-2 py-0.5 text-2xs font-semibold text-primary"
             >
-              আগের গ্রাহক — {returningChip} ✕
+              {t.returningCustomer} — {returningChip} ✕
             </button>
           )}
         </div>
         <div>
           <label htmlFor="name" className="mb-1 block text-sm font-semibold text-ink">
-            নাম
+            {d.common.label.name}
           </label>
           <input
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="গ্রাহকের নাম"
+            placeholder={t.namePlaceholder}
             className={inputCls}
           />
         </div>
@@ -234,7 +239,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
 
       {/* Products */}
       <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
-        <h2 className="text-sm font-bold text-ink">পণ্য যোগ করুন</h2>
+        <h2 className="text-sm font-bold text-ink">{t.addProducts}</h2>
         <ProductPicker onAdd={addLine} />
         {lines.length > 0 && (
           <ul className="divide-y divide-border">
@@ -250,7 +255,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
                   min={1}
                   value={l.quantity}
                   onChange={(e) => setQty(l.variantId, Number(e.target.value))}
-                  aria-label="পরিমাণ"
+                  aria-label={t.qtyAria}
                   className="h-9 w-14 rounded-sm border border-border-strong bg-surface px-2 text-center font-mono text-sm text-ink tnum"
                 />
                 <input
@@ -259,16 +264,16 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
                   min={0}
                   value={l.unitPrice}
                   onChange={(e) => setPrice(l.variantId, Number(e.target.value))}
-                  aria-label="দাম"
+                  aria-label={t.priceAria}
                   className="h-9 w-20 rounded-sm border border-border-strong bg-surface px-2 text-right font-mono text-sm text-ink tnum"
                 />
                 <span className="w-20 text-right font-mono text-sm font-semibold text-ink tnum">
-                  {formatBdtLatin(l.unitPrice * l.quantity)}
+                  {formatMoney(l.unitPrice * l.quantity, locale)}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeLine(l.variantId)}
-                  aria-label="সরান"
+                  aria-label={t.removeAria}
                   className="text-ink-subtle hover:text-danger"
                 >
                   <TrashIcon className="h-4 w-4" />
@@ -281,18 +286,18 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
 
       {/* Address */}
       <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
-        <h2 className="text-sm font-bold text-ink">ঠিকানা</h2>
+        <h2 className="text-sm font-bold text-ink">{t.address}</h2>
         <LocationPicker tree={locationTree} value={location} onChange={setLocation} />
         <div>
           <label htmlFor="line" className="mb-1 block text-sm font-semibold text-ink">
-            বিস্তারিত ঠিকানা
+            {t.detailedAddress}
           </label>
           <textarea
             id="line"
             rows={2}
             value={addressLine}
             onChange={(e) => setAddressLine(e.target.value)}
-            placeholder="বাসা, রোড, এলাকা"
+            placeholder={t.addressPlaceholder}
             className="w-full rounded-sm border border-border-strong bg-surface px-3 py-2 text-base text-ink placeholder:text-ink-subtle focus-visible:border-primary"
           />
         </div>
@@ -300,30 +305,30 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
 
       {/* Payment + delivery */}
       <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
-        <h2 className="text-sm font-bold text-ink">পেমেন্ট</h2>
+        <h2 className="text-sm font-bold text-ink">{t.payment}</h2>
         <div className="flex gap-2">
           <PayToggle active={paymentMethod === "cod"} onClick={() => setPaymentMethod("cod")} tone="cod">
-            ক্যাশ অন ডেলিভারি
+            {t.cod}
           </PayToggle>
           <PayToggle active={paymentMethod === "bkash"} onClick={() => setPaymentMethod("bkash")} tone="bkash">
-            বিকাশ
+            {t.bkash}
           </PayToggle>
         </div>
         <div className="max-w-[220px]">
-          <label htmlFor="order-source" className="mb-1 block text-sm font-semibold text-ink">চ্যানেল</label>
+          <label htmlFor="order-source" className="mb-1 block text-sm font-semibold text-ink">{t.channel}</label>
           <select
             id="order-source"
             value={source}
             onChange={(e) => setSource(e.target.value as "manual" | "messenger")}
             className="h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
           >
-            <option value="manual">ম্যানুয়াল / ফোন</option>
-            <option value="messenger">মেসেঞ্জার / চ্যাট</option>
+            <option value="manual">{t.manualPhone}</option>
+            <option value="messenger">{t.messengerChat}</option>
           </select>
         </div>
         <div className="max-w-[200px]">
           <label htmlFor="shipping" className="mb-1 block text-sm font-semibold text-ink">
-            ডেলিভারি চার্জ (৳)
+            {t.deliveryCharge}
           </label>
           <input
             id="shipping"
@@ -337,7 +342,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
         </div>
         <div>
           <label htmlFor="note" className="mb-1 block text-sm font-semibold text-ink">
-            নোট (ঐচ্ছিক)
+            {t.noteOptional}
           </label>
           <input
             id="note"
@@ -358,8 +363,8 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
       <div className="fixed inset-x-0 bottom-0 z-sticky border-t border-border bg-surface shadow-lg lg:left-60">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <div className="mr-auto">
-            <p className="text-2xs text-ink-muted">সর্বমোট</p>
-            <p className="font-mono text-lg font-bold text-ink tnum">{formatBdtLatin(grandTotal)}</p>
+            <p className="text-2xs text-ink-muted">{t.grandTotal}</p>
+            <p className="font-mono text-lg font-bold text-ink tnum">{formatMoney(grandTotal, locale)}</p>
           </div>
           <button
             type="button"
@@ -367,7 +372,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
             disabled={!canSubmit}
             className="h-11 rounded-md border border-border-strong bg-surface px-3 text-sm font-semibold text-ink hover:bg-surface-2 disabled:cursor-not-allowed disabled:text-ink-subtle"
           >
-            তৈরি করে আরেকটি
+            {t.createAndAnother}
           </button>
           <button
             type="button"
@@ -375,7 +380,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
             disabled={!canSubmit}
             className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-subtle disabled:shadow-none"
           >
-            {pending ? "তৈরি হচ্ছে…" : "অর্ডার তৈরি করুন"}
+            {pending ? t.creating : t.createOrder}
           </button>
         </div>
       </div>
@@ -411,6 +416,8 @@ function PayToggle({
 
 // Product type-ahead. Enter adds the top result and refocuses the search.
 function ProductPicker({ onAdd }: { onAdd: (v: PickerVariant) => void }) {
+  const locale = useLocale();
+  const t = useDict().admin.orders.create;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PickerVariant[]>([]);
   const [open, setOpen] = useState(false);
@@ -455,7 +462,7 @@ function ProductPicker({ onAdd }: { onAdd: (v: PickerVariant) => void }) {
         value={query}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="পণ্যের নাম বা SKU দিয়ে খুঁজুন (Enter দিয়ে যোগ করুন)"
+        placeholder={t.productSearchPlaceholder}
         className={inputCls}
       />
       {open && results.length > 0 && (
@@ -479,8 +486,8 @@ function ProductPicker({ onAdd }: { onAdd: (v: PickerVariant) => void }) {
                     </span>
                     {r.sku && <span className="font-mono text-2xs text-ink-subtle">{r.sku}</span>}
                   </span>
-                  <span className="font-mono text-sm text-ink tnum">{formatBdtLatin(r.price)}</span>
-                  {oos && <span className="text-2xs font-semibold text-danger">স্টক নেই</span>}
+                  <span className="font-mono text-sm text-ink tnum">{formatMoney(r.price, locale)}</span>
+                  {oos && <span className="text-2xs font-semibold text-danger">{t.outOfStock}</span>}
                 </button>
               </li>
             );

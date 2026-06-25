@@ -7,6 +7,7 @@
 // against Bangla + English transliteration.
 import { useMemo, useRef, useState } from "react";
 import type { CascadeOption, LocationTree } from "@/lib/location";
+import { useDict, useLocale } from "@/lib/i18n/provider";
 
 export interface LocationValue {
   division: string;
@@ -23,6 +24,8 @@ interface Props {
 }
 
 export function LocationPicker({ tree, value, onChange }: Props) {
+  const d = useDict();
+  const loc = d.admin.orders.location;
   const districts = value.divisionValue != null
     ? (tree.districtsByDivision[value.divisionValue] ?? [])
     : [];
@@ -33,7 +36,7 @@ export function LocationPicker({ tree, value, onChange }: Props) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <SelectSheet
-        label="বিভাগ"
+        label={loc.division}
         options={tree.divisions}
         selectedLabel={value.division}
         onSelect={(opt) =>
@@ -47,7 +50,7 @@ export function LocationPicker({ tree, value, onChange }: Props) {
         }
       />
       <SelectSheet
-        label="জেলা"
+        label={loc.district}
         options={districts}
         selectedLabel={value.district}
         disabled={value.divisionValue == null}
@@ -61,7 +64,7 @@ export function LocationPicker({ tree, value, onChange }: Props) {
         }
       />
       <SelectSheet
-        label="থানা"
+        label={loc.thana}
         options={thanas}
         selectedLabel={value.thana}
         disabled={value.districtValue == null}
@@ -84,6 +87,9 @@ function SelectSheet({
   disabled?: boolean;
   onSelect: (opt: CascadeOption) => void;
 }) {
+  const d = useDict();
+  const locale = useLocale();
+  const loc = d.admin.orders.location;
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +120,7 @@ function SelectSheet({
         className="flex h-11 w-full items-center justify-between rounded-sm border border-border-strong bg-surface px-3 text-left text-base text-ink disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-subtle"
       >
         <span className={selectedLabel ? "text-ink" : "text-ink-subtle"}>
-          {selectedLabel || "নির্বাচন করুন"}
+          {selectedLabel || loc.select}
         </span>
         <span aria-hidden className="text-ink-subtle">▾</span>
       </button>
@@ -124,21 +130,21 @@ function SelectSheet({
           {/* backdrop */}
           <button
             type="button"
-            aria-label="বন্ধ করুন"
+            aria-label={loc.close}
             className="absolute inset-0 z-overlay bg-black/40"
             onClick={() => setOpen(false)}
           />
           <div className="relative z-modal flex max-h-[70vh] w-full max-w-md flex-col rounded-t-lg bg-surface sm:rounded-lg">
             <div className="border-b border-border p-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-bold text-ink">{label} নির্বাচন করুন</span>
-                <span className="text-2xs text-ink-subtle tnum">{options.length}টি</span>
+                <span className="text-sm font-bold text-ink">{label} {loc.selectSuffix}</span>
+                <span className="text-2xs text-ink-subtle tnum">{options.length}{loc.countSuffix}</span>
               </div>
               <input
                 ref={inputRef}
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="খুঁজুন…"
+                placeholder={loc.searchPlaceholder}
                 className="h-10 w-full rounded-sm border border-border-strong bg-surface px-3 text-base text-ink placeholder:text-ink-subtle focus-visible:border-primary"
               />
             </div>
@@ -153,13 +159,13 @@ function SelectSheet({
                     }}
                     className="flex w-full items-center justify-between px-4 py-3 text-left text-base text-ink hover:bg-surface-2"
                   >
-                    <span>{opt.bn}</span>
-                    <span className="text-xs text-ink-subtle">{opt.en}</span>
+                    <span>{locale === "bn" ? opt.bn : opt.en}</span>
+                    <span className="text-xs text-ink-subtle">{locale === "bn" ? opt.en : opt.bn}</span>
                   </button>
                 </li>
               ))}
               {filtered.length === 0 && (
-                <li className="px-4 py-6 text-center text-sm text-ink-muted">কিছু পাওয়া যায়নি।</li>
+                <li className="px-4 py-6 text-center text-sm text-ink-muted">{loc.nothingFound}</li>
               )}
             </ul>
           </div>
