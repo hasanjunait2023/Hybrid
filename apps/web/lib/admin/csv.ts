@@ -9,9 +9,17 @@ import { slugify } from "@/lib/admin/format";
 const needsQuote = (s: string) => /[",\r\n]/.test(s);
 const quote = (s: string) => (needsQuote(s) ? `"${s.replace(/"/g, '""')}"` : s);
 
+// CSV formula-injection guard (OWASP): a cell beginning with = + - @ TAB CR is
+// executed as a formula by Excel/Sheets. Field values here are user-controlled
+// (product titles, customer names from the storefront), so prefix a single
+// quote to neutralise before quoting. Applied to every exported cell.
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+const neutralize = (s: string) => (FORMULA_LEAD.test(s) ? `'${s}` : s);
+const cell = (s: string) => quote(neutralize(s ?? ""));
+
 export function serializeCsv(headers: string[], rows: string[][]): string {
-  const lines = [headers.map(quote).join(",")];
-  for (const row of rows) lines.push(row.map((c) => quote(c ?? "")).join(","));
+  const lines = [headers.map(cell).join(",")];
+  for (const row of rows) lines.push(row.map(cell).join(","));
   return lines.join("\r\n");
 }
 

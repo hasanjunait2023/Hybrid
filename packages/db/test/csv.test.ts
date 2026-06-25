@@ -34,6 +34,15 @@ describe("csv import/export slice (P2-5)", () => {
     expect(csv).toBe('a,b\r\n"x,y","he said ""hi"""');
   });
 
+  it("1b. neutralizes CSV formula injection (=,+,-,@)", () => {
+    const csv = serializeCsv(["a"], [["=cmd|' /c calc'!A1"], ["+1"], ["@SUM(A1)"], ["safe"]]);
+    const lines = csv.split("\r\n");
+    expect(lines[1]!.startsWith("\"'=") || lines[1]!.startsWith("'=")).toBe(true);
+    expect(lines[2]).toBe("'+1");
+    expect(lines[3]).toBe("'@SUM(A1)");
+    expect(lines[4]).toBe("safe");
+  });
+
   it("2. parse round-trips quoted fields", () => {
     const table = parseCsv('a,b\r\n"x,y","he said ""hi"""');
     expect(table).toEqual([
