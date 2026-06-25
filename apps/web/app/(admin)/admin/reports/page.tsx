@@ -8,6 +8,7 @@ import {
   getStatusReport,
   getCodReport,
   getProfitReport,
+  getCourierPerformance,
   defaultRange,
   type DateRange,
 } from "@/lib/admin/reports";
@@ -53,12 +54,13 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const sp = await searchParams;
   const { range, preset } = rangeFor(sp);
 
-  const [sales, top, status, cod, profit] = await Promise.all([
+  const [sales, top, status, cod, profit, couriers] = await Promise.all([
     getSalesReport(tenantId, session.userId, range),
     getTopProducts(tenantId, session.userId, range, 8),
     getStatusReport(tenantId, session.userId, range),
     getCodReport(tenantId, session.userId),
     getProfitReport(tenantId, session.userId, range),
+    getCourierPerformance(tenantId, session.userId, range),
   ]);
 
   const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -163,6 +165,41 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
             </dl>
           </div>
         </div>
+      </section>
+
+      {/* Courier performance */}
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
+        <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">কুরিয়ার পারফরম্যান্স</h2>
+        {couriers.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-ink-muted">এখনো কোনো চালান নেই।</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
+                <th className="px-4 py-2 font-semibold">কুরিয়ার</th>
+                <th className="px-4 py-2 text-right font-semibold">পাঠানো</th>
+                <th className="px-4 py-2 text-right font-semibold">ডেলিভার্ড</th>
+                <th className="px-4 py-2 text-right font-semibold">ডেলিভারি রেট</th>
+                <th className="px-4 py-2 text-right font-semibold">RTO রেট</th>
+                <th className="px-4 py-2 text-right font-semibold">COD সংগ্রহ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {couriers.map((c, i) => (
+                <tr key={c.provider} className={i % 2 === 1 ? "bg-surface-2" : undefined}>
+                  <td className="px-4 py-2 font-medium capitalize text-ink">{c.provider}</td>
+                  <td className="px-4 py-2 text-right font-mono text-ink-muted tnum">{c.sent}</td>
+                  <td className="px-4 py-2 text-right font-mono text-ink tnum">{c.delivered}</td>
+                  <td className="px-4 py-2 text-right font-mono font-semibold text-success tnum">{pct(c.deliveryRate)}</td>
+                  <td className={`px-4 py-2 text-right font-mono font-semibold tnum ${c.rtoRate > 0.25 ? "text-danger" : "text-ink-muted"}`}>
+                    {pct(c.rtoRate)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-ink tnum">{formatBdtLatin(c.codCollected)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </div>
   );

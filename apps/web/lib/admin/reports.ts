@@ -191,6 +191,66 @@ export async function getProfitReport(
   };
 }
 
+export interface CourierPerformance {
+  provider: string;
+  sent: number;
+  delivered: number;
+  returned: number;
+  inTransit: number;
+  /** delivered / (delivered + returned) — success among resolved parcels. */
+  deliveryRate: number;
+  /** returned / sent — RTO share. */
+  rtoRate: number;
+  codCollected: number;
+}
+
+// Per-courier delivery vs RTO from the shipment ledger — lets a seller choose
+// couriers by real performance (the multi-courier decision input). Range-bounded
+// by the shipment created_at (Dhaka-local).
+export async function getCourierPerformance(
+  tenantId: string,
+  userId: string,
+  range: DateRange,
+): Promise<CourierPerformance[]> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<
+      {
+        provider: string;
+        sent: number;
+        delivered: number;
+        returned: number;
+        in_transit: number;
+        cod_collected: string;
+      }[]
+    >`
+      select
+        provider,
+        count(*)::int as sent,
+        count(*) filter (where status = 'delivered')::int as delivered,
+        count(*) filter (where status = 'returned')::int as returned,
+        count(*) filter (where status in ('in_transit', 'picked_up'))::int as in_transit,
+        coalesce(sum(cod_collected), 0) as cod_collected
+      from shipment
+      where (created_at at time zone 'Asia/Dhaka')::date between ${range.from}::date and ${range.to}::date
+      group by provider
+      order by sent desc
+    `,
+  );
+  return rows.map((r) => {
+    const resolved = r.delivered + r.returned;
+    return {
+      provider: r.provider,
+      sent: r.sent,
+      delivered: r.delivered,
+      returned: r.returned,
+      inTransit: r.in_transit,
+      deliveryRate: resolved > 0 ? r.delivered / resolved : 0,
+      rtoRate: r.sent > 0 ? r.returned / r.sent : 0,
+      codCollected: Number(r.cod_collected),
+    };
+  });
+}
+
 // Default range: last 30 Dhaka-local days, inclusive.
 export function defaultRange(todayDhaka: string): DateRange {
   const end = new Date(todayDhaka + "T00:00:00+06:00");
