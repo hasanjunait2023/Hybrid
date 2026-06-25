@@ -1,0 +1,110 @@
+import { formatBdtLatin } from "@hybrid/ui";
+import { getBillingOverview, listSubscriptions, listInvoices } from "@/lib/platform/billing";
+import { BillingControls, ExtendTrial, MarkPaid } from "./BillingControls";
+
+// Platform billing & subscriptions (PP1-A3). Revenue overview, subscription
+// roster, open/overdue invoices, manual overrides + sweep. Authz via layout.
+export const dynamic = "force-dynamic";
+
+function fmtDate(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleDateString("en-CA") : "—";
+}
+
+export default async function BillingPage() {
+  const [overview, subs, openInvoices] = await Promise.all([
+    getBillingOverview(),
+    listSubscriptions(),
+    listInvoices("open"),
+  ]);
+
+  return (
+    <div lang="en" className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <a href="/platform" className="text-sm font-medium text-ink-muted hover:text-primary">← ড্যাশবোর্ড</a>
+          <h1 className="mt-1 text-xl font-bold text-ink">বিলিং ও সাবস্ক্রিপশন</h1>
+        </div>
+        <BillingControls />
+      </div>
+
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat label="MRR" value={formatBdtLatin(overview.mrr)} accent />
+        <Stat label="ট্রায়াল / অ্যাকটিভ" value={`${overview.trialing} / ${overview.active}`} />
+        <Stat label="বকেয়া সাবস্ক্রিপশন" value={String(overview.pastDue)} tone={overview.pastDue > 0 ? "warning" : undefined} />
+        <Stat label="ওভারডিউ ইনভয়েস" value={formatBdtLatin(overview.overdueAmount)} tone={overview.overdueAmount > 0 ? "danger" : undefined} />
+      </section>
+
+      {/* Subscriptions */}
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
+        <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">সাবস্ক্রিপশন</h2>
+        {subs.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-ink-muted">কোনো সাবস্ক্রিপশন নেই।</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
+                <th className="px-4 py-2 font-semibold">স্টোর</th>
+                <th className="px-4 py-2 font-semibold">প্ল্যান</th>
+                <th className="px-4 py-2 font-semibold">স্ট্যাটাস</th>
+                <th className="px-4 py-2 text-right font-semibold">MRR</th>
+                <th className="px-4 py-2 font-semibold">পিরিয়ড শেষ</th>
+                <th className="px-4 py-2 font-semibold">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subs.map((s, i) => (
+                <tr key={s.tenantId} className={i % 2 === 1 ? "bg-surface-2" : undefined}>
+                  <td className="px-4 py-2">
+                    <a href={`/platform/tenants/${s.tenantId}`} className="font-medium text-ink hover:text-primary hover:underline">{s.tenantName}</a>
+                  </td>
+                  <td className="px-4 py-2 text-ink-muted">{s.plan ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
+                      s.status === "active" ? "bg-success-weak text-success"
+                        : s.status === "past_due" ? "bg-warning-weak text-warning"
+                        : s.status === "trialing" ? "bg-st-pending-weak text-st-pending"
+                        : "bg-surface-2 text-ink-muted"}`}>
+                      {s.status}{s.cancelAtPeriodEnd ? " ⊘" : ""}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-ink tnum">{s.mrr > 0 ? formatBdtLatin(s.mrr) : "—"}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-ink-muted tnum">{fmtDate(s.periodEnd)}</td>
+                  <td className="px-4 py-2"><ExtendTrial tenantId={s.tenantId} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Open invoices */}
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
+        <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">খোলা ইনভয়েস</h2>
+        {openInvoices.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-ink-muted">কোনো খোলা ইনভয়েস নেই।</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {openInvoices.map((inv) => (
+              <li key={inv.id} className="flex items-center gap-3 px-4 py-3">
+                <span className="min-w-0 flex-1 truncate text-sm text-ink">{inv.tenantName}</span>
+                <span className="font-mono text-sm font-semibold text-ink tnum">{formatBdtLatin(inv.amount)}</span>
+                <span className="text-2xs text-ink-subtle">ডিউ {fmtDate(inv.dueAt)}</span>
+                <MarkPaid invoiceId={inv.id} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Stat({ label, value, accent = false, tone }: { label: string; value: string; accent?: boolean; tone?: "warning" | "danger" }) {
+  const v = accent ? "text-primary" : tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning" : "text-ink";
+  return (
+    <div className={`rounded-lg border p-4 shadow-xs ${accent ? "border-primary bg-primary-weak" : "border-border bg-surface"}`}>
+      <p className="text-xs text-ink-muted">{label}</p>
+      <p className={`mt-1 text-2xl font-bold leading-none tnum ${v}`}>{value}</p>
+    </div>
+  );
+}
