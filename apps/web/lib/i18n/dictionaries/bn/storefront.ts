@@ -79,6 +79,7 @@ export const storefront: typeof EnStorefront = {
     close: "বন্ধ করুন",
     searchPlaceholder: "খুঁজুন…",
     noResults: "কিছু পাওয়া যায়নি",
+    countSuffix: "টি",
   },
   order: {
     confirmed: "অর্ডার কনফার্ম হয়েছে!",

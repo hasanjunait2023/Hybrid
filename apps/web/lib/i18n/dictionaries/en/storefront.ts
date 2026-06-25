@@ -78,6 +78,7 @@ export const storefront = {
     close: "Close",
     searchPlaceholder: "Search…",
     noResults: "Nothing found",
+    countSuffix: "",
   },
   order: {
     confirmed: "Order confirmed!",

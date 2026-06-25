@@ -88,9 +88,7 @@ export function LocationSheet({
               <div className="flex items-center justify-between">
                 <span className="bn-body text-base font-bold text-ink">{label}</span>
                 <span className="text-2xs text-ink-muted">
-                  {locale === "bn"
-                    ? `${formatNumber(options.length, locale)}টি ${countNoun}`
-                    : `${options.length} ${countNoun}`}
+                  {`${formatNumber(options.length, locale)}${t.countSuffix} ${countNoun}`}
                 </span>
               </div>
               <input

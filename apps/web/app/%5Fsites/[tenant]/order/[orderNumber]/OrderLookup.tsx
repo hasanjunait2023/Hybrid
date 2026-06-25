@@ -4,19 +4,22 @@
 // server component re-renders the gated order (shareable + back-button safe).
 import { useState } from "react";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 
 interface OrderLookupProps {
   orderNumber: number;
 }
 
 export function OrderLookup({ orderNumber }: OrderLookupProps) {
+  const d = useDict();
+  const o = d.storefront.order;
   const [phone, setPhone] = useState("");
 
   return (
     <div className="mx-auto max-w-[480px] px-4 py-12">
-      <h1 className="bn-heading mb-2 text-xl font-bold text-ink">অর্ডার খুঁজুন</h1>
+      <h1 className="bn-heading mb-2 text-xl font-bold text-ink">{o.findOrder}</h1>
       <p className="bn-body mb-6 text-sm text-ink-muted">
-        অর্ডার দেখতে আপনার ফোন নম্বর দিন।
+        {o.findOrderHint}
       </p>
       <form
         method="get"
@@ -35,7 +38,7 @@ export function OrderLookup({ orderNumber }: OrderLookupProps) {
           className="h-11 rounded-sm border border-border-strong bg-surface px-3 text-base text-ink placeholder:text-ink-subtle"
         />
         <Button variant="primary" size="lg" type="submit">
-          অর্ডার #{orderNumber} দেখুন
+          {o.viewOrder.replace("{n}", String(orderNumber))}
         </Button>
       </form>
     </div>
