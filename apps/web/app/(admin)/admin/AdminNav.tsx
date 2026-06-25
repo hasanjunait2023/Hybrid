@@ -17,33 +17,37 @@ import {
   CheckCircleIcon,
 } from "@hybrid/ui";
 import { cn } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
+import type { Messages } from "@/lib/i18n/dictionaries";
+
+type NavKey = keyof Messages["admin"]["nav"];
 
 interface NavItem {
   href: string;
-  bn: string;
+  tKey: NavKey;
   Icon: (props: { className?: string }) => React.ReactNode;
   /** match prefix so nested routes keep the tab active. */
   match: string;
 }
 
 const ITEMS: NavItem[] = [
-  { href: "/admin", bn: "হোম", Icon: HomeIcon, match: "/admin" },
-  { href: "/admin/orders", bn: "অর্ডার", Icon: ReceiptIcon, match: "/admin/orders" },
-  { href: "/admin/products", bn: "পণ্য", Icon: BoxesIcon, match: "/admin/products" },
-  { href: "/admin/customers", bn: "গ্রাহক", Icon: UsersIcon, match: "/admin/customers" },
-  { href: "/admin/collections", bn: "আরও", Icon: MenuIcon, match: "/admin/collections" },
+  { href: "/admin", tKey: "home", Icon: HomeIcon, match: "/admin" },
+  { href: "/admin/orders", tKey: "orders", Icon: ReceiptIcon, match: "/admin/orders" },
+  { href: "/admin/products", tKey: "products", Icon: BoxesIcon, match: "/admin/products" },
+  { href: "/admin/customers", tKey: "customers", Icon: UsersIcon, match: "/admin/customers" },
+  { href: "/admin/collections", tKey: "more", Icon: MenuIcon, match: "/admin/collections" },
 ];
 
 // Secondary surfaces (Wave-2). The mobile bottom-tab grid stays five items, so
-// these live in the desktop sidebar's "আরও" group and remain reachable there.
+// these live in the desktop sidebar's "More" group and remain reachable there.
 const MORE_ITEMS: NavItem[] = [
-  { href: "/admin/themes", bn: "থিম ও ডিজাইন", Icon: MenuIcon, match: "/admin/themes" },
-  { href: "/admin/returns", bn: "রিটার্ন / RTO", Icon: UndoIcon, match: "/admin/returns" },
-  { href: "/admin/cod", bn: "ক্যাশ অন ডেলিভারি", Icon: TruckIcon, match: "/admin/cod" },
-  { href: "/admin/reports", bn: "রিপোর্ট ও আয়-ব্যয়", Icon: ReceiptIcon, match: "/admin/reports" },
-  { href: "/admin/marketing", bn: "মার্কেটিং", Icon: ChatIcon, match: "/admin/marketing" },
-  { href: "/admin/reviews", bn: "রিভিউ", Icon: CheckCircleIcon, match: "/admin/reviews" },
-  { href: "/admin/settings", bn: "সেটিংস", Icon: ShieldIcon, match: "/admin/settings" },
+  { href: "/admin/themes", tKey: "themes", Icon: MenuIcon, match: "/admin/themes" },
+  { href: "/admin/returns", tKey: "returns", Icon: UndoIcon, match: "/admin/returns" },
+  { href: "/admin/cod", tKey: "cod", Icon: TruckIcon, match: "/admin/cod" },
+  { href: "/admin/reports", tKey: "reports", Icon: ReceiptIcon, match: "/admin/reports" },
+  { href: "/admin/marketing", tKey: "marketing", Icon: ChatIcon, match: "/admin/marketing" },
+  { href: "/admin/reviews", tKey: "reviews", Icon: CheckCircleIcon, match: "/admin/reviews" },
+  { href: "/admin/settings", tKey: "settings", Icon: ShieldIcon, match: "/admin/settings" },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
@@ -59,23 +63,24 @@ export function AdminNav({
   tenantId: string;
 }) {
   const pathname = usePathname();
+  const d = useDict();
 
   if (variant === "sidebar") {
     return (
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
         <div className="flex h-14 items-center gap-2 border-b border-border px-5">
-          <span className="text-lg font-bold text-ink">Hybrid</span>
+          <span className="text-lg font-bold text-ink">{d.common.brand}</span>
           <span className="rounded-full bg-primary-weak px-2 py-0.5 text-2xs font-semibold text-primary">
-            অ্যাডমিন
+            {d.admin.shell.badge}
           </span>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="অ্যাডমিন নেভিগেশন">
+        <nav className="flex flex-1 flex-col gap-1 p-3" aria-label={d.admin.shell.nav}>
           {ITEMS.map((item) => (
-            <SidebarLink key={item.href} item={item} active={isActive(pathname, item)} />
+            <SidebarLink key={item.href} item={item} label={d.admin.nav[item.tKey]} active={isActive(pathname, item)} />
           ))}
           <div className="my-2 border-t border-border" />
           {MORE_ITEMS.map((item) => (
-            <SidebarLink key={item.href} item={item} active={isActive(pathname, item)} />
+            <SidebarLink key={item.href} item={item} label={d.admin.nav[item.tKey]} active={isActive(pathname, item)} />
           ))}
         </nav>
         <div className="border-t border-border p-3">
@@ -90,7 +95,7 @@ export function AdminNav({
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-sticky grid grid-cols-5 border-t border-border bg-surface lg:hidden"
-      aria-label="অ্যাডমিন নেভিগেশন"
+      aria-label={d.admin.shell.nav}
     >
       {ITEMS.map((item) => {
         const active = isActive(pathname, item);
@@ -108,7 +113,7 @@ export function AdminNav({
               <span className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-primary" />
             )}
             <item.Icon className="h-5 w-5" />
-            {item.bn}
+            {d.admin.nav[item.tKey]}
           </a>
         );
       })}
@@ -116,7 +121,7 @@ export function AdminNav({
   );
 }
 
-function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
+function SidebarLink({ item, label, active }: { item: NavItem; label: string; active: boolean }) {
   return (
     <a
       href={item.href}
@@ -129,7 +134,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       )}
     >
       <item.Icon className="h-5 w-5" />
-      {item.bn}
+      {label}
     </a>
   );
 }

@@ -7,7 +7,9 @@
 
 export type Locale = "en" | "bn";
 
-export const DEFAULT_LOCALE: Locale = "bn";
+// English is the system default; the marketing page still honors the
+// hybrid_lang cookie and falls back to this when unset.
+export const DEFAULT_LOCALE: Locale = "en";
 
 export interface PricingTier {
   /** Plan code from packages/db/sql/03_seed.sql — stable identity, not shown. */
