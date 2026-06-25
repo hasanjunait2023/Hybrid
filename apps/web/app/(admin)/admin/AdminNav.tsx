@@ -13,6 +13,7 @@ import {
   TruckIcon,
   ShieldIcon,
   UndoIcon,
+  ChatIcon,
 } from "@hybrid/ui";
 import { cn } from "@hybrid/ui";
 
@@ -39,6 +40,7 @@ const MORE_ITEMS: NavItem[] = [
   { href: "/admin/returns", bn: "রিটার্ন / RTO", Icon: UndoIcon, match: "/admin/returns" },
   { href: "/admin/cod", bn: "ক্যাশ অন ডেলিভারি", Icon: TruckIcon, match: "/admin/cod" },
   { href: "/admin/reports", bn: "রিপোর্ট ও আয়-ব্যয়", Icon: ReceiptIcon, match: "/admin/reports" },
+  { href: "/admin/marketing", bn: "মার্কেটিং", Icon: ChatIcon, match: "/admin/marketing" },
   { href: "/admin/settings", bn: "সেটিংস", Icon: ShieldIcon, match: "/admin/settings" },
 ];
 
