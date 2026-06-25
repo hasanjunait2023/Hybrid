@@ -22,7 +22,6 @@ async function cleanup(): Promise<void> {
   await asPlatformAdmin(async (tx) => {
     await tx`delete from order_item where tenant_id = ${TENANT_A}`;
     await tx`delete from orders where tenant_id = ${TENANT_A}`;
-    await tx`delete from order_counter where tenant_id = ${TENANT_A}`;
     await tx`delete from customer where tenant_id = ${TENANT_A} and phone like '019660000%'`;
     await tx`delete from product_variant where id = ${BK_VAR}`;
     await tx`delete from product where id = ${BK_PROD}`;

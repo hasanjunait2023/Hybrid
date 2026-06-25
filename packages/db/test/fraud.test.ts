@@ -31,7 +31,6 @@ async function cleanup(): Promise<void> {
     await tx`delete from phone_blocklist where tenant_id in (${TENANT_A}, ${TENANT_B})`;
     await tx`delete from order_item where tenant_id = ${TENANT_A}`;
     await tx`delete from orders where tenant_id = ${TENANT_A}`;
-    await tx`delete from order_counter where tenant_id = ${TENANT_A}`;
     await tx`delete from customer where tenant_id = ${TENANT_A} and phone = ${PHONE}`;
     await tx`delete from product_variant where id = ${FR_VAR}`;
     await tx`delete from product where id = ${FR_PROD}`;
