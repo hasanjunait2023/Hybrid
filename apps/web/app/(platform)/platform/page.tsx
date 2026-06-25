@@ -12,12 +12,20 @@ export default async function PlatformDashboard() {
 
   return (
     <div lang="en" className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-xl font-bold text-ink">প্ল্যাটফর্ম ড্যাশবোর্ড</h1>
-        <a href="/platform/tenants" className="rounded-md border border-border-strong px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-2">
-          টেন্যান্ট ডিরেক্টরি →
-        </a>
-      </div>
+      <h1 className="text-xl font-bold text-ink">প্ল্যাটফর্ম ড্যাশবোর্ড</h1>
+      <nav className="flex flex-wrap gap-2">
+        {[
+          { href: "/platform/tenants", bn: "টেন্যান্ট" },
+          { href: "/platform/billing", bn: "বিলিং" },
+          { href: "/platform/plans", bn: "প্ল্যান" },
+          { href: "/platform/finance", bn: "আয়-ব্যয়" },
+          { href: "/platform/team", bn: "টিম" },
+        ].map((l) => (
+          <a key={l.href} href={l.href} className="rounded-md border border-border-strong px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface-2">
+            {l.bn}
+          </a>
+        ))}
+      </nav>
 
       {/* Revenue + scale KPIs */}
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
