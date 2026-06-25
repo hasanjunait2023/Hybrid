@@ -30,7 +30,18 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
 
   return (
     <div lang="en" className="space-y-4">
-      <PageHeader title="গ্রাহক" subtitle={`${stats.total} জন গ্রাহক · ${stats.repeat} জন রিপিট`} />
+      <PageHeader
+        title="গ্রাহক"
+        subtitle={`${stats.total} জন গ্রাহক · ${stats.repeat} জন রিপিট`}
+        action={
+          <a
+            href="/admin/customers/blacklist"
+            className="inline-flex h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink hover:bg-surface-2"
+          >
+            ব্লকড নম্বর
+          </a>
+        }
+      />
 
       <StatStrip>
         <StatCard label="মোট গ্রাহক" value={String(stats.total)} />

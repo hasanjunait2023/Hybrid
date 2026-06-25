@@ -5,6 +5,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { getOrderDetail, nextAction } from "@/lib/admin/orders";
 import { OrderStatusActions } from "./OrderStatusActions";
 import { SendToCourierButton } from "./SendToCourierButton";
+import { OrderRiskPanel } from "./OrderRiskPanel";
 
 // Order detail (DESIGN §P3.3). Header = order# + stepper + contextual action.
 // Two-column ≥ lg, stacked on mobile. Latin numerals, mono amounts (§4.4).
@@ -79,6 +80,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           </div>
         </div>
       </div>
+
+      {/* COD-fraud / phone-risk signals (P1 #2) */}
+      <OrderRiskPanel tenantId={tenantId} userId={session.userId} orderId={order.id} />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* Main */}
