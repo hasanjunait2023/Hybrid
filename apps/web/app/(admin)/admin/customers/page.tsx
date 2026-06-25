@@ -34,12 +34,20 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         title="গ্রাহক"
         subtitle={`${stats.total} জন গ্রাহক · ${stats.repeat} জন রিপিট`}
         action={
-          <a
-            href="/admin/customers/blacklist"
-            className="inline-flex h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink hover:bg-surface-2"
-          >
-            ব্লকড নম্বর
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href="/admin/customers/export"
+              className="hidden h-11 items-center rounded-md border border-border-strong px-3 text-sm font-semibold text-ink hover:bg-surface-2 sm:inline-flex"
+            >
+              এক্সপোর্ট
+            </a>
+            <a
+              href="/admin/customers/blacklist"
+              className="inline-flex h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink hover:bg-surface-2"
+            >
+              ব্লকড নম্বর
+            </a>
+          </div>
         }
       />
 

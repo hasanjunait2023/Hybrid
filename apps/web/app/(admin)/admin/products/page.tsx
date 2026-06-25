@@ -50,12 +50,26 @@ export default async function AdminProductsPage({ searchParams }: ProductsPagePr
         title="পণ্য"
         subtitle={`${stats.total} টি পণ্য · ${stats.active} অ্যাকটিভ`}
         action={
-          <a
-            href="/admin/products/new"
-            className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
-          >
-            <PlusIcon className="h-4 w-4" /> নতুন পণ্য
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href="/admin/products/export"
+              className="hidden h-11 items-center rounded-md border border-border-strong px-3 text-sm font-semibold text-ink hover:bg-surface-2 sm:inline-flex"
+            >
+              এক্সপোর্ট
+            </a>
+            <a
+              href="/admin/products/import"
+              className="hidden h-11 items-center rounded-md border border-border-strong px-3 text-sm font-semibold text-ink hover:bg-surface-2 sm:inline-flex"
+            >
+              ইম্পোর্ট
+            </a>
+            <a
+              href="/admin/products/new"
+              className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
+            >
+              <PlusIcon className="h-4 w-4" /> নতুন পণ্য
+            </a>
+          </div>
         }
       />
 
