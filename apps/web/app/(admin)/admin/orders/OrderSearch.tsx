@@ -6,10 +6,12 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { SearchIcon } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 
 export function OrderSearch({ defaultValue }: { defaultValue: string }) {
   const router = useRouter();
   const params = useSearchParams();
+  const d = useDict();
   const [value, setValue] = useState(defaultValue);
 
   function submit(e: React.FormEvent) {
@@ -29,8 +31,8 @@ export function OrderSearch({ defaultValue }: { defaultValue: string }) {
         inputMode="tel"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="ফোন নম্বর বা অর্ডার # দিয়ে খুঁজুন"
-        aria-label="অর্ডার খুঁজুন"
+        placeholder={d.admin.orders.searchPlaceholder}
+        aria-label={d.admin.orders.searchAria}
         className="h-11 w-full rounded-md border border-border-strong bg-surface pl-10 pr-3 text-base text-ink placeholder:text-ink-subtle focus-visible:border-primary"
       />
     </form>

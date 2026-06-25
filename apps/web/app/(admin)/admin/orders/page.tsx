@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
-import { formatBdtLatin, StatusBadge, PlusIcon } from "@hybrid/ui";
+import { StatusBadge, PlusIcon } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listOrders, getOrderStatusCounts } from "@/lib/admin/orders";
-import { timeAgoBn } from "@/lib/admin/format";
+import { timeAgo } from "@/lib/admin/format";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { OrderSearch } from "./OrderSearch";
 import { OrdersBulkTable } from "./OrdersBulkTable";
 import { PageHeader } from "../_ui";
@@ -16,23 +18,18 @@ interface OrdersPageProps {
 }
 
 // F-commerce channel filter (P3-3). order_source already carries 'messenger'.
-const SOURCE_PILLS: { value: string; bn: string }[] = [
-  { value: "all", bn: "সব চ্যানেল" },
-  { value: "storefront", bn: "স্টোরফ্রন্ট" },
-  { value: "manual", bn: "ম্যানুয়াল" },
-  { value: "messenger", bn: "মেসেঞ্জার" },
-];
+const SOURCE_KEYS = ["all", "storefront", "manual", "messenger"] as const;
 
-const STATUS_PILLS: { value: string; bn: string }[] = [
-  { value: "all", bn: "সব" },
-  { value: "pending", bn: "অপেক্ষমাণ" },
-  { value: "confirmed", bn: "নিশ্চিত" },
-  { value: "packed", bn: "প্যাকড" },
-  { value: "shipped", bn: "পাঠানো" },
-  { value: "delivered", bn: "ডেলিভার্ড" },
-  { value: "returned", bn: "ফেরত" },
-  { value: "cancelled", bn: "বাতিল" },
-];
+const STATUS_KEYS = [
+  "all",
+  "pending",
+  "confirmed",
+  "packed",
+  "shipped",
+  "delivered",
+  "returned",
+  "cancelled",
+] as const;
 
 export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const session = await getSession();
@@ -68,17 +65,20 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
   const activeKey = codPending ? "cod" : (status ?? "all");
 
+  const { locale, d } = await getDict();
+  const t = d.admin.orders;
+
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <PageHeader
-        title="অর্ডার"
-        subtitle={`${counts.all} টি অর্ডার · ${counts.codPending} COD বকেয়া`}
+        title={t.title}
+        subtitle={`${formatNumber(counts.all, locale)} ${d.admin.dashboard.ordersUnit} · ${formatNumber(counts.codPending, locale)} ${t.codDue}`}
         action={
           <a
             href="/admin/orders/new"
             className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
           >
-            <PlusIcon className="h-4 w-4" /> নতুন অর্ডার
+            <PlusIcon className="h-4 w-4" /> {d.admin.dashboard.newOrder}
           </a>
         }
       />
@@ -87,37 +87,36 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
       {/* Filter pills (sticky under top bar), horizontal-scroll with counts */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        {STATUS_PILLS.map((pill) => {
-          const count =
-            pill.value === "all" ? counts.all : (counts.byStatus[pill.value] ?? 0);
-          const active = activeKey === pill.value;
+        {STATUS_KEYS.map((key) => {
+          const count = key === "all" ? counts.all : (counts.byStatus[key] ?? 0);
+          const active = activeKey === key;
           return (
-            <Pill key={pill.value} href={buildHref({ status: pill.value })} active={active}>
-              {pill.bn}
-              <span className={active ? "opacity-90" : "text-ink-subtle"}>{count}</span>
+            <Pill key={key} href={buildHref({ status: key })} active={active}>
+              {t.statusPills[key]}
+              <span className={active ? "opacity-90" : "text-ink-subtle"}>{formatNumber(count, locale)}</span>
             </Pill>
           );
         })}
         <Pill href={buildHref({ cod: "pending" })} active={activeKey === "cod"} tone="cod">
-          COD বকেয়া
+          {t.codDue}
           <span className={activeKey === "cod" ? "opacity-90" : "text-cod"}>
-            {counts.codPending}
+            {formatNumber(counts.codPending, locale)}
           </span>
         </Pill>
       </div>
 
       {/* Channel (source) filter — F-commerce visibility */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        {SOURCE_PILLS.map((pill) => {
-          const active = (source ?? "all") === pill.value;
+        {SOURCE_KEYS.map((key) => {
+          const active = (source ?? "all") === key;
           const params = new URLSearchParams();
-          if (pill.value !== "all") params.set("source", pill.value);
+          if (key !== "all") params.set("source", key);
           if (status) params.set("status", status);
           if (query) params.set("q", query);
           const qs = params.toString();
           return (
-            <Pill key={pill.value} href={qs ? `/admin/orders?${qs}` : "/admin/orders"} active={active}>
-              {pill.bn}
+            <Pill key={key} href={qs ? `/admin/orders?${qs}` : "/admin/orders"} active={active}>
+              {t.source[key]}
             </Pill>
           );
         })}
@@ -125,7 +124,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
       {orders.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-12 text-center text-ink-muted">
-          কোনো অর্ডার নেই।
+          {t.empty}
         </p>
       ) : (
         <>
@@ -145,7 +144,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                       <span className="font-mono text-sm font-bold text-ink tnum">
                         #{o.orderNumber}
                       </span>
-                      <span className="text-2xs text-ink-subtle">{timeAgoBn(o.placedAt)}</span>
+                      <span className="text-2xs text-ink-subtle">{timeAgo(o.placedAt, locale)}</span>
                     </div>
                     <div className="mt-1 flex items-baseline justify-between gap-2">
                       <div className="min-w-0">
@@ -155,14 +154,14 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                         <p className="font-mono text-xs text-ink-muted tnum">{o.customerPhone}</p>
                       </div>
                       <span className="font-mono text-base font-bold text-ink tnum">
-                        {formatBdtLatin(o.grandTotal)}
+                        {formatMoney(o.grandTotal, locale)}
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <StatusBadge kind="fulfillment" value={o.fulfillmentStatus} />
-                      <StatusBadge kind="payment" value={o.paymentStatus} />
+                      <StatusBadge kind="fulfillment" value={o.fulfillmentStatus} lang={locale} />
+                      <StatusBadge kind="payment" value={o.paymentStatus} lang={locale} />
                       {o.codAmount > 0 && o.paymentStatus === "unpaid" && (
-                        <StatusBadge kind="cod" value="pending" />
+                        <StatusBadge kind="cod" value="pending" lang={locale} />
                       )}
                     </div>
                   </div>

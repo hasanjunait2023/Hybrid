@@ -6,13 +6,18 @@
 // "18 done, 2 skipped"). Mobile keeps the simple stacked cards (no bulk).
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { formatBdtLatin, StatusBadge } from "@hybrid/ui";
-import { timeAgoBn } from "@/lib/admin/format";
+import { StatusBadge } from "@hybrid/ui";
+import { timeAgo } from "@/lib/admin/format";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import type { OrderListRow } from "@/lib/admin/orders";
 import { bulkAdvanceStatus, bulkSendToCourier } from "./bulk-actions";
 
 export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
   const router = useRouter();
+  const locale = useLocale();
+  const d = useDict();
+  const t = d.admin.orders.bulk;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -36,12 +41,12 @@ export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
     startTransition(async () => {
       const res = await fn();
       if (!res.ok) {
-        setMessage(res.error ?? "ব্যর্থ হয়েছে।");
+        setMessage(res.error ?? t.failed);
         return;
       }
       const skipped = res.failed.length;
       setMessage(
-        `${label}: ${res.succeeded} টি সম্পন্ন${skipped ? ` · ${skipped} টি বাদ` : ""}।`,
+        `${label}: ${formatNumber(res.succeeded, locale)} ${t.done}${skipped ? ` · ${formatNumber(skipped, locale)} ${t.skipped}` : ""}।`,
       );
       setSelected(new Set());
       router.refresh();
@@ -54,16 +59,16 @@ export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
     <div className="hidden md:block">
       {selected.size > 0 && (
         <div className="sticky top-14 z-sticky mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary bg-primary-weak px-4 py-2.5">
-          <span className="text-sm font-semibold text-primary">{selected.size} টি নির্বাচিত</span>
+          <span className="text-sm font-semibold text-primary">{formatNumber(selected.size, locale)} {t.selected}</span>
           <div className="ml-auto flex flex-wrap gap-2">
-            <BulkBtn disabled={pending} onClick={() => run(() => bulkAdvanceStatus(ids(), "confirmed"), "নিশ্চিত")}>
-              নিশ্চিত করুন
+            <BulkBtn disabled={pending} onClick={() => run(() => bulkAdvanceStatus(ids(), "confirmed"), t.confirmShort)}>
+              {t.confirm}
             </BulkBtn>
-            <BulkBtn disabled={pending} onClick={() => run(() => bulkAdvanceStatus(ids(), "packed"), "প্যাক")}>
-              প্যাক করুন
+            <BulkBtn disabled={pending} onClick={() => run(() => bulkAdvanceStatus(ids(), "packed"), t.packShort)}>
+              {t.pack}
             </BulkBtn>
-            <BulkBtn disabled={pending} primary onClick={() => run(() => bulkSendToCourier(ids()), "কুরিয়ার")}>
-              কুরিয়ারে পাঠান
+            <BulkBtn disabled={pending} primary onClick={() => run(() => bulkSendToCourier(ids()), t.courierShort)}>
+              {t.sendCourier}
             </BulkBtn>
           </div>
         </div>
@@ -82,16 +87,16 @@ export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
                   type="checkbox"
                   checked={allSelected}
                   onChange={toggleAll}
-                  aria-label="সব নির্বাচন"
+                  aria-label={t.selectAll}
                   className="h-4 w-4 rounded border-border-strong accent-primary"
                 />
               </th>
               <th className="px-3 py-2.5 font-semibold">Order#</th>
-              <th className="px-3 py-2.5 font-semibold">গ্রাহক</th>
-              <th className="px-3 py-2.5 text-right font-semibold">মোট</th>
-              <th className="px-3 py-2.5 font-semibold">ফুলফিলমেন্ট</th>
-              <th className="px-3 py-2.5 font-semibold">পেমেন্ট</th>
-              <th className="px-3 py-2.5 font-semibold">তারিখ</th>
+              <th className="px-3 py-2.5 font-semibold">{t.colCustomer}</th>
+              <th className="px-3 py-2.5 text-right font-semibold">{t.colTotal}</th>
+              <th className="px-3 py-2.5 font-semibold">{t.colFulfillment}</th>
+              <th className="px-3 py-2.5 font-semibold">{t.colPayment}</th>
+              <th className="px-3 py-2.5 font-semibold">{t.colDate}</th>
             </tr>
           </thead>
           <tbody>
@@ -104,7 +109,7 @@ export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
                       type="checkbox"
                       checked={isSel}
                       onChange={() => toggle(o.id)}
-                      aria-label={`অর্ডার ${o.orderNumber} নির্বাচন`}
+                      aria-label={`${t.rowSelect} ${o.orderNumber}`}
                       className="h-4 w-4 rounded border-border-strong accent-primary"
                     />
                   </td>
@@ -118,20 +123,20 @@ export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
                     <div className="font-mono text-xs text-ink-muted tnum">{o.customerPhone}</div>
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono font-semibold text-ink tnum">
-                    {formatBdtLatin(o.grandTotal)}
+                    {formatMoney(o.grandTotal, locale)}
                   </td>
                   <td className="px-3 py-2.5">
-                    <StatusBadge kind="fulfillment" value={o.fulfillmentStatus} />
+                    <StatusBadge kind="fulfillment" value={o.fulfillmentStatus} lang={locale} />
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex flex-wrap gap-1">
-                      <StatusBadge kind="payment" value={o.paymentStatus} />
+                      <StatusBadge kind="payment" value={o.paymentStatus} lang={locale} />
                       {o.codAmount > 0 && o.paymentStatus === "unpaid" && (
-                        <StatusBadge kind="cod" value="pending" />
+                        <StatusBadge kind="cod" value="pending" lang={locale} />
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-ink-muted">{timeAgoBn(o.placedAt)}</td>
+                  <td className="px-3 py-2.5 text-xs text-ink-muted">{timeAgo(o.placedAt, locale)}</td>
                 </tr>
               );
             })}
