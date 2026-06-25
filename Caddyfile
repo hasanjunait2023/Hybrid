@@ -1,24 +1,48 @@
-# Hybrid — Caddy reverse proxy with automatic HTTPS (Let's Encrypt HTTP-01).
-# Each listed hostname gets its own cert on first use. Host header is preserved
-# (Caddy default), which the app's host->tenant middleware depends on.
-hybrid.ecomex.cloud,
-admin.hybrid.ecomex.cloud,
-app.hybrid.ecomex.cloud,
-store-a.hybrid.ecomex.cloud,
-store-b.hybrid.ecomex.cloud {
-	encode zstd gzip
+# Hybrid — Caddy reverse proxy with automatic HTTPS (Let's Encrypt).
+# Host header is preserved (Caddy default), which the app's host->tenant
+# middleware depends on. Records for *.hybrid.ecomex.cloud are DNS-only
+# (grey-cloud) in Cloudflare so Caddy terminates TLS directly per-host.
 
-	# Baseline security headers on every app response. A full CSP is deferred
-	# (the app ships inline styles; a nonce-based CSP is a follow-up) — these four
-	# are safe to add now and cover transport, clickjacking, MIME sniffing, and
-	# referrer leakage.
+# Global on-demand TLS gate. For any tenant storefront subdomain Caddy doesn't
+# already have a cert for, it asks the app whether the host is a real tenant
+# BEFORE touching Let's Encrypt — this prevents an attacker pointing arbitrary
+# *.hybrid.ecomex.cloud names at the box to exhaust LE rate limits.
+{
+	on_demand_tls {
+		ask http://web:3000/api/internal/tls-allow
+	}
+}
+
+# Baseline security headers (transport, clickjacking, MIME sniffing, referrer).
+# Full CSP deferred (app ships inline styles; nonce-based CSP is a follow-up).
+(app_headers) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Frame-Options "DENY"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
+}
 
+# Fixed platform hosts — apex marketing + admin + super-admin. Explicit certs.
+hybrid.ecomex.cloud,
+admin.hybrid.ecomex.cloud,
+app.hybrid.ecomex.cloud {
+	encode zstd gzip
+	import app_headers
+	reverse_proxy web:3000
+}
+
+# Tenant storefront subdomains — one cert PER hostname obtained on demand at the
+# TLS handshake, gated by the ask endpoint above (only active tenants get a cert).
+# This is what lets a newly-provisioned seller's subdomain serve HTTPS with no
+# Caddyfile change. More specific blocks (admin/app/cdn) above win over this.
+*.hybrid.ecomex.cloud {
+	encode zstd gzip
+	tls {
+		on_demand
+	}
+	import app_headers
 	reverse_proxy web:3000
 }
 
