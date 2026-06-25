@@ -38,6 +38,7 @@ const MORE_ITEMS: NavItem[] = [
   { href: "/admin/themes", bn: "থিম ও ডিজাইন", Icon: MenuIcon, match: "/admin/themes" },
   { href: "/admin/returns", bn: "রিটার্ন / RTO", Icon: UndoIcon, match: "/admin/returns" },
   { href: "/admin/cod", bn: "ক্যাশ অন ডেলিভারি", Icon: TruckIcon, match: "/admin/cod" },
+  { href: "/admin/reports", bn: "রিপোর্ট ও আয়-ব্যয়", Icon: ReceiptIcon, match: "/admin/reports" },
   { href: "/admin/settings", bn: "সেটিংস", Icon: ShieldIcon, match: "/admin/settings" },
 ];
 
