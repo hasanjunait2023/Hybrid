@@ -13,6 +13,7 @@ const SECTIONS = [
   { href: "/admin/settings/analytics", bn: "অ্যানালিটিক্স", sub: "GA4, Meta Pixel/CAPI" },
   { href: "/admin/settings/store", bn: "স্টোর প্রোফাইল", sub: "নাম, ফোন, ঠিকানা, পলিসি" },
   { href: "/admin/settings/staff", bn: "স্টাফ ও ভূমিকা", sub: "সদস্য, মালিক/অ্যাডমিন/স্টাফ" },
+  { href: "/admin/settings/loyalty", bn: "লয়্যালটি পয়েন্ট", sub: "আর্ন রেট, রিডিম মূল্য" },
 ];
 
 export default async function SettingsPage() {
