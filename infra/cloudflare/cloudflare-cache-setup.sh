@@ -23,10 +23,18 @@ API="https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/rulesets/phases/ht
 
 # Storefront host = "<sub>.hybrid.ecomex.cloud" EXCEPT admin/app/cdn/www and the apex.
 # Bypass cache for: logged-in sessions (hybrid_session cookie) and dynamic paths.
-STOREFRONT_EXPR='(http.host wildcard "*.hybrid.ecomex.cloud")
-  and not (http.host in {"admin.hybrid.ecomex.cloud" "app.hybrid.ecomex.cloud" "cdn.hybrid.ecomex.cloud" "www.hybrid.ecomex.cloud" "hybrid.ecomex.cloud"})
-  and not (any(http.request.cookies["hybrid_session"][*] != ""))
-  and not (http.request.uri.path matches "^/(cart|checkout|order|account|api|admin|dev-login|login)(/|$)")'
+# NOTE: Free/Pro plans only allow basic operators (eq/ne/contains/in/wildcard).
+# `matches` (regex) and `ends_with` need Business/WAF-Advanced — do NOT use them.
+# host `contains ".hybrid.ecomex.cloud"` matches the 2-level storefront subdomains
+# and naturally excludes the apex (no leading dot); we still exclude admin/app/cdn/www.
+# Paths use wildcard (basic-plan ok) to bypass dynamic/auth routes.
+STOREFRONT_EXPR='(http.host contains ".hybrid.ecomex.cloud")
+  and not (http.host in {"admin.hybrid.ecomex.cloud" "app.hybrid.ecomex.cloud" "cdn.hybrid.ecomex.cloud" "www.hybrid.ecomex.cloud"})
+  and not (http.cookie contains "hybrid_session=")
+  and not (http.request.uri.path wildcard "/cart*") and not (http.request.uri.path wildcard "/checkout*")
+  and not (http.request.uri.path wildcard "/order*") and not (http.request.uri.path wildcard "/account*")
+  and not (http.request.uri.path wildcard "/api*") and not (http.request.uri.path wildcard "/admin*")
+  and not (http.request.uri.path wildcard "/login*") and not (http.request.uri.path wildcard "/dev-login*")'
 
 CDN_EXPR='(http.host eq "cdn.hybrid.ecomex.cloud")'
 
@@ -43,9 +51,7 @@ read -r -d '' BODY <<JSON || true
       "action_parameters": {
         "cache": true,
         "edge_ttl": { "mode": "override_origin", "default": 60 },
-        "browser_ttl": { "mode": "override_origin", "default": 0 },
-        "respect_strong_etags": true,
-        "cache_key": { "cache_deception_armor": true, "custom_key": { "host": { "resolved": false } } }
+        "browser_ttl": { "mode": "override_origin", "default": 0 }
       }
     },
     {
