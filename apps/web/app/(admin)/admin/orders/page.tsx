@@ -5,6 +5,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { listOrders, getOrderStatusCounts } from "@/lib/admin/orders";
 import { timeAgoBn } from "@/lib/admin/format";
 import { OrderSearch } from "./OrderSearch";
+import { OrdersBulkTable } from "./OrdersBulkTable";
 import { PageHeader } from "../_ui";
 
 // Orders list (DESIGN §P3.1). Triage-speed: status filter pills with counts,
@@ -143,57 +144,8 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
             ))}
           </ul>
 
-          {/* Desktop: table */}
-          <div className="hidden overflow-hidden rounded-lg border border-border bg-surface md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border-strong text-left text-xs uppercase tracking-wide text-ink-muted">
-                  <th className="px-3 py-2.5 font-semibold">Order#</th>
-                  <th className="px-3 py-2.5 font-semibold">গ্রাহক</th>
-                  <th className="px-3 py-2.5 text-right font-semibold">মোট</th>
-                  <th className="px-3 py-2.5 font-semibold">ফুলফিলমেন্ট</th>
-                  <th className="px-3 py-2.5 font-semibold">পেমেন্ট</th>
-                  <th className="px-3 py-2.5 font-semibold">তারিখ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o, i) => (
-                  <tr
-                    key={o.id}
-                    className={i % 2 === 1 ? "bg-surface-2" : undefined}
-                  >
-                    <td className="px-3 py-2.5">
-                      <a
-                        href={`/admin/orders/${o.id}`}
-                        className="font-mono font-semibold text-ink hover:text-primary hover:underline tnum"
-                      >
-                        #{o.orderNumber}
-                      </a>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="text-ink">{o.customerName ?? "—"}</div>
-                      <div className="font-mono text-xs text-ink-muted tnum">{o.customerPhone}</div>
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono font-semibold text-ink tnum">
-                      {formatBdtLatin(o.grandTotal)}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <StatusBadge kind="fulfillment" value={o.fulfillmentStatus} />
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-wrap gap-1">
-                        <StatusBadge kind="payment" value={o.paymentStatus} />
-                        {o.codAmount > 0 && o.paymentStatus === "unpaid" && (
-                          <StatusBadge kind="cod" value="pending" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-ink-muted">{timeAgoBn(o.placedAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* Desktop: selectable table + bulk action bar */}
+          <OrdersBulkTable orders={orders} />
         </>
       )}
     </div>

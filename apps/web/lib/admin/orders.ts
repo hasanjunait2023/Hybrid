@@ -39,6 +39,56 @@ export function canTransition(from: string, to: string): boolean {
   return (TRANSITIONS[from] ?? []).includes(to as FulfillmentStatus);
 }
 
+export interface BulkAdvanceResult {
+  succeeded: number;
+  failed: { id: string; reason: string }[];
+}
+
+// Bulk fulfillment advance (tenant roadmap P1 #3 core, mirrors sendToCourierCore:
+// testable, auth-free; the Server Action wraps it). Each order is its own txn so
+// one rejected transition never blocks the batch — partial success is reported.
+// Reuses the SAME validated transition + cancel guard + inventory restore as the
+// single-order path.
+export async function bulkAdvanceStatusCore(
+  tenantId: string,
+  userId: string,
+  orderIds: string[],
+  to: FulfillmentStatus,
+): Promise<BulkAdvanceResult> {
+  const failed: { id: string; reason: string }[] = [];
+  let succeeded = 0;
+  for (const orderId of orderIds) {
+    try {
+      await withTenant(tenantId, userId, async (tx) => {
+        const rows = await tx<{ fulfillment_status: string; payment_status: string }[]>`
+          select fulfillment_status, payment_status from orders where id = ${orderId} for update
+        `;
+        const current = rows[0]?.fulfillment_status;
+        const paymentStatus = rows[0]?.payment_status;
+        if (!current) throw new Error("পাওয়া যায়নি");
+        if (!canTransition(current, to)) throw new Error("এই স্ট্যাটাসে নয়");
+        if (to === "cancelled" && !canCancelOrder(paymentStatus ?? "")) {
+          throw new Error("পরিশোধিত — বাতিল নয়");
+        }
+        if (to === "cancelled" || to === "returned") {
+          await restoreInventory(tx, orderId);
+        }
+        await tx`
+          update orders
+             set fulfillment_status = ${to}::order_fulfillment_status,
+                 cancelled_at = ${to === "cancelled" ? new Date() : null},
+                 updated_at = now()
+           where id = ${orderId}
+        `;
+      });
+      succeeded += 1;
+    } catch (e) {
+      failed.push({ id: orderId, reason: e instanceof Error ? e.message : "ব্যর্থ" });
+    }
+  }
+  return { succeeded, failed };
+}
+
 /**
  * Whether a cancel is allowed given the order's payment status. P1 has no
  * auto-refund: cancelling a PAID order would restore stock while leaving money
