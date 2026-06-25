@@ -30,7 +30,7 @@ API="https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/rulesets/phases/ht
 # Paths use wildcard (basic-plan ok) to bypass dynamic/auth routes.
 STOREFRONT_EXPR='(http.host contains ".hybrid.ecomex.cloud")
   and not (http.host in {"admin.hybrid.ecomex.cloud" "app.hybrid.ecomex.cloud" "cdn.hybrid.ecomex.cloud" "www.hybrid.ecomex.cloud"})
-  and not (http.cookie contains "hybrid_session=")
+  and not (any(http.request.cookies["hybrid_session"][*] != ""))
   and not (http.request.uri.path wildcard "/cart*") and not (http.request.uri.path wildcard "/checkout*")
   and not (http.request.uri.path wildcard "/order*") and not (http.request.uri.path wildcard "/account*")
   and not (http.request.uri.path wildcard "/api*") and not (http.request.uri.path wildcard "/admin*")
@@ -38,35 +38,30 @@ STOREFRONT_EXPR='(http.host contains ".hybrid.ecomex.cloud")
 
 CDN_EXPR='(http.host eq "cdn.hybrid.ecomex.cloud")'
 
-# Collapse the multi-line expression to one line for JSON.
+# Build the JSON body with python so the expressions' embedded double-quotes are
+# escaped correctly (a shell heredoc would produce malformed JSON). Requires python3.
 STOREFRONT_EXPR_ONELINE=$(printf '%s' "$STOREFRONT_EXPR" | tr -s '[:space:]' ' ')
-
-read -r -d '' BODY <<JSON || true
-{
-  "rules": [
-    {
-      "description": "Storefront HTML — edge cache 60s, override origin no-store, Host in cache key, bypass sessions/dynamic",
-      "expression": "${STOREFRONT_EXPR_ONELINE}",
-      "action": "set_cache_settings",
-      "action_parameters": {
-        "cache": true,
-        "edge_ttl": { "mode": "override_origin", "default": 60 },
-        "browser_ttl": { "mode": "override_origin", "default": 0 }
-      }
-    },
-    {
-      "description": "CDN images (MinIO) — immutable, 1 year edge + browser",
-      "expression": "${CDN_EXPR}",
-      "action": "set_cache_settings",
-      "action_parameters": {
-        "cache": true,
-        "edge_ttl": { "mode": "override_origin", "default": 31536000 },
-        "browser_ttl": { "mode": "override_origin", "default": 31536000 }
-      }
-    }
-  ]
-}
-JSON
+PYBIN=""
+for c in python3 python; do "$c" -c "" >/dev/null 2>&1 && { PYBIN=$c; break; }; done
+[ -n "$PYBIN" ] || { echo "python3/python required to build the JSON body"; exit 1; }
+BODY=$("$PYBIN" - "$STOREFRONT_EXPR_ONELINE" "$CDN_EXPR" <<'PY'
+import json, sys
+sf, cdn = sys.argv[1], sys.argv[2]
+print(json.dumps({"rules": [
+  {"description": "Storefront HTML — edge cache 60s override-origin, bypass sessions/dynamic, WCD armor",
+   "expression": sf, "action": "set_cache_settings",
+   "action_parameters": {"cache": True,
+     "edge_ttl": {"mode": "override_origin", "default": 60},
+     "browser_ttl": {"mode": "override_origin", "default": 0},
+     "cache_key": {"cache_deception_armor": True}}},
+  {"description": "CDN images (MinIO) — immutable, 1 year edge + browser",
+   "expression": cdn, "action": "set_cache_settings",
+   "action_parameters": {"cache": True,
+     "edge_ttl": {"mode": "override_origin", "default": 31536000},
+     "browser_ttl": {"mode": "override_origin", "default": 31536000}}},
+]}))
+PY
+)
 
 echo "Applying cache ruleset to zone ${CF_ZONE_ID} ..."
 curl -fsS -X PUT "$API" \
