@@ -151,8 +151,11 @@ rows still need the SQL above.)
   retention) and mirrors the MinIO `hybrid-media` bucket to `/root/backups/minio/`. Log:
   `/var/log/hybrid-backup.log`. Run on demand: `ssh mt5vps /usr/local/bin/hybrid-backup.sh`.
   - **Restore DB**: `gunzip -c /root/backups/db-<ts>.sql.gz | docker exec -i supabase-db-... psql -U postgres -d postgres`.
-  - ⚠️ **TODO (off-site)**: backups currently live on the same VPS disk — protects against volume
-    corruption / accidental drops, NOT full VPS loss. Add an off-box copy (rclone → R2/S3) before scale.
+  - ✅ **Off-site (done 2026-06-25)**: the script also mirrors `/root/backups` to **Cloudflare R2**
+    (bucket `hybrid-backups`) via `mc mirror --remove`, so a full VPS loss is survivable. R2 creds
+    live ONLY in `/root/.r2-backup.env` (chmod 600) — never in the repo. Repo copy of the script:
+    `infra/backup/hybrid-backup.sh`. Restore from R2: `mc cp r2/hybrid-backups/db/db-<ts>.sql.gz .`
+    then gunzip | psql.
 - **Hardening done**: `app_runtime_login` password rotated off the seed default `app_runtime_local_pw`
   (live secret in `/opt/hybrid/.env.deploy` `DATABASE_URL`; the repo `00_roles.sql` default is only
   for local/CI). Dev-login backdoor disabled (`ALLOW_DEV_LOGIN=false`, `DEV_LOGIN_KEY` removed) —

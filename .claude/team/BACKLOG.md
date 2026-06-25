@@ -28,8 +28,7 @@
 - [ ] Phase-1 seams to honor: Supabase Auth swap behind getSession(); Upstash custom cache handler for revalidateTag across instances; de-hardcode app_runtime_login password + DEV_SESSION_SECRET fail-fast already done; host-header normalize/allowlist before internet exposure; theme-color Zod validation when theme editor ships. — source M1 security
 
 ## Infra / Ops (self-hosted Supabase, post-migration 2026-06-25)
-- [ ] **OFF-SITE BACKUPS** — status: todo (founder deferred 2026-06-25). Nightly DB+MinIO backups
-      already run on the VPS (`/usr/local/bin/hybrid-backup.sh`, cron 03:00, `/root/backups`, 14-dump
-      retention) but live on the SAME VPS disk → no protection against full VPS loss. Add an off-box
-      copy (rclone → Cloudflare R2 / S3) before real sellers onboard. Needs: R2/S3 bucket + API creds
-      from founder, then an rclone cron step. See docs/INFRA_SUPABASE.md "Backups & hardening".
+- [x] **OFF-SITE BACKUPS** — DONE 2026-06-25. Nightly backup script now mirrors `/root/backups`
+      (DB dumps + MinIO images) to **Cloudflare R2** bucket `hybrid-backups` via `mc mirror --remove`
+      (cron 03:00). Survives full VPS loss. R2 creds in `/root/.r2-backup.env` (600, not in repo);
+      repo copy of script at `infra/backup/hybrid-backup.sh`. Verified: dumps present in R2.
