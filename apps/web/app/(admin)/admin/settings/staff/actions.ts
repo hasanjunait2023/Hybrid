@@ -11,6 +11,7 @@ import {
   removeMember,
   hasRole,
   getMemberRole,
+  getMemberRoleByEmail,
   StaffError,
   type MemberRole,
 } from "@/lib/admin/staff";
@@ -61,6 +62,11 @@ export async function addMemberAction(
   if (parsed.data.role === "owner" && auth.role !== "owner") {
     return { ok: false, error: "শুধু মালিক আরেকজন মালিক যোগ করতে পারেন।" };
   }
+  // Only an owner may change an EXISTING owner — the upsert would otherwise let
+  // a non-owner demote the owner by re-adding their email with a lower role.
+  if (auth.role !== "owner" && (await getMemberRoleByEmail(auth.tenantId, parsed.data.email)) === "owner") {
+    return { ok: false, error: "শুধু মালিক মালিকের ভূমিকা পরিবর্তন করতে পারেন।" };
+  }
   await addMember(auth.tenantId, parsed.data.email, parsed.data.role, parsed.data.fullName);
   bust(auth.tenantId);
   return { ok: true };
@@ -74,6 +80,11 @@ export async function changeRoleAction(userId: string, role: string): Promise<St
   if (!r.success || !id.success) return { ok: false, error: "অবৈধ অনুরোধ।" };
   if (r.data === "owner" && auth.role !== "owner") {
     return { ok: false, error: "শুধু মালিক মালিক-ভূমিকা দিতে পারেন।" };
+  }
+  // A non-owner may not change an existing owner's role (demotion guard) —
+  // mirrors removeMemberAction.
+  if (auth.role !== "owner" && (await hasRole(auth.tenantId, id.data, ["owner"]))) {
+    return { ok: false, error: "শুধু মালিক মালিকের ভূমিকা পরিবর্তন করতে পারেন।" };
   }
   try {
     await changeMemberRole(auth.tenantId, id.data, r.data);

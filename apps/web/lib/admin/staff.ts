@@ -61,6 +61,23 @@ export async function getMemberRole(tenantId: string, userId: string): Promise<M
   return rows[0]?.role ?? null;
 }
 
+// Target's current role by email — used by the add-member guard so a non-owner
+// can't demote an existing owner by re-adding their email with a lower role
+// (the upsert would otherwise overwrite the role).
+export async function getMemberRoleByEmail(
+  tenantId: string,
+  email: string,
+): Promise<MemberRole | null> {
+  const rows = await asPlatformAdmin((tx) =>
+    tx<{ role: MemberRole }[]>`
+      select m.role from tenant_member m
+      join app_user u on u.id = m.user_id
+      where m.tenant_id = ${tenantId} and u.email = ${email.trim().toLowerCase()} limit 1
+    `,
+  );
+  return rows[0]?.role ?? null;
+}
+
 export class StaffError extends Error {}
 
 // Add (or re-invite) a member by email. Creates the app_user if new, then links

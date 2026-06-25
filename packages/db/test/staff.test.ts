@@ -11,6 +11,7 @@ import { asPlatformAdmin } from "../src/index";
 import {
   listMembers,
   getMemberRole,
+  getMemberRoleByEmail,
   addMember,
   changeMemberRole,
   removeMember,
@@ -47,6 +48,10 @@ describe("staff & RBAC slice", () => {
     const row = members.find((m) => m.userId === staffUserId);
     expect(row?.email).toBe(STAFF_EMAIL);
     expect(row?.role).toBe("staff");
+
+    // Privilege-escalation guard input: role-by-email resolves the target.
+    expect(await getMemberRoleByEmail(TENANT_A, STAFF_EMAIL)).toBe("staff");
+    expect(await getMemberRoleByEmail(TENANT_A, "nobody@hybrid.local")).toBeNull();
   });
 
   it("2. addMember is idempotent on (tenant,user) — updates role", async () => {
