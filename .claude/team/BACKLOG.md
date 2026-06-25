@@ -42,7 +42,7 @@
 
 ## Tenant-subdomain TLS (2026-06-25)
 - [x] CRITICAL tenant/admin/app/cdn subdomains 000 — FIXED via grey-cloud (*.hybrid.ecomex.cloud proxied=false; Caddy LE certs serve direct). store-a/b 200, admin/app 307, cdn 403.
-- [ ] On-demand TLS for unbounded NEW tenant subdomains (Caddy on_demand_tls + ask endpoint /api/internal/tls-allow gated by resolveTenantByHost). Needed before onboarding sellers beyond store-a/b.
+- [x] On-demand TLS for NEW tenant subdomains — DONE (Caddy on_demand + ask-gate; verified store-a/b/admin/app/cdn green, bogus refused).
 - [ ] (optional) Restore CF edge cache: ACM/Total TLS wildcard for *.hybrid.ecomex.cloud, re-proxy (needs SSL:edit token). Storefront <50ms cache win.
 - [ ] Verify MinIO hybrid-media serves public GetObject when real product images uploaded.
 - [ ] ROTATE exposed creds (CF DNS token, R2 access/secret) — pasted in chat 2026-06-25.
