@@ -24,19 +24,22 @@
 	}
 }
 
-# Fixed platform hosts — apex marketing + admin + super-admin. Explicit certs.
-hybrid.ecomex.cloud,
-admin.hybrid.ecomex.cloud,
-app.hybrid.ecomex.cloud {
+# Apex marketing (Cloudflare-proxied) — managed cert, no on-demand. Kept as its
+# OWN block so it does NOT overlap the *.hybrid on-demand policy below.
+hybrid.ecomex.cloud {
 	encode zstd gzip
 	import app_headers
 	reverse_proxy web:3000
 }
 
-# Tenant storefront subdomains — one cert PER hostname obtained on demand at the
-# TLS handshake, gated by the ask endpoint above (only active tenants get a cert).
-# This is what lets a newly-provisioned seller's subdomain serve HTTPS with no
-# Caddyfile change. More specific blocks (admin/app/cdn) above win over this.
+# Everything under *.hybrid.ecomex.cloud served by the app — admin, super-admin,
+# AND every tenant storefront — uses ONE on-demand TLS policy (no explicit blocks
+# that would overlap and cause a TLS automation conflict). Caddy obtains a per-
+# hostname LE cert at the handshake, gated by the ask endpoint (active tenants +
+# the fixed platform hosts are allowlisted; everything else is refused). A newly-
+# provisioned seller's subdomain serves HTTPS with no Caddyfile change. cdn.* has
+# its own more-specific block below for routing (to MinIO); its cert still comes
+# through this on-demand policy (cdn is allowlisted in the ask gate).
 *.hybrid.ecomex.cloud {
 	encode zstd gzip
 	tls {
@@ -52,6 +55,12 @@ app.hybrid.ecomex.cloud {
 # anything else (other buckets, writes, S3 admin, listing) gets a flat 403.
 cdn.hybrid.ecomex.cloud {
 	encode zstd gzip
+
+	# on_demand so this block's TLS policy matches the *.hybrid wildcard policy
+	# (no managed-vs-on-demand conflict); cdn is allowlisted in the ask gate.
+	tls {
+		on_demand
+	}
 
 	@ok {
 		method GET HEAD
