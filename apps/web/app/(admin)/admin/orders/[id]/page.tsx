@@ -6,6 +6,7 @@ import { getOrderDetail, nextAction } from "@/lib/admin/orders";
 import { OrderStatusActions } from "./OrderStatusActions";
 import { SendToCourierButton } from "./SendToCourierButton";
 import { OrderRiskPanel } from "./OrderRiskPanel";
+import { ManualPaymentForm } from "./ManualPaymentForm";
 
 // Order detail (DESIGN §P3.3). Header = order# + stepper + contextual action.
 // Two-column ≥ lg, stacked on mobile. Latin numerals, mono amounts (§4.4).
@@ -83,6 +84,11 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
       {/* COD-fraud / phone-risk signals (P1 #2) */}
       <OrderRiskPanel tenantId={tenantId} userId={session.userId} orderId={order.id} />
+
+      {/* Manual payment / partial advance (P1 #4) — until fully paid */}
+      {order.paymentStatus !== "paid" && (
+        <ManualPaymentForm orderId={order.id} codDue={order.codAmount} />
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* Main */}
