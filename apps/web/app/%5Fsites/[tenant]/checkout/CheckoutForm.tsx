@@ -4,8 +4,12 @@
 // bKash (single pink), Division→District→Thana bottom sheets, order summary,
 // sticky "অর্ডার করুন" bar. Submits to the submitCheckout Server Action.
 import { useMemo, useState } from "react";
-import { Button, formatBdtBangla, toBnDigits, BkashIcon, CheckIcon } from "@hybrid/ui";
+import { Button, BkashIcon, CheckIcon } from "@hybrid/ui";
 import type { LocationTree, CascadeOption } from "@/lib/location";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
+import type { Locale } from "@/lib/i18n/config";
+import type { Messages } from "@/lib/i18n/dictionaries";
 import { useCart } from "../cart/useCart";
 import { submitCheckout } from "./actions";
 import { LocationSheet } from "./LocationSheet";
@@ -26,6 +30,9 @@ export function CheckoutForm({
   locationTree,
   paymentNotice,
 }: CheckoutFormProps) {
+  const d = useDict();
+  const locale = useLocale();
+  const t = d.storefront.checkout;
   const cart = useCart(tenantSlug);
 
   const [phone, setPhone] = useState("");
@@ -100,15 +107,13 @@ export function CheckoutForm({
   }
 
   const confirmLabel =
-    method === "bkash" ? "বিকাশে পেমেন্ট করুন" : "অর্ডার করুন";
+    method === "bkash" ? t.payWithBkash : t.placeOrder;
 
   return (
     <div className="mx-auto max-w-[480px] px-4 pb-32 pt-4">
       {paymentNotice && (
         <p className="mb-4 rounded-md bg-danger-weak px-3 py-2 text-sm text-danger">
-          {paymentNotice === "failed"
-            ? "বিকাশ পেমেন্ট সম্পন্ন হয়নি। আবার চেষ্টা করুন বা ক্যাশ অন ডেলিভারি বেছে নিন।"
-            : "পেমেন্টে সমস্যা হয়েছে।"}
+          {paymentNotice === "failed" ? t.paymentFailed : t.paymentInvalid}
         </p>
       )}
 
@@ -120,7 +125,7 @@ export function CheckoutForm({
         className="flex flex-col gap-4"
       >
         {/* Phone — first field on purpose (COD identity key). */}
-        <Field label="ফোন নম্বর">
+        <Field label={t.phoneLabel}>
           <input
             type="tel"
             inputMode="tel"
@@ -133,24 +138,24 @@ export function CheckoutForm({
           />
         </Field>
 
-        <Field label="নাম">
+        <Field label={t.nameLabel}>
           <input
             type="text"
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="আপনার নাম"
+            placeholder={t.namePlaceholder}
             className="h-11 rounded-sm border border-border-strong bg-surface px-3 text-base text-ink placeholder:text-ink-subtle"
           />
         </Field>
 
         {/* Address cascade — bottom sheets. */}
         <LocationSheet
-          label="বিভাগ"
+          label={t.divisionLabel}
           value={division?.bn ?? null}
           options={locationTree.divisions}
-          placeholder="বিভাগ নির্বাচন করুন"
-          countNoun="বিভাগ"
+          placeholder={t.divisionPlaceholder}
+          countNoun={t.divisionNoun}
           onSelect={(o) => {
             setDivision(o);
             setDistrict(null);
@@ -158,68 +163,68 @@ export function CheckoutForm({
           }}
         />
         <LocationSheet
-          label="জেলা"
+          label={t.districtLabel}
           value={district?.bn ?? null}
           options={districts}
           disabled={division == null}
-          placeholder="জেলা নির্বাচন করুন"
-          countNoun="জেলা"
+          placeholder={t.districtPlaceholder}
+          countNoun={t.districtNoun}
           onSelect={(o) => {
             setDistrict(o);
             setThana(null);
           }}
         />
         <LocationSheet
-          label="থানা / উপজেলা"
+          label={t.thanaLabel}
           value={thana?.bn ?? null}
           options={thanas}
           disabled={district == null}
-          placeholder="থানা নির্বাচন করুন"
-          countNoun="থানা"
+          placeholder={t.thanaPlaceholder}
+          countNoun={t.thanaNoun}
           onSelect={setThana}
         />
 
-        <Field label="বিস্তারিত ঠিকানা">
+        <Field label={t.addressLabel}>
           <textarea
             rows={2}
             value={addressLine}
             onChange={(e) => setAddressLine(e.target.value)}
-            placeholder="বাসা/হোল্ডিং, রোড, এলাকা"
+            placeholder={t.addressPlaceholder}
             className="rounded-sm border border-border-strong bg-surface px-3 py-2 text-base text-ink placeholder:text-ink-subtle"
           />
         </Field>
 
         {/* Payment method — COD loudest, bKash single pink. */}
         <fieldset className="flex flex-col gap-3">
-          <legend className="bn-body mb-1 text-sm font-semibold text-ink">পেমেন্ট মাধ্যম</legend>
+          <legend className="bn-body mb-1 text-sm font-semibold text-ink">{t.paymentMethod}</legend>
 
           <PaymentCard
             selected={method === "cod"}
             onSelect={() => setMethod("cod")}
             tone="cod"
             icon={<CheckIcon width={20} height={20} />}
-            title="ক্যাশ অন ডেলিভারি"
-            subtitle="পণ্য হাতে পেয়ে টাকা দিন"
-            reassurance="✓ অগ্রিম টাকা লাগবে না"
+            title={t.codTitle}
+            subtitle={t.codSubtitle}
+            reassurance={t.codReassurance}
           />
           <PaymentCard
             selected={method === "bkash"}
             onSelect={() => setMethod("bkash")}
             tone="bkash"
             icon={<BkashIcon width={20} height={20} />}
-            title="বিকাশ"
-            subtitle="এখনই পেমেন্ট করুন"
+            title={t.bkashTitle}
+            subtitle={t.bkashSubtitle}
           />
         </fieldset>
 
         {/* Optional note — collapsed by default. */}
         {showNote ? (
-          <Field label="অর্ডার নোট">
+          <Field label={t.noteLabel}>
             <textarea
               rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="বিশেষ নির্দেশনা (ঐচ্ছিক)"
+              placeholder={t.notePlaceholder}
               className="rounded-sm border border-border-strong bg-surface px-3 py-2 text-base text-ink placeholder:text-ink-subtle"
             />
           </Field>
@@ -229,18 +234,18 @@ export function CheckoutForm({
             onClick={() => setShowNote(true)}
             className="w-fit text-sm font-medium text-primary"
           >
-            ✎ অর্ডার নোট যোগ করুন
+            {t.addNote}
           </button>
         )}
 
         {/* Promo code — optional. Server validates + applies on submit; no
             client-side preview (avoids a pre-check race with usage limits). */}
-        <Field label="প্রোমো কোড (ঐচ্ছিক)">
+        <Field label={t.promoLabel}>
           <input
             type="text"
             value={promoCode}
             onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-            placeholder="কোড থাকলে লিখুন"
+            placeholder={t.promoPlaceholder}
             autoCapitalize="characters"
             autoComplete="off"
             className="h-11 rounded-sm border border-border-strong bg-surface px-3 text-base uppercase text-ink placeholder:normal-case placeholder:text-ink-subtle"
@@ -257,6 +262,8 @@ export function CheckoutForm({
             imageUrl: l.imageUrl ?? null,
           }))}
           subtotal={cart.subtotal}
+          locale={locale}
+          d={d}
         />
 
         {error && (
@@ -268,9 +275,9 @@ export function CheckoutForm({
       <div className="fixed inset-x-0 bottom-0 z-sticky border-t border-border bg-surface shadow-lg">
         <div className="mx-auto flex max-w-[480px] items-center gap-3 px-4 py-3">
           <div className="flex flex-col">
-            <span className="text-2xs text-ink-muted">সর্বমোট</span>
+            <span className="text-2xs text-ink-muted">{t.total}</span>
             <span className="text-lg font-bold leading-none text-ink tnum">
-              {formatBdtBangla(cart.subtotal)}
+              {formatMoney(cart.subtotal, locale)}
             </span>
           </div>
           <Button
@@ -282,8 +289,8 @@ export function CheckoutForm({
           >
             {submitting
               ? method === "bkash"
-                ? "বিকাশ পেমেন্ট চলছে…"
-                : "অর্ডার হচ্ছে…"
+                ? t.bkashProcessing
+                : t.placingOrder
               : confirmLabel}
           </Button>
         </div>
@@ -357,10 +364,21 @@ interface SummaryLine {
   imageUrl: string | null;
 }
 
-function OrderSummary({ lines, subtotal }: { lines: SummaryLine[]; subtotal: number }) {
+function OrderSummary({
+  lines,
+  subtotal,
+  locale,
+  d,
+}: {
+  lines: SummaryLine[];
+  subtotal: number;
+  locale: Locale;
+  d: Messages;
+}) {
+  const t = d.storefront.checkout;
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3">
-      <span className="bn-body text-sm font-semibold text-ink">অর্ডার সারাংশ</span>
+      <span className="bn-body text-sm font-semibold text-ink">{t.orderSummary}</span>
       <ul className="flex flex-col gap-2">
         {lines.map((line) => (
           <li key={line.key} className="flex items-center gap-2">
@@ -371,21 +389,21 @@ function OrderSummary({ lines, subtotal }: { lines: SummaryLine[]; subtotal: num
             </div>
             <span className="bn-body line-clamp-1 flex-1 text-sm text-ink">
               {line.title}{" "}
-              <span className="text-ink-muted">× {toBnDigits(line.quantity)}</span>
+              <span className="text-ink-muted">× {formatNumber(line.quantity, locale)}</span>
             </span>
             <span className="text-sm font-semibold text-ink tnum">
-              {formatBdtBangla(line.lineTotal)}
+              {formatMoney(line.lineTotal, locale)}
             </span>
           </li>
         ))}
       </ul>
       <div className="flex items-center justify-between border-t border-border pt-2">
-        <span className="bn-body text-sm text-ink-muted">সাবটোটাল</span>
-        <span className="text-sm font-semibold text-ink tnum">{formatBdtBangla(subtotal)}</span>
+        <span className="bn-body text-sm text-ink-muted">{t.subtotal}</span>
+        <span className="text-sm font-semibold text-ink tnum">{formatMoney(subtotal, locale)}</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="bn-body text-base font-bold text-ink">সর্বমোট</span>
-        <span className="text-2xl font-bold text-ink tnum">{formatBdtBangla(subtotal)}</span>
+        <span className="bn-body text-base font-bold text-ink">{t.total}</span>
+        <span className="text-2xl font-bold text-ink tnum">{formatMoney(subtotal, locale)}</span>
       </div>
     </div>
   );

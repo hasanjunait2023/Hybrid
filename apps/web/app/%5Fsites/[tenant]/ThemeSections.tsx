@@ -10,6 +10,9 @@
 import { Hero, ProductGrid, TrustBand } from "@hybrid/ui";
 import type { StorefrontProduct } from "@hybrid/ui";
 import type { ThemeSettings, SectionType } from "@/lib/theme/schema";
+import { getDict } from "@/lib/i18n/server";
+import type { Locale } from "@/lib/i18n/config";
+import type { Messages } from "@/lib/i18n/dictionaries";
 
 // Render-time http(s) guard (defense in depth alongside the Zod httpUrl check in
 // the customizer action). Mirrors packages/ui/src/lib/safeUrl.ts but kept local
@@ -38,12 +41,13 @@ interface ThemeSectionsProps {
   collections: StorefrontCollectionTile[];
 }
 
-export function ThemeSections({
+export async function ThemeSections({
   settings,
   storeName,
   products,
   collections,
 }: ThemeSectionsProps) {
+  const { locale, d } = await getDict();
   const ordered = [...settings.sections]
     .filter((s) => s.enabled)
     .sort((a, b) => a.position - b.position);
@@ -51,7 +55,7 @@ export function ThemeSections({
   return (
     <>
       {ordered.map((section) =>
-        renderSection(section.type, { settings, storeName, products, collections }),
+        renderSection(section.type, { settings, storeName, products, collections }, locale, d),
       )}
     </>
   );
@@ -60,9 +64,12 @@ export function ThemeSections({
 function renderSection(
   type: SectionType,
   props: ThemeSectionsProps,
+  locale: Locale,
+  d: Messages,
 ): React.ReactNode {
   const { settings, storeName, products, collections } = props;
   const content = settings.content;
+  const t = d.storefront.home;
 
   switch (type) {
     case "announcement_bar":
@@ -80,15 +87,16 @@ function renderSection(
       return (
         <Hero
           key={type}
+          lang={locale}
           heading={
             content.heroHeadline ||
-            `${storeName} — আসল পণ্য, সারা দেশে ডেলিভারি`
+            `${storeName} — ${t.heroHeadlineSuffix}`
           }
           subheading={
             content.heroSubline ||
-            "ক্যাশ অন ডেলিভারিতে অর্ডার করুন, হাতে পেয়ে টাকা দিন।"
+            t.heroSubline
           }
-          ctaLabel={content.heroCta || "এখনই কিনুন"}
+          ctaLabel={content.heroCta || t.heroCta}
           ctaHref="/products"
           imageUrl={safeUrl(content.heroImageUrl) ?? null}
         />
@@ -98,7 +106,8 @@ function renderSection(
       return (
         <ProductGrid
           key={type}
-          heading="ফিচার্ড পণ্য"
+          lang={locale}
+          heading={t.featuredProducts}
           products={products}
           priorityCount={2}
         />
@@ -112,7 +121,7 @@ function renderSection(
               id="collections-heading"
               className="bn-heading mb-4 text-2xl font-bold text-ink"
             >
-              কালেকশন
+              {t.collections}
             </h2>
             <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {collections.map((c) => (
@@ -131,7 +140,7 @@ function renderSection(
       ) : null;
 
     case "trust_band":
-      return <TrustBand key={type} />;
+      return <TrustBand key={type} lang={locale} />;
 
     default:
       return null;

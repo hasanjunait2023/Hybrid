@@ -8,6 +8,7 @@ import {
 } from "@/lib/storefront/data";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
+import { getDict } from "@/lib/i18n/server";
 import { ThemeSections } from "./ThemeSections";
 
 interface StorefrontHomeProps {
@@ -40,6 +41,7 @@ export default async function StorefrontHome({
   ]);
 
   const isPreview = ctx.settings !== published.settings;
+  const { d } = await getDict();
 
   return (
     <>
@@ -48,7 +50,7 @@ export default async function StorefrontHome({
           className="bg-st-pending-weak px-4 py-2 text-center text-sm font-medium text-ink"
           role="status"
         >
-          প্রিভিউ মোড · শুধু আপনি দেখছেন (অপ্রকাশিত খসড়া)
+          {d.storefront.home.previewBanner}
         </div>
       )}
       <ThemeSections

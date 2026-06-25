@@ -2,7 +2,9 @@
 // Cart page island (blueprint S-CHECKOUT). Renders the localStorage cart with
 // qty steppers + remove, a Bangla-numeral subtotal, and a sticky "চেকআউট" bar.
 // No server cart — everything is client state until checkout (DESIGN P1.5).
-import { Button, formatBdtBangla, toBnDigits, TrashIcon } from "@hybrid/ui";
+import { Button, TrashIcon } from "@hybrid/ui";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { useCart } from "./useCart";
 
 interface CartIslandProps {
@@ -10,15 +12,18 @@ interface CartIslandProps {
 }
 
 export function CartIsland({ tenantSlug }: CartIslandProps) {
+  const d = useDict();
+  const locale = useLocale();
+  const t = d.storefront.cart;
   const cart = useCart(tenantSlug);
 
   if (cart.lines.length === 0) {
     return (
       <div className="mx-auto flex max-w-storefront flex-col items-center gap-4 px-4 py-16 text-center">
-        <p className="bn-body text-lg font-semibold text-ink">আপনার কার্ট খালি</p>
-        <p className="bn-body text-sm text-ink-muted">পছন্দের পণ্য যোগ করে অর্ডার করুন।</p>
+        <p className="bn-body text-lg font-semibold text-ink">{t.empty}</p>
+        <p className="bn-body text-sm text-ink-muted">{t.emptyHint}</p>
         <a href="/products">
-          <Button variant="primary" size="lg">পণ্য দেখুন</Button>
+          <Button variant="primary" size="lg">{t.viewProducts}</Button>
         </a>
       </div>
     );
@@ -26,7 +31,7 @@ export function CartIsland({ tenantSlug }: CartIslandProps) {
 
   return (
     <div className="mx-auto max-w-storefront px-4 pb-28 pt-4">
-      <h1 className="bn-heading mb-4 text-xl font-bold text-ink">আপনার কার্ট</h1>
+      <h1 className="bn-heading mb-4 text-xl font-bold text-ink">{t.title}</h1>
 
       <ul className="flex flex-col gap-3">
         {cart.lines.map((line) => (
@@ -45,24 +50,24 @@ export function CartIsland({ tenantSlug }: CartIslandProps) {
               {line.variantTitle && (
                 <p className="text-2xs text-ink-muted">{line.variantTitle}</p>
               )}
-              <p className="text-sm font-bold text-ink tnum">{formatBdtBangla(line.price)}</p>
+              <p className="text-sm font-bold text-ink tnum">{formatMoney(line.price, locale)}</p>
             </div>
 
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                aria-label="কমান"
+                aria-label={t.decrease}
                 onClick={() => cart.setQuantity(line.variantId, line.quantity - 1)}
                 className="grid h-9 w-9 place-items-center rounded-md border border-border-strong text-ink hover:bg-surface-2"
               >
                 −
               </button>
               <span className="w-7 text-center text-sm font-semibold text-ink tnum">
-                {toBnDigits(line.quantity)}
+                {formatNumber(line.quantity, locale)}
               </span>
               <button
                 type="button"
-                aria-label="বাড়ান"
+                aria-label={t.increase}
                 onClick={() => cart.setQuantity(line.variantId, line.quantity + 1)}
                 className="grid h-9 w-9 place-items-center rounded-md border border-border-strong text-ink hover:bg-surface-2"
               >
@@ -70,7 +75,7 @@ export function CartIsland({ tenantSlug }: CartIslandProps) {
               </button>
               <button
                 type="button"
-                aria-label="মুছে ফেলুন"
+                aria-label={t.remove}
                 onClick={() => cart.remove(line.variantId)}
                 className="grid h-9 w-9 place-items-center rounded-md text-danger hover:bg-danger-weak"
               >
@@ -85,14 +90,14 @@ export function CartIsland({ tenantSlug }: CartIslandProps) {
       <div className="fixed inset-x-0 bottom-0 z-sticky border-t border-border bg-surface shadow-lg">
         <div className="mx-auto flex max-w-storefront items-center gap-3 px-4 py-2.5">
           <div className="flex flex-col">
-            <span className="text-2xs text-ink-muted">সর্বমোট</span>
+            <span className="text-2xs text-ink-muted">{t.total}</span>
             <span className="text-lg font-bold leading-none text-ink tnum">
-              {formatBdtBangla(cart.subtotal)}
+              {formatMoney(cart.subtotal, locale)}
             </span>
           </div>
           <a href="/checkout" className="flex-1">
             <Button variant="primary" size="lg" fullWidth>
-              চেকআউট
+              {t.checkout}
             </Button>
           </a>
         </div>

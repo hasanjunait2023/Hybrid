@@ -4,11 +4,11 @@ import {
   CheckCircleIcon,
   PhoneIcon,
   StatusStepper,
-  formatBdtBangla,
-  toBnDigits,
 } from "@hybrid/ui";
 import { getStorefrontOrder, getTenantContextBySlug } from "@/lib/storefront/data";
 import { preparePurchaseFire } from "@/lib/analytics/purchase";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { OrderLookup } from "./OrderLookup";
 import { PurchaseTracker } from "./PurchaseTracker";
 
@@ -41,6 +41,8 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
   }
 
   const isCod = order.paymentMethod === "cod";
+  const { locale, d } = await getDict();
+  const t = d.storefront.order;
 
   // Deduped purchase fire (Phase 2.7). Fires the SERVER half (CAPI + GA4-MP +
   // internal order.placed) once — gated on payment.payload.analytics.serverFired
@@ -65,53 +67,53 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
         <span className="grid h-16 w-16 place-items-center rounded-full bg-cod-weak text-cod">
           <CheckCircleIcon width={36} height={36} />
         </span>
-        <h1 className="bn-heading text-2xl font-bold text-ink">অর্ডার কনফার্ম হয়েছে!</h1>
-        <p className="text-lg font-bold text-ink">অর্ডার #{toBnDigits(order.orderNumber)}</p>
+        <h1 className="bn-heading text-2xl font-bold text-ink">{t.confirmed}</h1>
+        <p className="text-lg font-bold text-ink">{t.orderNumber} #{formatNumber(order.orderNumber, locale)}</p>
       </div>
 
       {/* Status stepper (read-only). */}
       <div className="my-8">
-        <StatusStepper status={order.fulfillmentStatus} />
+        <StatusStepper status={order.fulfillmentStatus} lang={locale} />
       </div>
 
       {/* What happens next. */}
       <div className="mb-6 flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
-        <p className="bn-body text-sm font-semibold text-ink">এরপর কী হবে</p>
-        <p className="bn-body text-sm text-ink-muted">১. আমরা আপনাকে কল করে কনফার্ম করব</p>
+        <p className="bn-body text-sm font-semibold text-ink">{t.whatNext}</p>
+        <p className="bn-body text-sm text-ink-muted">{t.nextCall}</p>
         {isCod && (
           <p className="bn-body text-sm text-ink-muted">
-            ২. {formatBdtBangla(order.codAmount)} ডেলিভারিতে দিন
+            {t.nextPay.replace("{amount}", formatMoney(order.codAmount, locale))}
           </p>
         )}
       </div>
 
       {/* Items + total. */}
       <div className="mb-6 flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
-        <p className="bn-body text-sm font-semibold text-ink">অর্ডার সারাংশ</p>
+        <p className="bn-body text-sm font-semibold text-ink">{t.orderSummary}</p>
         <ul className="flex flex-col gap-1.5">
           {order.items.map((item, i) => (
             <li key={i} className="flex items-center justify-between gap-2">
               <span className="bn-body line-clamp-1 flex-1 text-sm text-ink">
                 {item.title}{" "}
-                <span className="text-ink-muted">× {toBnDigits(item.quantity)}</span>
+                <span className="text-ink-muted">× {formatNumber(item.quantity, locale)}</span>
               </span>
               <span className="text-sm font-semibold text-ink tnum">
-                {formatBdtBangla(item.lineTotal)}
+                {formatMoney(item.lineTotal, locale)}
               </span>
             </li>
           ))}
         </ul>
         <div className="flex items-center justify-between border-t border-border pt-2">
-          <span className="bn-body text-base font-bold text-ink">সর্বমোট</span>
+          <span className="bn-body text-base font-bold text-ink">{t.total}</span>
           <span className="text-lg font-bold text-ink tnum">
-            {formatBdtBangla(order.grandTotal)}
+            {formatMoney(order.grandTotal, locale)}
           </span>
         </div>
         {isCod && (
           <div className="flex items-center justify-between">
-            <span className="bn-body text-sm font-semibold text-cod">ডেলিভারিতে সংগ্রহ</span>
+            <span className="bn-body text-sm font-semibold text-cod">{t.collectOnDelivery}</span>
             <span className="text-sm font-bold text-cod tnum">
-              {formatBdtBangla(order.codAmount)}
+              {formatMoney(order.codAmount, locale)}
             </span>
           </div>
         )}
@@ -124,7 +126,7 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
           className="flex items-center justify-center gap-2 rounded-md border border-border-strong bg-surface py-3 text-sm font-semibold text-primary"
         >
           <PhoneIcon width={16} height={16} />
-          দোকানে কল করুন: {toBnDigits(ctx.store.phone)}
+          {t.callStore} {locale === "bn" ? formatNumber(ctx.store.phone, locale) : ctx.store.phone}
         </a>
       )}
     </div>

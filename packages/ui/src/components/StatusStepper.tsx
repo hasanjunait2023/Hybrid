@@ -20,6 +20,7 @@ import {
 type Step = {
   key: string;
   bn: string;
+  en: string;
   Icon: (props: { className?: string }) => React.ReactNode;
   /** weak bg / DEFAULT text Tailwind classes (full strings for JIT). */
   dot: string;
@@ -27,27 +28,29 @@ type Step = {
 };
 
 const PIPELINE: Step[] = [
-  { key: "pending", bn: "অপেক্ষমাণ", Icon: ClockIcon, dot: "bg-st-pending text-white", text: "text-st-pending" },
-  { key: "confirmed", bn: "নিশ্চিত", Icon: CheckIcon, dot: "bg-st-confirmed text-white", text: "text-st-confirmed" },
-  { key: "packed", bn: "প্যাকড", Icon: BoxIcon, dot: "bg-st-packed text-white", text: "text-st-packed" },
-  { key: "shipped", bn: "পাঠানো", Icon: TruckIcon, dot: "bg-st-shipped text-white", text: "text-st-shipped" },
-  { key: "delivered", bn: "ডেলিভার্ড", Icon: CheckCircleIcon, dot: "bg-st-delivered text-white", text: "text-st-delivered" },
+  { key: "pending", bn: "অপেক্ষমাণ", en: "Pending", Icon: ClockIcon, dot: "bg-st-pending text-white", text: "text-st-pending" },
+  { key: "confirmed", bn: "নিশ্চিত", en: "Confirmed", Icon: CheckIcon, dot: "bg-st-confirmed text-white", text: "text-st-confirmed" },
+  { key: "packed", bn: "প্যাকড", en: "Packed", Icon: BoxIcon, dot: "bg-st-packed text-white", text: "text-st-packed" },
+  { key: "shipped", bn: "পাঠানো", en: "Shipped", Icon: TruckIcon, dot: "bg-st-shipped text-white", text: "text-st-shipped" },
+  { key: "delivered", bn: "ডেলিভার্ড", en: "Delivered", Icon: CheckCircleIcon, dot: "bg-st-delivered text-white", text: "text-st-delivered" },
 ];
 
 // shipped and in_transit collapse to the same stepper node.
 const NORMALIZE: Record<string, string> = { in_transit: "shipped" };
 
 const OFFRAMP: Record<string, Step> = {
-  returned: { key: "returned", bn: "ফেরত", Icon: UndoIcon, dot: "bg-st-returned text-white", text: "text-st-returned" },
-  cancelled: { key: "cancelled", bn: "বাতিল", Icon: XCircleIcon, dot: "bg-st-cancelled text-white", text: "text-st-cancelled" },
+  returned: { key: "returned", bn: "ফেরত", en: "Returned", Icon: UndoIcon, dot: "bg-st-returned text-white", text: "text-st-returned" },
+  cancelled: { key: "cancelled", bn: "বাতিল", en: "Cancelled", Icon: XCircleIcon, dot: "bg-st-cancelled text-white", text: "text-st-cancelled" },
 };
 
 interface StatusStepperProps {
   status: string;
+  /** "en" (system default) or "bn" — pass the active locale from getDict/useDict. */
+  lang?: "bn" | "en";
   className?: string;
 }
 
-export function StatusStepper({ status, className }: StatusStepperProps) {
+export function StatusStepper({ status, lang = "en", className }: StatusStepperProps) {
   const normalized = NORMALIZE[status] ?? status;
   const offramp = OFFRAMP[normalized];
 
@@ -68,7 +71,7 @@ export function StatusStepper({ status, className }: StatusStepperProps) {
         "flex flex-col gap-0 sm:flex-row sm:items-start sm:gap-0",
         className,
       )}
-      aria-label="অর্ডার স্ট্যাটাস"
+      aria-label={lang === "bn" ? "অর্ডার স্ট্যাটাস" : "Order status"}
     >
       {steps.map((step, i) => {
         const reached = i <= currentIndex;
@@ -108,7 +111,7 @@ export function StatusStepper({ status, className }: StatusStepperProps) {
                 reached ? step.text : "text-ink-subtle",
               )}
             >
-              {step.bn}
+              {lang === "bn" ? step.bn : step.en}
             </span>
           </li>
         );

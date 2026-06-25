@@ -1,4 +1,4 @@
-import { cn } from "../../lib/cn";
+import type { ReactNode } from "react";
 import { toBnDigits } from "../../lib/format";
 import { CartIcon, PhoneIcon, SearchIcon } from "../icons";
 import type { StoreIdentity } from "./types";
@@ -6,13 +6,31 @@ import type { StoreIdentity } from "./types";
 interface StoreHeaderProps {
   store: StoreIdentity;
   cartCount?: number;
+  /** "en" (system default) or "bn" — pass the active locale from getDict/useDict. */
+  lang?: "bn" | "en";
+  /** Language toggle control, passed in by the app (different package owns it). */
+  toggle?: ReactNode;
 }
+
+const COPY = {
+  bn: {
+    trust: "ক্যাশ অন ডেলিভারি · সারা দেশে ডেলিভারি",
+    search: "খুঁজুন",
+    cart: "কার্ট",
+  },
+  en: {
+    trust: "Cash on Delivery · Nationwide delivery",
+    search: "Search",
+    cart: "Cart",
+  },
+} as const;
 
 // DESIGN §6.1 — sticky header.
 //   Row 1: COD trust strip (cod-green), always above the fold.
 //   Row 2: logo · search · cart(count) · language toggle.
-export function StoreHeader({ store, cartCount = 0 }: StoreHeaderProps) {
+export function StoreHeader({ store, cartCount = 0, lang = "en", toggle }: StoreHeaderProps) {
   const phone = store.phone ?? "";
+  const t = COPY[lang];
 
   return (
     <header className="sticky top-0 z-sticky bg-surface">
@@ -20,7 +38,7 @@ export function StoreHeader({ store, cartCount = 0 }: StoreHeaderProps) {
       <div className="bg-cod-weak text-cod">
         <div className="mx-auto flex max-w-storefront items-center justify-between gap-3 px-4 py-1.5 text-xs">
           <span className="bn-body font-semibold">
-            ক্যাশ অন ডেলিভারি · সারা দেশে ডেলিভারি
+            {t.trust}
           </span>
           {phone && (
             <a
@@ -28,7 +46,7 @@ export function StoreHeader({ store, cartCount = 0 }: StoreHeaderProps) {
               className="inline-flex shrink-0 items-center gap-1 font-semibold hover:underline"
             >
               <PhoneIcon width={13} height={13} />
-              {toBnDigits(phone)}
+              {lang === "bn" ? toBnDigits(phone) : phone}
             </a>
           )}
         </div>
@@ -46,7 +64,7 @@ export function StoreHeader({ store, cartCount = 0 }: StoreHeaderProps) {
 
           <button
             type="button"
-            aria-label="খুঁজুন"
+            aria-label={t.search}
             className="grid h-11 w-11 place-items-center rounded-md text-ink-muted hover:bg-surface-2"
           >
             <SearchIcon />
@@ -54,35 +72,20 @@ export function StoreHeader({ store, cartCount = 0 }: StoreHeaderProps) {
 
           <a
             href="/cart"
-            aria-label="কার্ট"
+            aria-label={t.cart}
             className="relative grid h-11 w-11 place-items-center rounded-md text-ink-muted hover:bg-surface-2"
           >
             <CartIcon />
             {cartCount > 0 && (
               <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-2xs font-bold text-ink-on-primary">
-                {toBnDigits(cartCount)}
+                {lang === "bn" ? toBnDigits(cartCount) : String(cartCount)}
               </span>
             )}
           </a>
 
-          <LanguageToggle />
+          {toggle}
         </div>
       </div>
     </header>
-  );
-}
-
-// Bangla is default (active). The English path is wired in a later phase; the
-// control is present so the header anatomy matches DESIGN §6.1.
-function LanguageToggle() {
-  return (
-    <div
-      className="hidden items-center overflow-hidden rounded-full border border-border-strong text-xs font-semibold sm:flex"
-      role="group"
-      aria-label="ভাষা"
-    >
-      <span className={cn("bg-primary px-2.5 py-1 text-ink-on-primary")}>বাং</span>
-      <span className="px-2.5 py-1 text-ink-muted">EN</span>
-    </div>
   );
 }

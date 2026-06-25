@@ -3,7 +3,9 @@
 // variant (when there's more than one), adds to the localStorage cart, and shows
 // a quick add-to-cart confirmation. The sticky bar is the COD conversion anchor.
 import { useState } from "react";
-import { Button, formatBdtBangla } from "@hybrid/ui";
+import { Button } from "@hybrid/ui";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { useCart } from "../../cart/useCart";
 import type { StorefrontProductDetail } from "@/lib/storefront/data";
 
@@ -13,6 +15,9 @@ interface AddToCartProps {
 }
 
 export function AddToCart({ tenantSlug, product }: AddToCartProps) {
+  const d = useDict();
+  const locale = useLocale();
+  const t = d.storefront.product;
   const cart = useCart(tenantSlug);
   const inStockVariants = product.variants.filter((v) => v.inStock);
   const [variantId, setVariantId] = useState<string>(
@@ -43,7 +48,7 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
     <div className="flex flex-col gap-4">
       {product.variants.length > 1 && (
         <div className="flex flex-col gap-2">
-          <span className="bn-body text-sm font-semibold text-ink">ভ্যারিয়েন্ট</span>
+          <span className="bn-body text-sm font-semibold text-ink">{t.variant}</span>
           <div className="flex flex-wrap gap-2">
             {product.variants.map((v) => (
               <button
@@ -62,7 +67,7 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
                   .filter(Boolean)
                   .join(" ")}
               >
-                {v.title ?? "ডিফল্ট"}
+                {v.title ?? t.defaultVariant}
               </button>
             ))}
           </div>
@@ -72,16 +77,16 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
       {/* Inline action (md+); the sticky bar covers mobile. */}
       <div className="hidden items-center gap-3 md:flex">
         <span className="text-2xl font-bold leading-none text-ink tnum">
-          {formatBdtBangla(price)}
+          {formatMoney(price, locale)}
         </span>
         <Button variant="primary" size="lg" onClick={handleAdd} disabled={!canBuy}>
-          {canBuy ? (added ? "যোগ হয়েছে ✓" : "কার্টে যোগ করুন") : "স্টক নেই"}
+          {canBuy ? (added ? t.added : t.addToCart) : t.outOfStock}
         </Button>
         <a
           href="/cart"
           className="grid h-12 place-items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-primary hover:bg-surface-2"
         >
-          কার্ট ({cart.count})
+          {t.cart} ({formatNumber(cart.count, locale)})
         </a>
       </div>
 
@@ -89,17 +94,17 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
       <div className="fixed inset-x-0 bottom-0 z-sticky border-t border-border bg-surface shadow-lg md:hidden">
         <div className="mx-auto flex max-w-storefront items-center gap-3 px-4 py-2.5">
           <div className="flex flex-col">
-            <span className="text-2xs text-ink-muted">মূল্য</span>
+            <span className="text-2xs text-ink-muted">{t.price}</span>
             <span className="text-lg font-bold leading-none text-ink tnum">
-              {formatBdtBangla(price)}
+              {formatMoney(price, locale)}
             </span>
           </div>
           <a
             href="/cart"
-            aria-label="কার্ট দেখুন"
+            aria-label={t.viewCart}
             className="grid h-11 shrink-0 place-items-center rounded-md border border-border-strong px-3 text-sm font-semibold text-primary"
           >
-            কার্ট ({cart.count})
+            {t.cart} ({formatNumber(cart.count, locale)})
           </a>
           <Button
             variant="primary"
@@ -108,7 +113,7 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
             onClick={handleAdd}
             disabled={!canBuy}
           >
-            {canBuy ? (added ? "যোগ হয়েছে ✓" : "কার্টে যোগ করুন") : "স্টক নেই"}
+            {canBuy ? (added ? t.added : t.addToCart) : t.outOfStock}
           </Button>
         </div>
       </div>

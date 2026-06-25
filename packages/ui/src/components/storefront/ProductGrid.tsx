@@ -6,7 +6,14 @@ interface ProductGridProps {
   heading?: string;
   /** Eager-load the first N cards (above-the-fold first row). */
   priorityCount?: number;
+  /** "en" (system default) or "bn" — pass the active locale from getDict/useDict. */
+  lang?: "bn" | "en";
 }
+
+const EMPTY = {
+  bn: "এই মুহূর্তে কোনো পণ্য নেই।",
+  en: "No products right now.",
+} as const;
 
 // DESIGN §6.1 #4 — 2-col mobile (BD norm), 3 (md) → 4 (lg) → 5 (xl).
 // Gap tightens on mobile (space-3) and opens up from sm (space-4).
@@ -14,11 +21,12 @@ export function ProductGrid({
   products,
   heading,
   priorityCount = 2,
+  lang = "en",
 }: ProductGridProps) {
   if (products.length === 0) {
     return (
       <p className="bn-body px-4 py-10 text-center text-ink-muted">
-        এই মুহূর্তে কোনো পণ্য নেই।
+        {EMPTY[lang]}
       </p>
     );
   }
@@ -37,6 +45,7 @@ export function ProductGrid({
               key={product.id}
               product={product}
               priority={i < priorityCount}
+              lang={lang}
             />
           ))}
         </div>

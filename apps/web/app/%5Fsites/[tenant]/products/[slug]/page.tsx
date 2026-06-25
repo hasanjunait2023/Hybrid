@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
-import { CheckIcon, formatBdtBangla } from "@hybrid/ui";
+import { CheckIcon } from "@hybrid/ui";
 import {
   getStorefrontProductBySlug,
   getTenantContextBySlug,
 } from "@/lib/storefront/data";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney } from "@/lib/i18n/format";
 import { AddToCart } from "./AddToCart";
 
 interface ProductDetailPageProps {
@@ -21,6 +23,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const product = await getStorefrontProductBySlug(ctx.id, productSlug);
   if (!product) notFound();
 
+  const { locale, d } = await getDict();
   const isDiscounted =
     product.compareAtPrice != null && product.compareAtPrice > product.price;
 
@@ -39,7 +42,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             />
           ) : (
             <div className="grid h-full w-full place-items-center text-ink-subtle">
-              <span className="bn-body text-sm">ছবি নেই</span>
+              <span className="bn-body text-sm">{d.storefront.product.noImage}</span>
             </div>
           )}
         </div>
@@ -50,18 +53,18 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
           <div className="flex items-baseline gap-3">
             <span className="text-2xl font-bold leading-none text-ink tnum">
-              {formatBdtBangla(product.price)}
+              {formatMoney(product.price, locale)}
             </span>
             {isDiscounted && product.compareAtPrice != null && (
               <span className="text-base text-ink-subtle line-through tnum">
-                {formatBdtBangla(product.compareAtPrice)}
+                {formatMoney(product.compareAtPrice, locale)}
               </span>
             )}
           </div>
 
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-cod-weak px-3 py-1 text-xs font-semibold text-cod">
             <CheckIcon width={14} height={14} />
-            ক্যাশ অন ডেলিভারি · হাতে পেয়ে টাকা দিন
+            {d.storefront.product.codTrust}
           </span>
 
           {product.description && (

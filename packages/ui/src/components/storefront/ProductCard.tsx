@@ -1,5 +1,5 @@
 import { cn } from "../../lib/cn";
-import { formatBdtBangla } from "../../lib/format";
+import { formatBdtBangla, formatBdtLatin } from "../../lib/format";
 import { Badge } from "../Badge";
 import { Button } from "../Button";
 import { CheckIcon } from "../icons";
@@ -9,15 +9,36 @@ interface ProductCardProps {
   product: StorefrontProduct;
   /** Eager-load the first row's images; lazy-load the rest (DESIGN §6.4). */
   priority?: boolean;
+  /** "en" (system default) or "bn" — pass the active locale from getDict/useDict. */
+  lang?: "bn" | "en";
 }
+
+const COPY = {
+  bn: {
+    noImage: "ছবি নেই",
+    sale: "সেল",
+    outOfStock: "স্টক নেই",
+    cod: "ক্যাশ অন ডেলিভারি",
+    addToCart: "কার্টে যোগ করুন",
+  },
+  en: {
+    noImage: "No image",
+    sale: "Sale",
+    outOfStock: "Out of stock",
+    cod: "Cash on Delivery",
+    addToCart: "Add to cart",
+  },
+} as const;
 
 // DESIGN §6.3 anatomy: image · name · price (loudest) · COD chip · one action.
 // Never more than 6 elements; price is the loudest thing after the image.
-export function ProductCard({ product, priority = false }: ProductCardProps) {
+export function ProductCard({ product, priority = false, lang = "en" }: ProductCardProps) {
   const { title, slug, price, compareAtPrice, codEnabled = true } = product;
   const inStock = product.inStock ?? true;
   const isDiscounted =
     compareAtPrice != null && compareAtPrice > price && inStock;
+  const t = COPY[lang];
+  const money = lang === "bn" ? formatBdtBangla : formatBdtLatin;
 
   return (
     <article
@@ -48,18 +69,18 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               )}
               aria-hidden
             >
-              <span className="bn-body text-sm">ছবি নেই</span>
+              <span className="bn-body text-sm">{t.noImage}</span>
             </div>
           )}
 
           {isDiscounted && (
             <Badge tone="sale" className="absolute right-2 top-2">
-              সেল
+              {t.sale}
             </Badge>
           )}
           {!inStock && (
             <span className="absolute left-2 top-2 rounded-full bg-danger-weak px-2 py-0.5 text-2xs font-semibold text-danger">
-              স্টক নেই
+              {t.outOfStock}
             </span>
           )}
         </div>
@@ -74,11 +95,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
         <div className="mt-auto flex items-baseline gap-2">
           <span className="text-lg font-bold leading-none text-ink tnum">
-            {formatBdtBangla(price)}
+            {money(price)}
           </span>
           {isDiscounted && compareAtPrice != null && (
             <span className="text-sm text-ink-subtle line-through tnum">
-              {formatBdtBangla(compareAtPrice)}
+              {money(compareAtPrice)}
             </span>
           )}
         </div>
@@ -86,12 +107,12 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         {codEnabled && inStock && (
           <span className="inline-flex items-center gap-1 text-2xs font-semibold text-cod">
             <CheckIcon width={12} height={12} />
-            ক্যাশ অন ডেলিভারি
+            {t.cod}
           </span>
         )}
 
         <Button variant="secondary" size="md" fullWidth disabled={!inStock}>
-          {inStock ? "কার্টে যোগ করুন" : "স্টক নেই"}
+          {inStock ? t.addToCart : t.outOfStock}
         </Button>
       </div>
     </article>

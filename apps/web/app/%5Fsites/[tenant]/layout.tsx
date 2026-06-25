@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { StoreHeader, StoreFooter } from "@hybrid/ui";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
+import { getDict } from "@/lib/i18n/server";
+import { LocaleProvider } from "@/lib/i18n/provider";
+import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
 
 interface StorefrontLayoutProps {
   children: ReactNode;
@@ -22,6 +25,8 @@ export default async function StorefrontLayout({
   const ctx = await getTenantContextBySlug(slug);
   if (!ctx) notFound();
 
+  const { locale } = await getDict();
+
   const c = ctx.settings.colors;
   // Override the brand vars the design tokens read from. Everything downstream
   // (buttons, links, focus, hero panel, surfaces) inherits these.
@@ -34,10 +39,12 @@ export default async function StorefrontLayout({
   } as React.CSSProperties;
 
   return (
-    <div style={themeStyle} className="flex min-h-screen flex-col bg-bg">
-      <StoreHeader store={ctx.store} />
-      <main className="flex-1">{children}</main>
-      <StoreFooter store={ctx.store} />
-    </div>
+    <LocaleProvider locale={locale}>
+      <div style={themeStyle} className="flex min-h-screen flex-col bg-bg">
+        <StoreHeader store={ctx.store} lang={locale} toggle={<LanguageToggle />} />
+        <main className="flex-1">{children}</main>
+        <StoreFooter store={ctx.store} lang={locale} />
+      </div>
+    </LocaleProvider>
   );
 }

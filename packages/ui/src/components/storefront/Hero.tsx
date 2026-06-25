@@ -8,7 +8,20 @@ interface HeroProps {
   ctaHref?: string;
   /** Optional single hero image (the only eager image on the page). */
   imageUrl?: string | null;
+  /** "en" (system default) or "bn" — pass the active locale from getDict/useDict. */
+  lang?: "bn" | "en";
 }
+
+const COPY = {
+  bn: {
+    cta: "কিনুন",
+    chips: ["৭ দিনে রিটার্ন", "ক্যাশ অন ডেলিভারি", "অরিজিনাল প্রোডাক্ট"],
+  },
+  en: {
+    cta: "Shop now",
+    chips: ["7-day returns", "Cash on Delivery", "Authentic products"],
+  },
+} as const;
 
 // DESIGN §6.1 #2 — single focused banner, NO carousel (LCP/3G). When no image
 // is set we render a flat indigo panel (cheap to paint) instead of imagery.
@@ -16,10 +29,13 @@ interface HeroProps {
 export function Hero({
   heading,
   subheading,
-  ctaLabel = "কিনুন",
+  ctaLabel,
   ctaHref = "/products",
   imageUrl,
+  lang = "en",
 }: HeroProps) {
+  const t = COPY[lang];
+  const cta = ctaLabel ?? t.cta;
   return (
     <section aria-labelledby="hero-heading" className="px-4 pt-4">
       <div className="mx-auto max-w-storefront">
@@ -53,25 +69,23 @@ export function Hero({
             <div>
               <a href={ctaHref}>
                 <Button variant="accent" size="lg">
-                  {ctaLabel}
+                  {cta}
                 </Button>
               </a>
             </div>
           </div>
         </div>
 
-        <TrustChips />
+        <TrustChips chips={t.chips} />
       </div>
     </section>
   );
 }
 
-const CHIPS = ["৭ দিনে রিটার্ন", "ক্যাশ অন ডেলিভারি", "অরিজিনাল প্রোডাক্ট"];
-
-function TrustChips() {
+function TrustChips({ chips }: { chips: readonly string[] }) {
   return (
     <ul className="mt-3 flex flex-wrap gap-2">
-      {CHIPS.map((label) => (
+      {chips.map((label) => (
         <li
           key={label}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink"

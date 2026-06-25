@@ -4,7 +4,8 @@
   "projectId": "e8918a56-20d8-41a4-8aae-79f6d0e728dc",
   "shape": "package",
   "srcDir": "src",
-  "buildCmd": "cd packages/ui && npx tsc -p tsconfig.json --noEmit false --declaration --sourceMap false --outDir dist --skipLibCheck",
-  "tsconfig": "packages/ui/tsconfig.json",
-  "cssEntry": "src/globals.css"
+  "buildCmd": "node .design-sync/prebuild.mjs",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": "dist/ds-compiled.css",
+  "readmeHeader": ".design-sync/conventions.md"
 }

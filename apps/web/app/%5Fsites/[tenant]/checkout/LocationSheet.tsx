@@ -6,7 +6,8 @@
 // the canonical Bangla title (courier reads Bangla addresses).
 import { useMemo, useState } from "react";
 import type { CascadeOption } from "@/lib/location";
-import { toBnDigits } from "@hybrid/ui";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatNumber } from "@/lib/i18n/format";
 
 interface LocationSheetProps {
   label: string;
@@ -29,6 +30,9 @@ export function LocationSheet({
   countNoun,
   onSelect,
 }: LocationSheetProps) {
+  const d = useDict();
+  const locale = useLocale();
+  const t = d.storefront.checkout;
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
@@ -75,7 +79,7 @@ export function LocationSheet({
         >
           <button
             type="button"
-            aria-label="বন্ধ করুন"
+            aria-label={t.close}
             className="absolute inset-0 z-overlay bg-black/40"
             onClick={() => setOpen(false)}
           />
@@ -84,7 +88,9 @@ export function LocationSheet({
               <div className="flex items-center justify-between">
                 <span className="bn-body text-base font-bold text-ink">{label}</span>
                 <span className="text-2xs text-ink-muted">
-                  {toBnDigits(options.length)}টি {countNoun}
+                  {locale === "bn"
+                    ? `${formatNumber(options.length, locale)}টি ${countNoun}`
+                    : `${options.length} ${countNoun}`}
                 </span>
               </div>
               <input
@@ -93,7 +99,7 @@ export function LocationSheet({
                 inputMode="search"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="খুঁজুন…"
+                placeholder={t.searchPlaceholder}
                 className="h-11 rounded-sm border border-border-strong bg-surface px-3 text-sm text-ink placeholder:text-ink-subtle"
               />
             </div>
@@ -101,7 +107,7 @@ export function LocationSheet({
             <ul className="max-h-[55vh] overflow-y-auto p-2">
               {filtered.length === 0 && (
                 <li className="bn-body p-4 text-center text-sm text-ink-muted">
-                  কিছু পাওয়া যায়নি
+                  {t.noResults}
                 </li>
               )}
               {filtered.map((option) => (
