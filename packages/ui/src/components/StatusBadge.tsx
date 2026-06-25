@@ -24,7 +24,7 @@ export type StatusKind = "fulfillment" | "payment" | "cod" | "method";
 interface StatusBadgeProps {
   kind: StatusKind;
   value: string;
-  /** "bn" (default) or "en" — DESIGN §4.4 numeral/locale split is by surface. */
+  /** "en" (system default) or "bn" — pass the active locale from getDict/useDict. */
   lang?: "bn" | "en";
   className?: string;
 }
@@ -90,7 +90,7 @@ const MAPS: Record<StatusKind, Record<string, Token>> = {
   method: METHOD,
 };
 
-export function StatusBadge({ kind, value, lang = "bn", className }: StatusBadgeProps) {
+export function StatusBadge({ kind, value, lang = "en", className }: StatusBadgeProps) {
   const token = MAPS[kind][value];
   if (!token) {
     // Unknown enum value — render a neutral chip with the raw value rather than
