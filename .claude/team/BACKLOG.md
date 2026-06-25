@@ -39,3 +39,10 @@
 - [x] Off-site backups → Cloudflare R2 — DONE 2026-06-25 (founder).
 - [ ] 🔴 CRITICAL: Cloudflare 2-level-subdomain TLS — ALL of *.hybrid.ecomex.cloud (store-a/admin/app/cdn) return 000 publicly (TLS handshake fails at CF edge). Universal SSL covers only *.ecomex.cloud (1 level). Caddy origin certs are valid. Tenant storefronts + admin UNREACHABLE over internet; only marketing apex works. FIX (founder, needs CF dashboard): enable Advanced Certificate Manager / Total TLS with a wildcard cert for *.hybrid.ecomex.cloud (keeps proxy + edge cache; ~$10/mo) — OR grey-cloud (DNS-only) the records to serve Caddy LE certs directly (loses CF cache/DDoS; needs Caddy on-demand-TLS for unbounded tenant subdomains). Architecture decision for tenant-subdomain TLS at scale.
 - [ ] Test isolation: the @hybrid/db suite shares ONE embedded-pg DB + seed across all 22 test files → cross-file unique-key contention (tenant_slug/order_number/shipment_consignment dup-key) makes full-suite runs flaky (every file passes ALONE; worsening as files grow). Plus Windows AV crashes the in-repo .pgtmp cluster (use PGTMP_DIR outside repo). FIX: per-file data isolation (unique slugs/tenants per file) or per-file DB/schema; Linux CI currently masks it.
+
+## Tenant-subdomain TLS (2026-06-25)
+- [x] CRITICAL tenant/admin/app/cdn subdomains 000 — FIXED via grey-cloud (*.hybrid.ecomex.cloud proxied=false; Caddy LE certs serve direct). store-a/b 200, admin/app 307, cdn 403.
+- [ ] On-demand TLS for unbounded NEW tenant subdomains (Caddy on_demand_tls + ask endpoint /api/internal/tls-allow gated by resolveTenantByHost). Needed before onboarding sellers beyond store-a/b.
+- [ ] (optional) Restore CF edge cache: ACM/Total TLS wildcard for *.hybrid.ecomex.cloud, re-proxy (needs SSL:edit token). Storefront <50ms cache win.
+- [ ] Verify MinIO hybrid-media serves public GetObject when real product images uploaded.
+- [ ] ROTATE exposed creds (CF DNS token, R2 access/secret) — pasted in chat 2026-06-25.
