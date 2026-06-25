@@ -50,6 +50,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
   const [addressLine, setAddressLine] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "bkash">("cod");
+  const [source, setSource] = useState<"manual" | "messenger">("manual");
   const [shipping, setShipping] = useState("0");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -152,6 +153,7 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
     fd.set("thana", location.thana);
     fd.set("line", addressLine.trim());
     fd.set("paymentMethod", paymentMethod);
+    fd.set("source", source);
     fd.set("shippingTotal", shipping || "0");
     fd.set("note", note.trim());
     fd.set(
@@ -306,6 +308,18 @@ export function ManualOrderForm({ locationTree }: { locationTree: LocationTree }
           <PayToggle active={paymentMethod === "bkash"} onClick={() => setPaymentMethod("bkash")} tone="bkash">
             বিকাশ
           </PayToggle>
+        </div>
+        <div className="max-w-[220px]">
+          <label htmlFor="order-source" className="mb-1 block text-sm font-semibold text-ink">চ্যানেল</label>
+          <select
+            id="order-source"
+            value={source}
+            onChange={(e) => setSource(e.target.value as "manual" | "messenger")}
+            className="h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
+          >
+            <option value="manual">ম্যানুয়াল / ফোন</option>
+            <option value="messenger">মেসেঞ্জার / চ্যাট</option>
+          </select>
         </div>
         <div className="max-w-[200px]">
           <label htmlFor="shipping" className="mb-1 block text-sm font-semibold text-ink">

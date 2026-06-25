@@ -140,6 +140,8 @@ const ManualOrderInput = z.object({
   paymentMethod: z.enum(["cod", "bkash"]).default("cod"),
   shippingTotal: z.coerce.number().min(0).max(100000).default(0),
   note: z.string().trim().max(1000).optional().default(""),
+  // F-commerce source tagging (P3-3): manual phone/walk-in vs a chat order.
+  source: z.enum(["manual", "messenger"]).default("manual"),
 });
 
 export interface ManualOrderResult extends ActionResult {
@@ -165,6 +167,7 @@ export async function createManualOrder(
     paymentMethod: formData.get("paymentMethod") ?? "cod",
     shippingTotal: formData.get("shippingTotal") ?? 0,
     note: formData.get("note") ?? "",
+    source: formData.get("source") ?? "manual",
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "ইনপুট ভুল।" };
@@ -187,7 +190,7 @@ export async function createManualOrder(
       items: input.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
       paymentMethod: input.paymentMethod,
       note: input.note || null,
-      source: "manual",
+      source: input.source as Parameters<typeof placeOrder>[0]["source"],
       shippingTotal: input.shippingTotal,
     });
 

@@ -12,8 +12,16 @@ import { PageHeader } from "../_ui";
 // phone/order# search, stacked cards on mobile / table ≥ md, COD-pending money
 // triage filter. Latin numerals + tabular-nums (§4.4).
 interface OrdersPageProps {
-  searchParams: Promise<{ status?: string; cod?: string; q?: string; payment?: string }>;
+  searchParams: Promise<{ status?: string; cod?: string; q?: string; payment?: string; source?: string }>;
 }
+
+// F-commerce channel filter (P3-3). order_source already carries 'messenger'.
+const SOURCE_PILLS: { value: string; bn: string }[] = [
+  { value: "all", bn: "সব চ্যানেল" },
+  { value: "storefront", bn: "স্টোরফ্রন্ট" },
+  { value: "manual", bn: "ম্যানুয়াল" },
+  { value: "messenger", bn: "মেসেঞ্জার" },
+];
 
 const STATUS_PILLS: { value: string; bn: string }[] = [
   { value: "all", bn: "সব" },
@@ -36,6 +44,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const codPending = sp.cod === "pending";
   const status = sp.status && sp.status !== "all" ? sp.status : undefined;
   const query = sp.q?.trim() || undefined;
+  const source = sp.source && sp.source !== "all" ? sp.source : undefined;
 
   const [orders, counts] = await Promise.all([
     listOrders(tenantId, session.userId, {
@@ -43,6 +52,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       payment: sp.payment,
       query,
       codPending,
+      source,
     }),
     getOrderStatusCounts(tenantId, session.userId),
   ]);
@@ -94,6 +104,23 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
             {counts.codPending}
           </span>
         </Pill>
+      </div>
+
+      {/* Channel (source) filter — F-commerce visibility */}
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        {SOURCE_PILLS.map((pill) => {
+          const active = (source ?? "all") === pill.value;
+          const params = new URLSearchParams();
+          if (pill.value !== "all") params.set("source", pill.value);
+          if (status) params.set("status", status);
+          if (query) params.set("q", query);
+          const qs = params.toString();
+          return (
+            <Pill key={pill.value} href={qs ? `/admin/orders?${qs}` : "/admin/orders"} active={active}>
+              {pill.bn}
+            </Pill>
+          );
+        })}
       </div>
 
       {orders.length === 0 ? (
