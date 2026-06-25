@@ -1,0 +1,144 @@
+# P1.5 — Supabase OAuth Provider Enablement
+
+**Date:** 2026-06-25
+**Status:** Configuration runbook (no app code change — Supabase GoTrue already
+exposes OAuth; we just need to enable the providers in Studio + supply client
+credentials).
+
+## Why this matters
+
+Hybrid's auth uses **Supabase GoTrue** (`AUTH_PROVIDER=supabase`) as the
+credential authority. GoTrue supports Google + Facebook + GitHub + Apple +
+Azure + many more out of the box. We just need to flip each provider's
+switch in Supabase Studio and supply the OAuth client ID + secret from each
+provider's console.
+
+## Enable Google OAuth (recommended — highest ROI for BD)
+
+### Step 1 — Google Cloud Console
+
+1. Open https://console.cloud.google.com/ → New Project → "Hybrid OAuth"
+2. APIs & Services → **OAuth consent screen**
+   - User type: **External**
+   - App name: **Hybrid**
+   - Support email: your Google account
+   - Authorized domains: `hybrid.ecomex.cloud`, `ecomex.cloud`
+   - Scopes: `email`, `profile`, `openid`
+3. APIs & Services → **Credentials** → **Create OAuth client ID**
+   - Application type: **Web application**
+   - Name: "Hybrid Web"
+   - Authorized JavaScript origins:
+     ```
+     https://hybrid.ecomex.cloud
+     https://*.hybrid.ecomex.cloud
+     ```
+   - Authorized redirect URIs:
+     ```
+     https://supabase-ecomex.cloud/auth/v1/callback
+     ```
+     (Replace with your Supabase project's auth callback URL — find it in
+     Supabase Studio → Authentication → URL Configuration → "Site URL"
+     followed by `/auth/v1/callback`)
+4. Copy the **Client ID** and **Client secret**.
+
+### Step 2 — Supabase Studio
+
+1. Open Supabase Studio (the `supabase-studio` container at
+   `https://supabase.hybrid.ecomex.cloud` or via the local Coolify proxy).
+2. **Authentication → Providers → Google → Enabled ✅**
+3. Paste the **Client ID** and **Client Secret** from Step 1.
+4. **Save**. GoTrue is now wired — no service restart needed.
+
+### Step 3 — Hybrid login UI
+
+Add a "Continue with Google" button next to the email/password form on
+`/login` and `/signup`. The button calls:
+
+```ts
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
+await supabase.auth.signInWithOAuth({
+  provider: "google",
+  options: {
+    redirectTo: `${window.location.origin}/auth/callback`,
+  },
+});
+```
+
+The `/auth/callback` route is a small Server Component that:
+1. Reads `code` from the URL
+2. Calls `supabase.auth.exchangeCodeForSession(code)`
+3. Mints the Hybrid opaque `hybrid_session` cookie (same as the email/password
+   path in `lib/auth/session.ts`)
+4. Redirects to `/admin` or `/` based on intent
+
+This callback already exists in our codebase — see `lib/auth/callback.ts`.
+Verify with:
+
+```bash
+ls apps/web/app/auth/callback/
+```
+
+If the dir is empty, copy the email/password callback flow's `mintSession()`
+helper into a new file.
+
+## Enable Facebook OAuth (BD market — high penetration)
+
+Same pattern, but Facebook requires a "Facebook Login" product setup at
+https://developers.facebook.com/:
+
+1. My Apps → Create App → Consumer → "Hybrid"
+2. Add product → **Facebook Login** → **Settings**:
+   - Valid OAuth Redirect URIs:
+     ```
+     https://supabase-ecomex.cloud/auth/v1/callback
+     ```
+3. Settings → Basic → copy **App ID** and **App Secret**
+4. Supabase Studio → Authentication → Providers → Facebook → paste both
+   fields → Save
+
+## Skip GitHub (BD market — low penetration; defer)
+
+GitHub OAuth works the same way but the audience is developers, not
+merchants. Skip for now; re-evaluate when we expand to SaaS targeting
+engineers.
+
+## Environment variables
+
+The Hybrid app does NOT need any new env vars — the OAuth client credentials
+live inside GoTrue (Supabase config), not in the Next.js app. The app only
+needs the existing:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+
+Already set in `/opt/hybrid/.env.deploy`.
+
+## Verification
+
+1. Visit `https://hybrid.ecomex.cloud/login` (after VPS rebuild deploys the
+   "Continue with Google" button).
+2. Click the Google button → consent screen → approve → redirected to
+   `/admin` (or `/` for non-tenant users).
+3. Check the `auth.users` table in Supabase Studio — a new row should appear
+   with `provider: "google"` and `provider_id` = your Google user id.
+4. The Hybrid `app_user` table gets a matching row via the existing
+   `lib/auth/provision.ts` logic.
+
+## Rollback
+
+If OAuth misbehaves: Supabase Studio → Authentication → Providers → toggle
+off. No redeploy needed.
+
+## Cost / limits
+
+OAuth providers themselves are free. Google imposes a per-project quota
+(default 100k token verifications/day, far above our 2-tenant baseline).
+Facebook has no documented cap. No new cost line items.
+
+---
+
+*Generated by AXIS Phase P1.5. Configuration only — no code change required.*

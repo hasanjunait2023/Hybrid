@@ -10,6 +10,7 @@
 // fbAccessToken (sealed). fbTestEventCode (optional) routes the event to Meta's
 // Test Events tab for verification without polluting production data.
 import type { PurchasePayload } from "./events";
+import { logTrackingEvent } from "./log";
 
 const GRAPH_VERSION = "v17.0";
 const GRAPH_BASE = "https://graph.facebook.com";
@@ -20,15 +21,22 @@ export interface MetaCreds {
   testEventCode?: string | null;
 }
 
+interface LogCtx {
+  tenantId: string;
+  userId: string;
+}
+
 function capiEnabled(): boolean {
   return process.env.CAPI_ENABLED === "true";
 }
 
 // Fire the Purchase to Meta CAPI. Resolves true on a 2xx, false otherwise (incl.
 // flag-off / missing creds). Never throws — the caller is a non-blocking hook.
+// Every attempt is recorded in tracking_event_log so the admin UI can show it.
 export async function sendMetaPurchase(
   creds: MetaCreds,
   payload: PurchasePayload,
+  logCtx?: LogCtx,
 ): Promise<boolean> {
   if (!capiEnabled()) return false;
   if (!creds.pixelId || !creds.accessToken) return false;
@@ -66,12 +74,47 @@ export async function sendMetaPurchase(
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (logCtx) {
+      await logTrackingEvent({
+        tenantId: logCtx.tenantId,
+        userId: logCtx.userId,
+        eventId: payload.eventId,
+        eventName: "Purchase",
+        platform: "meta",
+        source: "server",
+        status: res.ok ? "sent" : "failed",
+        payload: {
+          value: payload.value,
+          currency: payload.currency,
+          orderId: String(payload.orderNumber),
+        },
+        responseCode: res.status,
+        responseBody: (await res.text().catch(() => "")).slice(0, 4096),
+      });
+    }
     if (!res.ok) {
       console.warn(`[analytics] Meta CAPI returned ${res.status} (order #${payload.orderNumber})`);
       return false;
     }
     return true;
   } catch (error) {
+    if (logCtx) {
+      await logTrackingEvent({
+        tenantId: logCtx.tenantId,
+        userId: logCtx.userId,
+        eventId: payload.eventId,
+        eventName: "Purchase",
+        platform: "meta",
+        source: "server",
+        status: "failed",
+        payload: {
+          value: payload.value,
+          currency: payload.currency,
+          orderId: String(payload.orderNumber),
+        },
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    }
     console.error(`[analytics] Meta CAPI send failed (order #${payload.orderNumber}):`, error);
     return false;
   }

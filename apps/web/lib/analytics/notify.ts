@@ -69,6 +69,7 @@ export async function firePurchaseAnalytics(input: FirePurchaseInput): Promise<v
             testEventCode: config.fbTestEventCode,
           },
           input.payload,
+          { tenantId: input.tenantId, userId: input.customerId ?? "system" },
         ),
       `Meta CAPI order #${input.payload.orderNumber}`,
     );

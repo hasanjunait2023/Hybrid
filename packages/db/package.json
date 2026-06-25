@@ -11,6 +11,8 @@
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/migrate.ts --seed",
     "db:gen": "tsx scripts/generate-types.ts",
+    "db:rollback": "bash scripts/rollback.sh",
+    "check:rollbacks": "bash scripts/check-rollbacks.sh",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

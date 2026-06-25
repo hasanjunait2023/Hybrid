@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hybrid — Operations Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="60">
+<style>
+  :root { --bg:#0f172a; --panel:#1e293b; --ok:#10b981; --fail:#ef4444; --warn:#f59e0b; --text:#e2e8f0; --muted:#94a3b8; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:24px; }
+  h1 { font-size:20px; margin-bottom:8px; }
+  h2 { font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:24px 0 12px; }
+  .meta { color:var(--muted); font-size:12px; margin-bottom:24px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  .card { background:var(--panel); border-radius:8px; padding:16px; border-left:4px solid var(--ok); }
+  .card.fail { border-left-color:var(--fail); }
+  .card .name { font-weight:600; font-size:13px; margin-bottom:4px; word-break:break-all; }
+  .card .detail { color:var(--muted); font-size:12px; }
+  .summary { display:flex; gap:24px; padding:16px; background:var(--panel); border-radius:8px; margin-bottom:24px; }
+  .summary div { text-align:center; }
+  .summary .num { font-size:32px; font-weight:700; }
+  .summary .ok { color:var(--ok); }
+  .summary .fail { color:var(--fail); }
+  .summary .label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  .footer { color:var(--muted); font-size:11px; margin-top:24px; text-align:center; }
+</style>
+</head>
+<body>
+<h1>🚀 Hybrid — Operations Dashboard</h1>
+<div class="meta" id="meta">Loading…</div>
+
+<div class="summary">
+  <div><div class="num" id="uptime-ok">–</div><div class="label">Uptime OK</div></div>
+  <div><div class="num" id="uptime-fail">–</div><div class="label">Uptime FAIL</div></div>
+  <div><div class="num" id="backup-dumps">–</div><div class="label">DB Dumps</div></div>
+  <div><div class="num" id="backup-age">–</div><div class="label">Last Backup</div></div>
+  <div><div class="num" id="r2-status">–</div><div class="label">R2 Sync</div></div>
+</div>
+
+<h2>Endpoint & Container Checks</h2>
+<div class="grid" id="uptime-grid">Loading…</div>
+
+<h2>Backup Status</h2>
+<div class="grid" id="backup-grid">Loading…</div>
+
+<div class="footer">
+  Auto-refresh every 60s. Source: /root/backups/{UPTIME,STATUS}.json on VPS.<br>
+  <span id="updated"></span>
+</div>
+
+<script>
+async function loadJSON(url) {
+  const r = await fetch(url, {cache:'no-store'});
+  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+  return r.json();
+}
+
+function card(item, prefix='uptime') {
+  const fail = item.status === 'FAIL' || item.status === 'fail';
+  return `<div class="card ${fail?'fail':''}">
+    <div class="name">${item.name}</div>
+    <div class="detail">${item.detail||''}</div>
+  </div>`;
+}
+
+async function refresh() {
+  try {
+    const [u, b] = await Promise.all([
+      loadJSON('/hybrid-ops/UPTIME.json'),
+      loadJSON('/hybrid-ops/STATUS.json'),
+    ]);
+    document.getElementById('uptime-ok').textContent = u.ok_count;
+    document.getElementById('uptime-fail').textContent = u.fail_count;
+    document.getElementById('uptime-ok').className = 'num ok';
+    document.getElementById('uptime-fail').className = 'num ' + (u.fail_count?'fail':'ok');
+    document.getElementById('uptime-grid').innerHTML = (u.results||[]).map(r => card(r)).join('') || 'No checks yet';
+
+    document.getElementById('backup-dumps').textContent = b.local.dumps_count;
+    const mtime = new Date(b.local.latest_mtime + 'Z');
+    const ageH = Math.round((Date.now() - mtime.getTime()) / 3600000 * 10) / 10;
+    document.getElementById('backup-age').textContent = ageH + 'h';
+    document.getElementById('r2-status').textContent = b.r2.status === 'ok' ? '✓' : '✗';
+    document.getElementById('r2-status').className = 'num ' + (b.r2.status === 'ok' ? 'ok' : 'fail');
+
+    document.getElementById('backup-grid').innerHTML = `
+      <div class="card"><div class="name">Local dumps</div><div class="detail">${b.local.dumps_count} files, ${b.local.total_size}</div></div>
+      <div class="card"><div class="name">Latest</div><div class="detail">${b.local.latest}</div></div>
+      <div class="card ${b.r2.status==='ok'?'':'fail'}"><div class="name">R2 off-site</div><div class="detail">${b.r2.status} — ${b.r2.latest||'n/a'}</div></div>
+    `;
+
+    document.getElementById('meta').textContent = 'Uptime checked: ' + new Date(u.timestamp).toLocaleString();
+    document.getElementById('updated').textContent = 'Last refresh: ' + new Date().toLocaleString();
+  } catch (e) {
+    document.getElementById('meta').textContent = 'ERROR: ' + e.message;
+  }
+}
+refresh();
+</script>
+</body>
+</html>

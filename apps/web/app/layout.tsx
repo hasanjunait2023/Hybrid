@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import "@hybrid/ui/globals.css";
 import { fontVariables } from "./fonts";
 import { getLocale } from "@/lib/i18n/server";
+import { CookieConsent } from "@/lib/consent/CookieConsent";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const metadata = {
   title: "Hybrid",
@@ -21,7 +23,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const locale = await getLocale();
   return (
     <html lang={locale} className={fontVariables}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieConsent />
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
