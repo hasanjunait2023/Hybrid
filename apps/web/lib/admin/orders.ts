@@ -212,6 +212,7 @@ export interface OrderAddress {
 
 export interface OrderItemRow {
   id: string;
+  variantId: string | null;
   title: string;
   variantTitle: string | null;
   sku: string | null;
@@ -294,6 +295,7 @@ export async function getOrderDetail(
     const items = await tx<
       {
         id: string;
+        variant_id: string | null;
         title: string;
         variant_title: string | null;
         sku: string | null;
@@ -302,7 +304,7 @@ export async function getOrderDetail(
         line_total: string;
       }[]
     >`
-      select id, title, variant_title, sku, unit_price, quantity, line_total
+      select id, variant_id, title, variant_title, sku, unit_price, quantity, line_total
       from order_item where order_id = ${orderId} order by created_at asc
     `;
 
@@ -345,6 +347,7 @@ export async function getOrderDetail(
       placedAt: o.placed_at,
       items: items.map((i) => ({
         id: i.id,
+        variantId: i.variant_id,
         title: i.title,
         variantTitle: i.variant_title,
         sku: i.sku,
