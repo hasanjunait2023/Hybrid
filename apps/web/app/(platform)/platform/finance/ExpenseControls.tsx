@@ -4,11 +4,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { addExpenseAction, deleteExpenseAction } from "./actions";
 
 const CATEGORIES = ["infra", "sms", "courier", "gateway", "salary", "marketing", "other"];
 
 export function ExpenseForm() {
+  const d = useDict();
+  const tx = d.platform.finance;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +27,7 @@ export function ExpenseForm() {
     };
     start(async () => {
       const res = await addExpenseAction(raw);
-      if (!res.ok) { setError(res.error ?? "ব্যর্থ"); return; }
+      if (!res.ok) { setError(res.error ?? d.platform.common.failed); return; }
       router.refresh();
     });
   };
@@ -32,30 +35,31 @@ export function ExpenseForm() {
   return (
     <form action={add} className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4">
       <label className="flex flex-col gap-1">
-        <span className="text-2xs font-semibold uppercase text-ink-muted">ক্যাটাগরি</span>
+        <span className="text-2xs font-semibold uppercase text-ink-muted">{tx.formCategory}</span>
         <select name="category" defaultValue="infra" className="h-10 rounded-md border border-border-strong bg-surface px-2 text-sm">
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </label>
       <label className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-2xs font-semibold uppercase text-ink-muted">ভেন্ডর/বিবরণ</span>
-        <input name="vendor" placeholder="যেমন: VPS, sms.net.bd" className="h-10 w-full rounded-md border border-border-strong bg-surface px-2 text-sm" />
+        <span className="text-2xs font-semibold uppercase text-ink-muted">{tx.formVendor}</span>
+        <input name="vendor" placeholder={tx.formVendorPlaceholder} className="h-10 w-full rounded-md border border-border-strong bg-surface px-2 text-sm" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-2xs font-semibold uppercase text-ink-muted">পরিমাণ</span>
+        <span className="text-2xs font-semibold uppercase text-ink-muted">{tx.formAmount}</span>
         <input name="amount" type="number" min={0} required className="h-10 w-24 rounded-md border border-border-strong bg-surface px-2 font-mono text-sm tnum" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-2xs font-semibold uppercase text-ink-muted">তারিখ</span>
+        <span className="text-2xs font-semibold uppercase text-ink-muted">{tx.formDate}</span>
         <input name="incurredOn" type="date" className="h-10 rounded-md border border-border-strong bg-surface px-2 text-sm" />
       </label>
-      <Button type="submit" disabled={pending}>{pending ? "…" : "যোগ"}</Button>
+      <Button type="submit" disabled={pending}>{pending ? "…" : tx.formAdd}</Button>
       {error && <p className="w-full text-xs font-medium text-danger">{error}</p>}
     </form>
   );
 }
 
 export function DeleteExpense({ id }: { id: string }) {
+  const d = useDict();
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -64,7 +68,7 @@ export function DeleteExpense({ id }: { id: string }) {
       disabled={pending}
       onClick={() => start(async () => { const r = await deleteExpenseAction(id); if (r.ok) router.refresh(); })}
       className="rounded-md px-1.5 py-0.5 text-2xs font-semibold text-danger hover:bg-danger-weak disabled:opacity-50"
-      aria-label="মুছুন"
+      aria-label={d.platform.finance.delete}
     >
       ✕
     </button>

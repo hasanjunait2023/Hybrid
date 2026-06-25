@@ -1,17 +1,23 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldIcon, TruckIcon, CheckCircleIcon } from "@hybrid/ui";
+import { getDict } from "@/lib/i18n/server";
 import { SignupForm } from "./SignupForm";
 
-export const metadata = {
-  title: "দোকান খুলুন — Hybrid",
-  description: "মিনিটেই আপনার অনলাইন দোকান চালু করুন। ১৪ দিন ফ্রি ট্রায়াল।",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { d } = await getDict();
+  return {
+    title: d.auth.signup.metaTitle,
+    description: d.auth.signup.metaDescription,
+  };
+}
 
 // Signup surface (blueprint W3 S-MARKETING). Two-pane on desktop: a warm brand
 // rail (left) carries the trust narrative so the form (right) stays focused.
 // On mobile it stacks form-first — a seller on a phone wants the field, not the
 // pitch. Bengali-first throughout; the only Latin is the subdomain/email input.
-export default function SignupPage() {
+export default async function SignupPage() {
+  const { d } = await getDict();
   return (
     <main className="min-h-screen bg-bg lg:grid lg:grid-cols-[1.1fr_1fr]">
       {/* Brand rail — hidden on mobile to keep the form above the fold */}
@@ -22,29 +28,28 @@ export default function SignupPage() {
         />
         <div className="relative">
           <Link href="/" className="text-lg font-bold tracking-tight">
-            Hybrid
+            {d.common.brand}
           </Link>
           <h1 className="bn-heading mt-section max-w-md text-3xl font-bold">
-            আজই শুরু করুন। বিক্রি শুরু হোক আগামীকাল থেকে।
+            {d.auth.signup.railHeading}
           </h1>
           <p className="bn-body mt-4 max-w-sm text-base text-primary-weak/90">
-            ফেসবুক পেজ থেকে সত্যিকারের শপে — সাবডোমেইনে লাইভ স্টোরফ্রন্ট, ক্যাশ অন
-            ডেলিভারি, bKash আর কুরিয়ার, সব বাংলায়।
+            {d.auth.signup.railLead}
           </p>
         </div>
 
         <ul className="relative mt-12 space-y-4">
           <RailPoint
             icon={<CheckCircleIcon className="h-5 w-5" />}
-            text="মিনিটেই নিজের ঠিকানায় লাইভ দোকান"
+            text={d.auth.signup.railPointLiveStore}
           />
           <RailPoint
             icon={<TruckIcon className="h-5 w-5" />}
-            text="স্টেডফাস্ট কুরিয়ারে এক ক্লিকে পার্সেল বুকিং"
+            text={d.auth.signup.railPointCourier}
           />
           <RailPoint
             icon={<ShieldIcon className="h-5 w-5" />}
-            text="ক্যাশ অন ডেলিভারি ও bKash — নিরাপদ পেমেন্ট"
+            text={d.auth.signup.railPointPayments}
           />
         </ul>
       </aside>
@@ -54,17 +59,29 @@ export default function SignupPage() {
         <div className="mx-auto w-full max-w-md">
           {/* Mobile-only brand mark (rail is desktop-only) */}
           <Link href="/" className="text-lg font-bold tracking-tight text-ink lg:hidden">
-            Hybrid
+            {d.common.brand}
           </Link>
           <h2 className="bn-heading mt-6 text-2xl font-bold text-ink lg:mt-0">
-            আপনার দোকান তৈরি করুন
+            {d.auth.signup.formHeading}
           </h2>
           <p className="bn-body mt-2 text-sm text-ink-muted">
-            কোনো কার্ড লাগবে না। ১৪ দিনের ফ্রি ট্রায়াল।
+            {d.auth.signup.formSubtitle}
           </p>
 
           <div className="mt-8">
-            <SignupForm />
+            <SignupForm
+              labels={{
+                storeNameLabel: d.auth.signup.storeNameLabel,
+                storeNameHint: d.auth.signup.storeNameHint,
+                storeAddressLabel: d.auth.signup.storeAddressLabel,
+                storeAddressHint: d.auth.signup.storeAddressHint,
+                suggestionsLabel: d.auth.signup.suggestionsLabel,
+                emailLabel: d.auth.signup.emailLabel,
+                submit: d.auth.signup.submit,
+                submitting: d.auth.signup.submitting,
+                trialNote: d.auth.signup.trialNote,
+              }}
+            />
           </div>
         </div>
       </section>

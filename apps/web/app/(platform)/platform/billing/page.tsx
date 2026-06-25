@@ -1,5 +1,6 @@
-import { formatBdtLatin } from "@hybrid/ui";
 import { getBillingOverview, listSubscriptions, listInvoices } from "@/lib/platform/billing";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { BillingControls, ExtendTrial, MarkPaid } from "./BillingControls";
 
 // Platform billing & subscriptions (PP1-A3). Revenue overview, subscription
@@ -17,38 +18,41 @@ export default async function BillingPage() {
     listInvoices("open"),
   ]);
 
+  const { locale, d } = await getDict();
+  const tx = d.platform.billing;
+
   return (
-    <div lang="en" className="space-y-5">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <a href="/platform" className="text-sm font-medium text-ink-muted hover:text-primary">← ড্যাশবোর্ড</a>
-          <h1 className="mt-1 text-xl font-bold text-ink">বিলিং ও সাবস্ক্রিপশন</h1>
+          <a href="/platform" className="text-sm font-medium text-ink-muted hover:text-primary">{d.platform.common.backToDashboard}</a>
+          <h1 className="mt-1 text-xl font-bold text-ink">{tx.title}</h1>
         </div>
         <BillingControls />
       </div>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="MRR" value={formatBdtLatin(overview.mrr)} accent />
-        <Stat label="ট্রায়াল / অ্যাকটিভ" value={`${overview.trialing} / ${overview.active}`} />
-        <Stat label="বকেয়া সাবস্ক্রিপশন" value={String(overview.pastDue)} tone={overview.pastDue > 0 ? "warning" : undefined} />
-        <Stat label="ওভারডিউ ইনভয়েস" value={formatBdtLatin(overview.overdueAmount)} tone={overview.overdueAmount > 0 ? "danger" : undefined} />
+        <Stat label={tx.mrr} value={formatMoney(overview.mrr, locale)} accent />
+        <Stat label={tx.trialActive} value={`${formatNumber(overview.trialing, locale)} / ${formatNumber(overview.active, locale)}`} />
+        <Stat label={tx.pastDueSubscriptions} value={formatNumber(overview.pastDue, locale)} tone={overview.pastDue > 0 ? "warning" : undefined} />
+        <Stat label={tx.overdueInvoices} value={formatMoney(overview.overdueAmount, locale)} tone={overview.overdueAmount > 0 ? "danger" : undefined} />
       </section>
 
       {/* Subscriptions */}
       <section className="overflow-hidden rounded-lg border border-border bg-surface">
-        <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">সাবস্ক্রিপশন</h2>
+        <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">{tx.subscriptions}</h2>
         {subs.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-ink-muted">কোনো সাবস্ক্রিপশন নেই।</p>
+          <p className="px-4 py-8 text-center text-sm text-ink-muted">{tx.noSubscriptions}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
-                <th className="px-4 py-2 font-semibold">স্টোর</th>
-                <th className="px-4 py-2 font-semibold">প্ল্যান</th>
-                <th className="px-4 py-2 font-semibold">স্ট্যাটাস</th>
-                <th className="px-4 py-2 text-right font-semibold">MRR</th>
-                <th className="px-4 py-2 font-semibold">পিরিয়ড শেষ</th>
-                <th className="px-4 py-2 font-semibold">অ্যাকশন</th>
+                <th className="px-4 py-2 font-semibold">{tx.store}</th>
+                <th className="px-4 py-2 font-semibold">{tx.plan}</th>
+                <th className="px-4 py-2 font-semibold">{tx.status}</th>
+                <th className="px-4 py-2 text-right font-semibold">{tx.mrr}</th>
+                <th className="px-4 py-2 font-semibold">{tx.periodEnd}</th>
+                <th className="px-4 py-2 font-semibold">{tx.action}</th>
               </tr>
             </thead>
             <tbody>
@@ -67,7 +71,7 @@ export default async function BillingPage() {
                       {s.status}{s.cancelAtPeriodEnd ? " ⊘" : ""}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-ink tnum">{s.mrr > 0 ? formatBdtLatin(s.mrr) : "—"}</td>
+                  <td className="px-4 py-2 text-right font-mono text-ink tnum">{s.mrr > 0 ? formatMoney(s.mrr, locale) : "—"}</td>
                   <td className="px-4 py-2 font-mono text-xs text-ink-muted tnum">{fmtDate(s.periodEnd)}</td>
                   <td className="px-4 py-2"><ExtendTrial tenantId={s.tenantId} /></td>
                 </tr>
@@ -79,16 +83,16 @@ export default async function BillingPage() {
 
       {/* Open invoices */}
       <section className="overflow-hidden rounded-lg border border-border bg-surface">
-        <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">খোলা ইনভয়েস</h2>
+        <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">{tx.openInvoices}</h2>
         {openInvoices.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-ink-muted">কোনো খোলা ইনভয়েস নেই।</p>
+          <p className="px-4 py-8 text-center text-sm text-ink-muted">{tx.noOpenInvoices}</p>
         ) : (
           <ul className="divide-y divide-border">
             {openInvoices.map((inv) => (
               <li key={inv.id} className="flex items-center gap-3 px-4 py-3">
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">{inv.tenantName}</span>
-                <span className="font-mono text-sm font-semibold text-ink tnum">{formatBdtLatin(inv.amount)}</span>
-                <span className="text-2xs text-ink-subtle">ডিউ {fmtDate(inv.dueAt)}</span>
+                <span className="font-mono text-sm font-semibold text-ink tnum">{formatMoney(inv.amount, locale)}</span>
+                <span className="text-2xs text-ink-subtle">{tx.due} {fmtDate(inv.dueAt)}</span>
                 <MarkPaid invoiceId={inv.id} />
               </li>
             ))}

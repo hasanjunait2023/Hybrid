@@ -5,6 +5,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { savePlanAction, togglePlanAction } from "./actions";
 
 interface Plan {
@@ -22,6 +23,8 @@ interface Plan {
 }
 
 export function PlanEditor({ plan }: { plan?: Plan }) {
+  const d = useDict();
+  const tx = d.platform.plans;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -43,7 +46,7 @@ export function PlanEditor({ plan }: { plan?: Plan }) {
     };
     start(async () => {
       const res = await savePlanAction(plan?.id ?? null, raw);
-      if (!res.ok) { setError(res.error ?? "ব্যর্থ"); return; }
+      if (!res.ok) { setError(res.error ?? d.platform.common.failed); return; }
       setOpen(false);
       router.refresh();
     });
@@ -53,7 +56,7 @@ export function PlanEditor({ plan }: { plan?: Plan }) {
     return (
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => setOpen(true)} className="rounded-md border border-border-strong px-2 py-1 text-2xs font-semibold text-ink hover:bg-surface-2">
-          {plan ? "সম্পাদনা" : "+ নতুন প্ল্যান"}
+          {plan ? tx.edit : tx.newPlan}
         </button>
         {plan && (
           <button
@@ -62,7 +65,7 @@ export function PlanEditor({ plan }: { plan?: Plan }) {
             onClick={() => start(async () => { const r = await togglePlanAction(plan.id, !plan.isActive); if (r.ok) router.refresh(); })}
             className="rounded-md border border-border-strong px-2 py-1 text-2xs font-semibold text-ink-muted hover:bg-surface-2 disabled:opacity-50"
           >
-            {plan.isActive ? "নিষ্ক্রিয়" : "সক্রিয়"}
+            {plan.isActive ? tx.deactivate : tx.activate}
           </button>
         )}
       </div>
@@ -72,32 +75,32 @@ export function PlanEditor({ plan }: { plan?: Plan }) {
   const v = plan;
   return (
     <form action={save} className="space-y-3 rounded-lg border border-border bg-surface p-4 shadow-xs">
-      <h3 className="text-sm font-bold text-ink">{plan ? "প্ল্যান সম্পাদনা" : "নতুন প্ল্যান"}</h3>
+      <h3 className="text-sm font-bold text-ink">{plan ? tx.editPlan : tx.newPlan}</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Field name="code" label="code" defaultValue={v?.code} mono required />
-        <Field name="name" label="নাম" defaultValue={v?.name} required />
-        <Field name="priceBdt" label="মূল্য" type="number" defaultValue={v?.priceBdt} required />
+        <Field name="code" label={tx.fieldCode} defaultValue={v?.code} mono required />
+        <Field name="name" label={tx.fieldName} defaultValue={v?.name} required />
+        <Field name="priceBdt" label={tx.fieldPrice} type="number" defaultValue={v?.priceBdt} required />
         <label className="flex flex-col gap-1">
-          <span className="text-2xs font-semibold uppercase text-ink-muted">বিলিং</span>
+          <span className="text-2xs font-semibold uppercase text-ink-muted">{tx.fieldBilling}</span>
           <select name="billingInterval" defaultValue={v?.billingInterval ?? "monthly"} className="h-9 rounded-md border border-border-strong bg-surface px-2 text-sm">
             <option value="monthly">monthly</option>
             <option value="yearly">yearly</option>
           </select>
         </label>
-        <Field name="maxProducts" label="পণ্য (∞=খালি)" type="number" defaultValue={v?.maxProducts ?? ""} />
-        <Field name="maxOrdersMonth" label="অর্ডার/মাস (∞)" type="number" defaultValue={v?.maxOrdersMonth ?? ""} />
-        <Field name="maxStaff" label="স্টাফ" type="number" defaultValue={v?.maxStaff ?? 1} required />
-        <Field name="maxCustomDomains" label="ডোমেইন" type="number" defaultValue={v?.maxCustomDomains ?? 0} required />
-        <Field name="sortOrder" label="ক্রম" type="number" defaultValue={v?.sortOrder ?? 0} required />
+        <Field name="maxProducts" label={tx.fieldProducts} type="number" defaultValue={v?.maxProducts ?? ""} />
+        <Field name="maxOrdersMonth" label={tx.fieldOrdersPerMonth} type="number" defaultValue={v?.maxOrdersMonth ?? ""} />
+        <Field name="maxStaff" label={tx.fieldStaff} type="number" defaultValue={v?.maxStaff ?? 1} required />
+        <Field name="maxCustomDomains" label={tx.fieldDomains} type="number" defaultValue={v?.maxCustomDomains ?? 0} required />
+        <Field name="sortOrder" label={tx.fieldSortOrder} type="number" defaultValue={v?.sortOrder ?? 0} required />
         <label className="flex items-center gap-2 pt-5">
           <input type="checkbox" name="isActive" defaultChecked={v?.isActive ?? true} className="h-4 w-4 accent-primary" />
-          <span className="text-sm text-ink">সক্রিয়</span>
+          <span className="text-sm text-ink">{tx.activeLabel}</span>
         </label>
       </div>
       {error && <p className="text-xs font-medium text-danger">{error}</p>}
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>{pending ? "…" : "সংরক্ষণ"}</Button>
-        <button type="button" onClick={() => setOpen(false)} className="text-sm font-medium text-ink-muted hover:text-primary">বাতিল</button>
+        <Button type="submit" disabled={pending}>{pending ? "…" : tx.save}</Button>
+        <button type="button" onClick={() => setOpen(false)} className="text-sm font-medium text-ink-muted hover:text-primary">{tx.cancel}</button>
       </div>
     </form>
   );

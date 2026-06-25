@@ -2,12 +2,22 @@
 
 import { useState, type FormEvent } from "react";
 
+interface LoginLabels {
+  email: string;
+  password: string;
+  submit: string;
+  submitting: string;
+  invalidCredentials: string;
+  genericError: string;
+}
+
 // Email + password login form. Posts JSON to /api/auth/login (same-origin, so the
 // CSRF Origin check passes). On success the API sets the session cookie on the
 // parent domain; we hard-navigate to "/" so the host (admin.* / app.*) routes to
 // the right app shell. Errors collapse to the single generic Bengali message the
-// API returns (no field-level disclosure).
-export function LoginForm() {
+// API returns (no field-level disclosure). Labels are resolved server-side and
+// passed in so the form follows the active locale without a client provider.
+export function LoginForm({ labels }: { labels: LoginLabels }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -28,9 +38,9 @@ export function LoginForm() {
         window.location.assign("/");
         return;
       }
-      setError(data.error ?? "ইমেইল বা পাসওয়ার্ড সঠিক নয়।");
+      setError(data.error ?? labels.invalidCredentials);
     } catch {
-      setError("দুঃখিত, কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      setError(labels.genericError);
     } finally {
       setPending(false);
     }
@@ -39,7 +49,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-ink">ইমেইল</span>
+        <span className="text-sm font-medium text-ink">{labels.email}</span>
         <input
           type="email"
           name="email"
@@ -52,7 +62,7 @@ export function LoginForm() {
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-ink">পাসওয়ার্ড</span>
+        <span className="text-sm font-medium text-ink">{labels.password}</span>
         <input
           type="password"
           name="password"
@@ -75,7 +85,7 @@ export function LoginForm() {
         disabled={pending}
         className="h-11 rounded-md bg-primary px-4 font-semibold text-white disabled:opacity-60"
       >
-        {pending ? "লগ ইন হচ্ছে…" : "লগ ইন"}
+        {pending ? labels.submitting : labels.submit}
       </button>
     </form>
   );

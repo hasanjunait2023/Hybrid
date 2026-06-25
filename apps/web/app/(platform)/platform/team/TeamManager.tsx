@@ -4,6 +4,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@hybrid/ui";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatNumber } from "@/lib/i18n/format";
 import { addTeamMemberAction, changeTeamRoleAction, removeTeamMemberAction } from "./actions";
 
 type Role = "super_admin" | "support" | "sales" | "accountant" | "ops";
@@ -22,6 +24,9 @@ const ROLE_BN: Record<Role, string> = {
 };
 
 export function TeamManager({ members }: { members: Member[] }) {
+  const d = useDict();
+  const locale = useLocale();
+  const tx = d.platform.team;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +35,7 @@ export function TeamManager({ members }: { members: Member[] }) {
     setError(null);
     start(async () => {
       const res = await fn();
-      if (!res.ok) setError(res.error ?? "ব্যর্থ হয়েছে।");
+      if (!res.ok) setError(res.error ?? tx.failed);
       else router.refresh();
     });
   };
@@ -42,32 +47,32 @@ export function TeamManager({ members }: { members: Member[] }) {
     <div className="space-y-4">
       <form action={add} className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4">
         <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="text-2xs font-semibold uppercase text-ink-muted">ইমেইল</span>
+          <span className="text-2xs font-semibold uppercase text-ink-muted">{tx.email}</span>
           <input name="email" type="email" required placeholder="staff@hybrid.com" className="h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none" />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-2xs font-semibold uppercase text-ink-muted">নাম</span>
-          <input name="fullName" placeholder="ঐচ্ছিক" className="h-11 w-32 rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none" />
+          <span className="text-2xs font-semibold uppercase text-ink-muted">{tx.name}</span>
+          <input name="fullName" placeholder={tx.namePlaceholder} className="h-11 w-32 rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none" />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-2xs font-semibold uppercase text-ink-muted">ভূমিকা</span>
+          <span className="text-2xs font-semibold uppercase text-ink-muted">{tx.role}</span>
           <select name="role" defaultValue="support" className="h-11 rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none">
             {ROLES.map((r) => <option key={r} value={r}>{ROLE_BN[r]}</option>)}
           </select>
         </label>
-        <Button type="submit" disabled={pending}>{pending ? "…" : "যোগ করুন"}</Button>
+        <Button type="submit" disabled={pending}>{pending ? "…" : tx.add}</Button>
       </form>
 
       {error && <p role="alert" className="rounded-md bg-danger-weak px-3 py-2 text-sm font-medium text-danger">{error}</p>}
 
       <ul className="overflow-hidden rounded-lg border border-border bg-surface divide-y divide-border">
         {members.length === 0 ? (
-          <li className="px-4 py-8 text-center text-sm text-ink-muted">কোনো টিম সদস্য নেই — প্রথম জনকে যোগ করুন।</li>
+          <li className="px-4 py-8 text-center text-sm text-ink-muted">{tx.empty}</li>
         ) : members.map((m) => (
           <li key={m.userId} className="flex flex-wrap items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">{m.fullName ?? m.email}</p>
-              <p className="truncate text-xs text-ink-muted">{m.email} · {m.assignedTenants} টেন্যান্ট</p>
+              <p className="truncate text-xs text-ink-muted">{m.email} · {formatNumber(m.assignedTenants, locale)} {tx.tenantsUnit}</p>
             </div>
             <select
               value={m.role}
@@ -83,7 +88,7 @@ export function TeamManager({ members }: { members: Member[] }) {
               onClick={() => act(() => removeTeamMemberAction(m.userId))}
               className="rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-danger-weak disabled:opacity-50"
             >
-              সরান
+              {tx.remove}
             </button>
           </li>
         ))}

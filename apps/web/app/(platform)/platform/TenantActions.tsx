@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import {
   suspendTenant,
   reactivateTenant,
@@ -19,6 +20,8 @@ interface TenantActionsProps {
 // as Server Actions (authz re-checked server-side). After impersonate succeeds
 // the operator is sent to the admin host so they land in that tenant's admin.
 export function TenantActions({ tenantId, status, rootDomain }: TenantActionsProps) {
+  const d = useDict();
+  const t = d.platform.tenantActions;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const isSuspended = status === "suspended";
@@ -31,7 +34,7 @@ export function TenantActions({ tenantId, status, rootDomain }: TenantActionsPro
     startTransition(async () => {
       const res = await action(tenantId);
       if (!res.ok) {
-        setError(res.error ?? "একটি সমস্যা হয়েছে।");
+        setError(res.error ?? d.platform.common.somethingWrong);
         return;
       }
       after?.();
@@ -54,15 +57,15 @@ export function TenantActions({ tenantId, status, rootDomain }: TenantActionsPro
             })
           }
         >
-          ইমপারসোনেট
+          {t.impersonate}
         </Button>
         {isSuspended ? (
           <Button size="sm" variant="primary" disabled={pending} onClick={() => run(reactivateTenant)}>
-            পুনরায় চালু
+            {t.reactivate}
           </Button>
         ) : (
           <Button size="sm" variant="danger" disabled={pending} onClick={() => run(suspendTenant)}>
-            স্থগিত
+            {t.suspend}
           </Button>
         )}
       </div>

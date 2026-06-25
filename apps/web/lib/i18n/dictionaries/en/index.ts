@@ -4,7 +4,8 @@ import { common } from "./common";
 import { admin } from "./admin";
 import { platform } from "./platform";
 import { storefront } from "./storefront";
+import { auth } from "./auth";
 
-export const en = { common, admin, platform, storefront };
+export const en = { common, admin, platform, storefront, auth };
 
 export type Messages = typeof en;

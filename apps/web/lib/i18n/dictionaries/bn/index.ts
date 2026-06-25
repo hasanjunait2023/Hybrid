@@ -5,5 +5,6 @@ import { common } from "./common";
 import { admin } from "./admin";
 import { platform } from "./platform";
 import { storefront } from "./storefront";
+import { auth } from "./auth";
 
-export const bn: Messages = { common, admin, platform, storefront };
+export const bn: Messages = { common, admin, platform, storefront, auth };

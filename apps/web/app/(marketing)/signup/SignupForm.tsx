@@ -10,7 +10,21 @@ const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "myhybrid.com";
 
 const INITIAL: SignupState = {};
 
-export function SignupForm() {
+interface SignupLabels {
+  storeNameLabel: string;
+  storeNameHint: string;
+  storeAddressLabel: string;
+  storeAddressHint: string;
+  suggestionsLabel: string;
+  emailLabel: string;
+  submit: string;
+  submitting: string;
+  trialNote: string;
+}
+
+// Labels are resolved server-side (cookie locale) and passed in, so the form
+// follows the active language without a client LocaleProvider in this route.
+export function SignupForm({ labels }: { labels: SignupLabels }) {
   const [state, formAction] = useActionState(signupAction, INITIAL);
   const [slug, setSlug] = useState(state.values?.slug ?? "");
 
@@ -44,8 +58,8 @@ export function SignupForm() {
 
       <Field
         id={storeNameId}
-        label="দোকানের নাম"
-        hint="যেমন: রহিমের ফ্যাশন হাউস"
+        label={labels.storeNameLabel}
+        hint={labels.storeNameHint}
         error={state.errors?.storeName}
       >
         <input
@@ -63,7 +77,7 @@ export function SignupForm() {
 
       <Field
         id={slugId}
-        label="আপনার স্টোরের ঠিকানা"
+        label={labels.storeAddressLabel}
         error={serverSlugError ?? (clientSlugError ? SLUG_ERROR_BN[clientSlugError] : undefined)}
       >
         <div
@@ -96,13 +110,13 @@ export function SignupForm() {
           </span>
         </div>
         <p className="bn-body mt-1.5 text-xs text-ink-subtle">
-          এই ঠিকানায় আপনার দোকান সবাই দেখতে পাবে। পরে কাস্টম ডোমেইন যুক্ত করা যাবে।
+          {labels.storeAddressHint}
         </p>
       </Field>
 
       {state.suggestions && state.suggestions.length > 0 ? (
         <div className="-mt-2 flex flex-wrap items-center gap-2">
-          <span className="bn-body text-xs text-ink-muted">এগুলো খালি আছে:</span>
+          <span className="bn-body text-xs text-ink-muted">{labels.suggestionsLabel}</span>
           {state.suggestions.map((s) => (
             <button
               key={s}
@@ -116,7 +130,7 @@ export function SignupForm() {
         </div>
       ) : null}
 
-      <Field id={emailId} label="ইমেইল ঠিকানা" error={state.errors?.email}>
+      <Field id={emailId} label={labels.emailLabel} error={state.errors?.email}>
         <input
           id={emailId}
           name="email"
@@ -130,20 +144,20 @@ export function SignupForm() {
         />
       </Field>
 
-      <SubmitButton />
+      <SubmitButton label={labels.submit} pendingLabel={labels.submitting} />
 
       <p className="bn-body text-center text-xs text-ink-subtle">
-        শুরু করলে আপনি ১৪ দিনের ফ্রি ট্রায়াল পাচ্ছেন — কোনো কার্ড লাগবে না।
+        {labels.trialNote}
       </p>
     </form>
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" variant="primary" size="lg" fullWidth disabled={pending}>
-      {pending ? "তৈরি হচ্ছে…" : "আমার দোকান তৈরি করুন"}
+      {pending ? pendingLabel : label}
     </Button>
   );
 }

@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
-import { Badge, formatBdtLatin } from "@hybrid/ui";
+import { Badge } from "@hybrid/ui";
 import { getTenantDetail } from "@/lib/platform/tenant-detail";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
+import type { Locale } from "@/lib/i18n/config";
 import { TenantActions } from "../../TenantActions";
 
 // Tenant 360 (PP1-A2). Full platform view of one store. Authz via layout.
@@ -24,9 +27,12 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
   const t = await getTenantDetail(id);
   if (!t) notFound();
 
+  const { locale, d } = await getDict();
+  const tx = d.platform.tenantDetail;
+
   return (
-    <div lang="en" className="space-y-5">
-      <a href="/platform/tenants" className="text-sm font-medium text-ink-muted hover:text-primary">← ডিরেক্টরি</a>
+    <div className="space-y-5">
+      <a href="/platform/tenants" className="text-sm font-medium text-ink-muted hover:text-primary">{tx.backToDirectory}</a>
 
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-surface p-4 shadow-xs">
         <div>
@@ -35,39 +41,39 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
             <Badge tone={statusTone(t.status)}>{t.status}</Badge>
           </div>
           <p className="mt-1 font-mono text-2xs text-ink-subtle">{t.slug}.{ROOT}</p>
-          <p className="mt-1 text-2xs text-ink-muted">তৈরি: {fmtDate(t.createdAt)}</p>
+          <p className="mt-1 text-2xs text-ink-muted">{tx.created}: {fmtDate(t.createdAt)}</p>
         </div>
         <TenantActions tenantId={t.id} status={t.status} rootDomain={ROOT} />
       </div>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="GMV (সর্বমোট)" value={formatBdtLatin(t.gmvAllTime)} />
-        <Stat label="GMV (৩০দিন)" value={formatBdtLatin(t.gmv30d)} />
-        <Stat label="মোট অর্ডার" value={String(t.ordersAllTime)} />
-        <Stat label="গ্রাহক" value={String(t.usage.customers)} />
+        <Stat label={tx.gmvAllTime} value={formatMoney(t.gmvAllTime, locale)} />
+        <Stat label={tx.gmv30d} value={formatMoney(t.gmv30d, locale)} />
+        <Stat label={tx.totalOrders} value={formatNumber(t.ordersAllTime, locale)} />
+        <Stat label={tx.customers} value={formatNumber(t.usage.customers, locale)} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         {/* Plan + subscription */}
         <div className="rounded-lg border border-border bg-surface p-4 shadow-xs">
-          <h2 className="mb-3 text-sm font-bold text-ink">প্ল্যান ও সাবস্ক্রিপশন</h2>
+          <h2 className="mb-3 text-sm font-bold text-ink">{tx.planAndSubscription}</h2>
           <dl className="space-y-2 text-sm">
-            <Row label="প্ল্যান" value={t.plan?.name ?? "—"} />
-            <Row label="মাসিক মূল্য" value={t.plan ? formatBdtLatin(t.plan.priceBdt) : "—"} mono />
-            <Row label="সাবস্ক্রিপশন" value={t.subscription?.status ?? "—"} />
-            <Row label="পিরিয়ড শেষ" value={fmtDate(t.subscription?.periodEnd ?? null)} mono />
-            <Row label="মালিক" value={t.owner?.name ?? t.owner?.email ?? "—"} />
+            <Row label={tx.plan} value={t.plan?.name ?? "—"} />
+            <Row label={tx.monthlyPrice} value={t.plan ? formatMoney(t.plan.priceBdt, locale) : "—"} mono />
+            <Row label={tx.subscription} value={t.subscription?.status ?? "—"} />
+            <Row label={tx.periodEnd} value={fmtDate(t.subscription?.periodEnd ?? null)} mono />
+            <Row label={tx.owner} value={t.owner?.name ?? t.owner?.email ?? "—"} />
           </dl>
         </div>
 
         {/* Usage vs limits */}
         <div className="rounded-lg border border-border bg-surface p-4 shadow-xs">
-          <h2 className="mb-3 text-sm font-bold text-ink">ব্যবহার বনাম লিমিট</h2>
+          <h2 className="mb-3 text-sm font-bold text-ink">{tx.usageVsLimits}</h2>
           <div className="space-y-3">
-            <UsageBar label="পণ্য" used={t.usage.products} limit={t.plan?.maxProducts ?? null} />
-            <UsageBar label="অর্ডার (এ মাসে)" used={t.usage.ordersThisMonth} limit={t.plan?.maxOrdersMonth ?? null} />
-            <UsageBar label="স্টাফ" used={t.usage.members} limit={t.plan?.maxStaff ?? null} />
-            <Row label="কাস্টম ডোমেইন" value={String(t.usage.domains)} />
+            <UsageBar label={tx.products} used={t.usage.products} limit={t.plan?.maxProducts ?? null} locale={locale} />
+            <UsageBar label={tx.ordersThisMonth} used={t.usage.ordersThisMonth} limit={t.plan?.maxOrdersMonth ?? null} locale={locale} />
+            <UsageBar label={tx.staff} used={t.usage.members} limit={t.plan?.maxStaff ?? null} locale={locale} />
+            <Row label={tx.customDomain} value={formatNumber(t.usage.domains, locale)} />
           </div>
         </div>
       </section>
@@ -93,7 +99,7 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
   );
 }
 
-function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
+function UsageBar({ label, used, limit, locale }: { label: string; used: number; limit: number | null; locale: Locale }) {
   const unlimited = limit == null;
   const pct = unlimited ? 0 : Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
   const over = !unlimited && used > limit;
@@ -102,7 +108,7 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
       <div className="flex items-center justify-between text-xs">
         <span className="text-ink-muted">{label}</span>
         <span className={`font-mono tnum ${over ? "text-danger font-semibold" : "text-ink"}`}>
-          {used}{unlimited ? " / ∞" : ` / ${limit}`}
+          {formatNumber(used, locale)}{unlimited ? " / ∞" : ` / ${formatNumber(limit, locale)}`}
         </span>
       </div>
       {!unlimited && (
