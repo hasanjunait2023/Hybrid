@@ -4,10 +4,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { toggleCod } from "./actions";
 
 export function CodForm({ enabled }: { enabled: boolean }) {
   const router = useRouter();
+  const t = useDict().admin.settingsPayments;
   const [on, setOn] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -21,7 +23,7 @@ export function CodForm({ enabled }: { enabled: boolean }) {
     fd.set("enabled", on ? "true" : "false");
     startTransition(async () => {
       const result = await toggleCod(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         router.refresh();
@@ -33,8 +35,8 @@ export function CodForm({ enabled }: { enabled: boolean }) {
     <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-ink">ক্যাশ অন ডেলিভারি</h2>
-          <p className="text-xs text-ink-muted">পণ্য হাতে পেয়ে টাকা দিন — বাংলাদেশের ডিফল্ট।</p>
+          <h2 className="font-semibold text-ink">{t.cod.title}</h2>
+          <p className="text-xs text-ink-muted">{t.cod.subtitle}</p>
         </div>
         <label className="inline-flex cursor-pointer items-center gap-2">
           <input
@@ -43,7 +45,7 @@ export function CodForm({ enabled }: { enabled: boolean }) {
             onChange={(e) => setOn(e.target.checked)}
             className="h-5 w-5 accent-[var(--color-cod)]"
           />
-          <span className="text-sm font-medium text-ink">{on ? "চালু" : "বন্ধ"}</span>
+          <span className="text-sm font-medium text-ink">{on ? t.cod.on : t.cod.off}</span>
         </label>
       </div>
 
@@ -54,12 +56,12 @@ export function CodForm({ enabled }: { enabled: boolean }) {
       )}
       {saved && (
         <p role="status" className="rounded-md bg-success-weak px-3 py-2 text-sm font-medium text-success">
-          সেভ হয়েছে।
+          {t.saved}
         </p>
       )}
 
       <Button onClick={save} disabled={pending || !dirty}>
-        {pending ? "সেভ হচ্ছে…" : "সেভ করুন"}
+        {pending ? t.saving : t.save}
       </Button>
     </section>
   );

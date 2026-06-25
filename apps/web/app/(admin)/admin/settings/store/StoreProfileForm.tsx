@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@hybrid/ui";
 import type { StoreProfile } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { saveStoreProfile } from "./actions";
 
 const inputCls =
@@ -13,6 +14,8 @@ const inputCls =
 
 export function StoreProfileForm({ profile }: { profile: StoreProfile }) {
   const router = useRouter();
+  const d = useDict();
+  const t = d.admin.settingsGeneral.store;
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(profile.phone);
   const [facebook, setFacebook] = useState(profile.facebook);
@@ -43,7 +46,7 @@ export function StoreProfileForm({ profile }: { profile: StoreProfile }) {
     fd.set("vatBin", vatBin);
     startTransition(async () => {
       const result = await saveStoreProfile(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? d.common.action.failed);
       else {
         setSaved(true);
         router.refresh();
@@ -54,19 +57,19 @@ export function StoreProfileForm({ profile }: { profile: StoreProfile }) {
   return (
     <section className="space-y-4 rounded-lg border border-border bg-surface p-4">
       <div>
-        <label htmlFor="name" className="mb-1 block text-sm font-semibold text-ink">দোকানের নাম</label>
+        <label htmlFor="name" className="mb-1 block text-sm font-semibold text-ink">{t.storeName}</label>
         <input id="name" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
       </div>
 
       {profile.subdomain && (
         <div>
-          <span className="mb-1 block text-sm font-semibold text-ink">সাবডোমেইন</span>
+          <span className="mb-1 block text-sm font-semibold text-ink">{t.subdomain}</span>
           <p className="font-mono text-sm text-ink-muted">{profile.subdomain}</p>
         </div>
       )}
 
       <div>
-        <label htmlFor="phone" className="mb-1 block text-sm font-semibold text-ink">হটলাইন ফোন</label>
+        <label htmlFor="phone" className="mb-1 block text-sm font-semibold text-ink">{t.hotline}</label>
         <input
           id="phone"
           inputMode="tel"
@@ -77,7 +80,7 @@ export function StoreProfileForm({ profile }: { profile: StoreProfile }) {
       </div>
 
       <div>
-        <label htmlFor="facebook" className="mb-1 block text-sm font-semibold text-ink">Facebook লিংক</label>
+        <label htmlFor="facebook" className="mb-1 block text-sm font-semibold text-ink">{t.facebookLink}</label>
         <input
           id="facebook"
           value={facebook}
@@ -88,7 +91,7 @@ export function StoreProfileForm({ profile }: { profile: StoreProfile }) {
       </div>
 
       <div>
-        <label htmlFor="address" className="mb-1 block text-sm font-semibold text-ink">ঠিকানা</label>
+        <label htmlFor="address" className="mb-1 block text-sm font-semibold text-ink">{t.address}</label>
         <textarea
           id="address"
           rows={2}
@@ -99,7 +102,7 @@ export function StoreProfileForm({ profile }: { profile: StoreProfile }) {
       </div>
 
       <div>
-        <label htmlFor="returnPolicy" className="mb-1 block text-sm font-semibold text-ink">রিটার্ন পলিসি</label>
+        <label htmlFor="returnPolicy" className="mb-1 block text-sm font-semibold text-ink">{t.returnPolicy}</label>
         <textarea
           id="returnPolicy"
           rows={3}
@@ -110,7 +113,7 @@ export function StoreProfileForm({ profile }: { profile: StoreProfile }) {
       </div>
 
       <div>
-        <label htmlFor="vatBin" className="mb-1 block text-sm font-semibold text-ink">VAT / BIN</label>
+        <label htmlFor="vatBin" className="mb-1 block text-sm font-semibold text-ink">{t.vatBin}</label>
         <input
           id="vatBin"
           value={vatBin}
@@ -126,12 +129,12 @@ export function StoreProfileForm({ profile }: { profile: StoreProfile }) {
       )}
       {saved && (
         <p role="status" className="rounded-md bg-success-weak px-3 py-2 text-sm font-medium text-success">
-          সেভ হয়েছে।
+          {d.common.action.saved}
         </p>
       )}
 
       <Button onClick={save} disabled={pending || !dirty}>
-        {pending ? "সেভ হচ্ছে…" : "সেভ করুন"}
+        {pending ? d.common.action.saving : d.common.action.save}
       </Button>
     </section>
   );

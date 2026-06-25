@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@hybrid/ui";
 import type { ThemeSettings } from "@/lib/theme/schema";
+import { useDict } from "@/lib/i18n/provider";
 import { saveDraftAction, publishThemeAction } from "../actions";
 import { ColorControls } from "./controls/ColorControls";
 import { TypographyControls } from "./controls/TypographyControls";
@@ -33,19 +34,13 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 type Group = "colors" | "typography" | "content" | "sections";
 type Device = "mobile" | "desktop";
 
-const GROUP_LABELS: Record<Group, string> = {
-  colors: "রং",
-  typography: "ফন্ট",
-  content: "কন্টেন্ট",
-  sections: "সেকশন",
-};
-
 export function Customizer({
   initialSettings,
   collections,
   previewUrl,
   hasPublished,
 }: CustomizerProps) {
+  const t = useDict().admin.themes;
   const [settings, setSettings] = useState<ThemeSettings>(initialSettings);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [dirty, setDirty] = useState(false);
@@ -96,7 +91,7 @@ export function Customizer({
     startPublish(async () => {
       const res = await publishThemeAction();
       if (!res.ok) {
-        setPublishError(res.error ?? "প্রকাশ করা যায়নি।");
+        setPublishError(res.error ?? t.customizer.publishFailed);
         return;
       }
       setPublished(true);
@@ -155,7 +150,7 @@ export function Customizer({
       {/* Desktop left rail */}
       <aside className="hidden w-[360px] shrink-0 flex-col rounded-lg border border-border bg-surface lg:flex">
         <div className="border-b border-border px-4 py-3">
-          <h1 className="text-base font-bold text-ink">কাস্টমাইজ</h1>
+          <h1 className="text-base font-bold text-ink">{t.customizer.heading}</h1>
           <StatusChip dirty={dirty} saveState={saveState} published={published} />
         </div>
         <div className="flex-1 overflow-y-auto p-4">{controls}</div>
@@ -166,7 +161,7 @@ export function Customizer({
             onClick={() => setPublishOpen(true)}
             disabled={publishing}
           >
-            প্রকাশ করুন
+            {t.customizer.publish}
           </Button>
         </div>
       </aside>
@@ -186,7 +181,7 @@ export function Customizer({
           onClick={() => setSheetOpen(true)}
           className="min-h-11 flex-1 rounded-md border border-border text-sm font-semibold text-ink hover:bg-surface-2"
         >
-          কাস্টমাইজ করুন
+          {t.customizer.customizeButton}
         </button>
         <Button
           type="button"
@@ -194,7 +189,7 @@ export function Customizer({
           disabled={publishing}
           className="min-h-11 flex-1"
         >
-          প্রকাশ করুন
+          {t.customizer.publish}
         </Button>
       </div>
 
@@ -204,11 +199,11 @@ export function Customizer({
           className="fixed inset-0 z-modal flex flex-col justify-end bg-black/30 lg:hidden"
           role="dialog"
           aria-modal="true"
-          aria-label="কাস্টমাইজ কন্ট্রোল"
+          aria-label={t.customizer.controlsLabel}
         >
           <button
             type="button"
-            aria-label="বন্ধ করুন"
+            aria-label={t.customizer.closeSheet}
             className="flex-1"
             onClick={() => setSheetOpen(false)}
           />
@@ -220,7 +215,7 @@ export function Customizer({
                 onClick={() => setSheetOpen(false)}
                 className="rounded-md px-3 py-1 text-sm font-medium text-ink-muted hover:bg-surface-2"
               >
-                বন্ধ
+                {t.customizer.sheetClose}
               </button>
             </div>
             {controls}
@@ -249,22 +244,23 @@ function StatusChip({
   saveState: SaveState;
   published: boolean;
 }) {
+  const t = useDict().admin.themes;
   if (saveState === "saving") {
-    return <span className="text-xs text-ink-muted">সেভ হচ্ছে…</span>;
+    return <span className="text-xs text-ink-muted">{t.customizer.status.saving}</span>;
   }
   if (saveState === "error") {
-    return <span className="text-xs font-medium text-danger">সেভ হয়নি — আবার চেষ্টা</span>;
+    return <span className="text-xs font-medium text-danger">{t.customizer.status.saveError}</span>;
   }
   if (dirty || !published) {
     return (
       <span className="inline-flex items-center rounded-full bg-st-pending-weak px-2 py-0.5 text-2xs font-semibold text-st-pending">
-        খসড়া · অপ্রকাশিত পরিবর্তন আছে
+        {t.customizer.status.draft}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center rounded-full bg-success-weak px-2 py-0.5 text-2xs font-semibold text-success">
-      প্রকাশিত · সব সেভ
+      {t.customizer.status.published}
     </span>
   );
 }
@@ -276,6 +272,7 @@ function DeviceToggle({
   device: Device;
   onChange: (d: Device) => void;
 }) {
+  const t = useDict().admin.themes;
   return (
     <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
       <button
@@ -286,7 +283,7 @@ function DeviceToggle({
           device === "mobile" ? "bg-primary-weak text-primary" : "text-ink-muted"
         }`}
       >
-        📱 ৩৬০
+        {t.customizer.device.mobile}
       </button>
       <button
         type="button"
@@ -296,7 +293,7 @@ function DeviceToggle({
           device === "desktop" ? "bg-primary-weak text-primary" : "text-ink-muted"
         }`}
       >
-        💻 ১২৮০
+        {t.customizer.device.desktop}
       </button>
     </div>
   );
@@ -312,10 +309,11 @@ function PreviewFrame({
   url: string | null;
   device: Device;
 }) {
+  const t = useDict().admin.themes;
   if (!url) {
     return (
       <div className="grid flex-1 place-items-center rounded-lg border border-border bg-surface-2 text-sm text-ink-muted">
-        প্রিভিউ পাওয়া যাচ্ছে না।
+        {t.customizer.preview.unavailable}
       </div>
     );
   }
@@ -325,7 +323,7 @@ function PreviewFrame({
       <iframe
         ref={ref}
         src={url}
-        title="স্টোর প্রিভিউ"
+        title={t.customizer.preview.title}
         className={`h-full ${widthClass} rounded-md border border-border bg-white`}
       />
     </div>
@@ -343,6 +341,7 @@ function PublishConfirm({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const t = useDict().admin.themes;
   return (
     <div
       className="fixed inset-0 z-modal flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
@@ -352,11 +351,9 @@ function PublishConfirm({
     >
       <div className="w-full max-w-md rounded-t-2xl bg-surface p-5 sm:rounded-2xl">
         <h2 id="publish-title" className="text-lg font-bold text-ink">
-          প্রকাশ করবেন?
+          {t.customizer.publishConfirm.title}
         </h2>
-        <p className="bn-body mt-2 text-sm text-ink-muted">
-          এই পরিবর্তনগুলো লাইভ স্টোরে দেখা যাবে।
-        </p>
+        <p className="bn-body mt-2 text-sm text-ink-muted">{t.customizer.publishConfirm.body}</p>
         {error && <p className="mt-2 text-sm text-danger">{error}</p>}
         <div className="mt-5 flex gap-2">
           <button
@@ -365,10 +362,10 @@ function PublishConfirm({
             disabled={publishing}
             className="min-h-11 flex-1 rounded-md border border-border text-sm font-medium text-ink hover:bg-surface-2"
           >
-            বাতিল
+            {t.customizer.publishConfirm.cancel}
           </button>
           <Button type="button" onClick={onConfirm} disabled={publishing} className="min-h-11 flex-1">
-            {publishing ? "প্রকাশ হচ্ছে…" : "প্রকাশ করুন"}
+            {publishing ? t.customizer.publishConfirm.publishing : t.customizer.publishConfirm.publish}
           </Button>
         </div>
       </div>
@@ -387,6 +384,7 @@ function Accordion({
   onToggle: (g: Group) => void;
   children: (group: Group) => React.ReactNode;
 }) {
+  const t = useDict().admin.themes;
   const groups: Group[] = ["colors", "typography", "content", "sections"];
   return (
     <div className="space-y-2">
@@ -400,7 +398,7 @@ function Accordion({
               aria-expanded={open}
               className="flex min-h-11 w-full items-center justify-between px-3 text-sm font-semibold text-ink"
             >
-              {GROUP_LABELS[g]}
+              {t.customizer.groups[g]}
               <span className="text-ink-muted">{open ? "−" : "+"}</span>
             </button>
             {open && <div className="border-t border-border p-3">{children(g)}</div>}

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getCourierSettings, getPathaoSettings } from "@/lib/admin/settings";
+import { getDict } from "@/lib/i18n/server";
 import { SteadfastForm } from "./SteadfastForm";
 import { PathaoForm } from "./PathaoForm";
 import { ComingSoonCard } from "./ComingSoonCard";
@@ -19,12 +20,15 @@ export default async function CourierSettingsPage() {
     getPathaoSettings(tenantId, session.userId),
   ]);
 
+  const { d } = await getDict();
+  const t = d.admin.settingsComms;
+
   return (
-    <div lang="en" className="max-w-xl space-y-5">
+    <div className="max-w-xl space-y-5">
       <a href="/admin/settings" className="text-sm font-medium text-ink-muted hover:text-primary">
-        ← সেটিংস
+        ← {t.settingsLink}
       </a>
-      <h1 className="text-xl font-bold text-ink">কুরিয়ার</h1>
+      <h1 className="text-xl font-bold text-ink">{t.courier.title}</h1>
       <SteadfastForm settings={steadfast} />
       <PathaoForm settings={pathao} />
       <ComingSoonCard title="RedX" />

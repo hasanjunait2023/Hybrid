@@ -8,10 +8,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ProviderCard, CredentialField, ShieldIcon } from "@hybrid/ui";
 import type { AnalyticsSettings } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { saveAnalytics } from "./actions";
 
 export function AnalyticsForm({ settings }: { settings: AnalyticsSettings }) {
   const router = useRouter();
+  const t = useDict().admin.settingsComms;
   const [enabled, setEnabled] = useState(settings.enabled);
   const [ga4MeasurementId, setGa4MeasurementId] = useState(settings.ga4MeasurementId);
   const [ga4ApiSecret, setGa4ApiSecret] = useState("");
@@ -34,7 +36,7 @@ export function AnalyticsForm({ settings }: { settings: AnalyticsSettings }) {
     fd.set("fbTestEventCode", fbTestEventCode);
     startTransition(async () => {
       const result = await saveAnalytics(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         setGa4ApiSecret("");
@@ -49,7 +51,7 @@ export function AnalyticsForm({ settings }: { settings: AnalyticsSettings }) {
   return (
     <ProviderCard
       icon={<ShieldIcon className="h-6 w-6" />}
-      title="অ্যানালিটিক্স (GA4 + Meta Pixel)"
+      title={t.analytics.cardTitle}
       configured={configured}
       enabled={enabled}
       onEnabledChange={setEnabled}
@@ -58,10 +60,7 @@ export function AnalyticsForm({ settings }: { settings: AnalyticsSettings }) {
       error={error}
       saved={saved}
     >
-      <p className="text-2xs font-medium text-ink-muted">
-        Google Analytics 4 ও Meta (Facebook) Pixel/Conversions API যুক্ত করুন। অর্ডার সম্পন্ন হলে
-        Purchase ইভেন্ট একবারই গণনা হয় (ডুপ্লিকেট বাদ)।
-      </p>
+      <p className="text-2xs font-medium text-ink-muted">{t.analytics.intro}</p>
 
       <CredentialField
         id="an-ga4-id"
@@ -92,7 +91,7 @@ export function AnalyticsForm({ settings }: { settings: AnalyticsSettings }) {
       />
       <CredentialField
         id="an-fb-test"
-        label="Meta Test Event Code (ঐচ্ছিক)"
+        label={t.analytics.testEventCodeLabel}
         value={fbTestEventCode}
         onChange={setFbTestEventCode}
       />

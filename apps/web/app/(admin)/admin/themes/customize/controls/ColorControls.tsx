@@ -7,23 +7,24 @@
 // keys.
 import type { ThemeColors } from "@/lib/theme/schema";
 import { passesAaContrast, contrastRatio } from "@/lib/theme/schema";
+import { useDict } from "@/lib/i18n/provider";
 
 interface ColorControlsProps {
   colors: ThemeColors;
   onChange: (next: ThemeColors) => void;
 }
 
-const FIELDS: { key: keyof ThemeColors; label: string }[] = [
-  { key: "primary", label: "প্রাইমারি (বাটন)" },
-  { key: "accent", label: "অ্যাকসেন্ট (সেল ট্যাগ)" },
-  { key: "background", label: "ব্যাকগ্রাউন্ড" },
-  { key: "surface", label: "কার্ড/সারফেস" },
-  { key: "text", label: "লেখার রং" },
+const FIELD_KEYS: (keyof ThemeColors)[] = [
+  "primary",
+  "accent",
+  "background",
+  "surface",
+  "text",
 ];
 
-const PRESETS: { name: string; colors: ThemeColors }[] = [
+const PRESETS: { key: "dorejaClassic" | "green" | "blueGold"; colors: ThemeColors }[] = [
   {
-    name: "দরজা ক্লাসিক",
+    key: "dorejaClassic",
     colors: {
       primary: "#1D4ED8",
       accent: "#F59E0B",
@@ -33,7 +34,7 @@ const PRESETS: { name: string; colors: ThemeColors }[] = [
     },
   },
   {
-    name: "সবুজ",
+    key: "green",
     colors: {
       primary: "#047857",
       accent: "#F59E0B",
@@ -43,7 +44,7 @@ const PRESETS: { name: string; colors: ThemeColors }[] = [
     },
   },
   {
-    name: "নীল-সোনা",
+    key: "blueGold",
     colors: {
       primary: "#1E3A8A",
       accent: "#D4AF37",
@@ -55,17 +56,18 @@ const PRESETS: { name: string; colors: ThemeColors }[] = [
 ];
 
 export function ColorControls({ colors, onChange }: ColorControlsProps) {
+  const t = useDict().admin.themes;
   const contrastOk = passesAaContrast(colors.text, colors.background);
   const ratio = contrastRatio(colors.text, colors.background).toFixed(1);
 
   return (
     <div className="space-y-4">
       <div>
-        <p className="mb-2 text-sm font-semibold text-ink">প্রিসেট</p>
+        <p className="mb-2 text-sm font-semibold text-ink">{t.colors.presetLabel}</p>
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((p) => (
             <button
-              key={p.name}
+              key={p.key}
               type="button"
               onClick={() => onChange(p.colors)}
               className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-3 text-sm font-medium text-ink hover:bg-surface-2"
@@ -80,39 +82,42 @@ export function ColorControls({ colors, onChange }: ColorControlsProps) {
                   style={{ background: p.colors.accent }}
                 />
               </span>
-              {p.name}
+              {t.colors.presets[p.key]}
             </button>
           ))}
         </div>
       </div>
 
       <div className="space-y-3">
-        {FIELDS.map((f) => (
-          <div key={f.key} className="flex items-center gap-3">
-            <input
-              type="color"
-              value={colors[f.key]}
-              onChange={(e) => onChange({ ...colors, [f.key]: e.target.value.toUpperCase() })}
-              aria-label={f.label}
-              className="h-11 w-11 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-0.5"
-            />
-            <div className="min-w-0 flex-1">
-              <label className="block text-sm font-medium text-ink">{f.label}</label>
+        {FIELD_KEYS.map((key) => {
+          const label = t.colors.fields[key];
+          return (
+            <div key={key} className="flex items-center gap-3">
               <input
-                type="text"
-                value={colors[f.key]}
-                onChange={(e) => onChange({ ...colors, [f.key]: e.target.value })}
-                spellCheck={false}
-                className="mt-0.5 w-28 rounded-md border border-border bg-surface px-2 py-1 font-mono text-xs uppercase text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                type="color"
+                value={colors[key]}
+                onChange={(e) => onChange({ ...colors, [key]: e.target.value.toUpperCase() })}
+                aria-label={label}
+                className="h-11 w-11 shrink-0 cursor-pointer rounded-md border border-border bg-surface p-0.5"
               />
+              <div className="min-w-0 flex-1">
+                <label className="block text-sm font-medium text-ink">{label}</label>
+                <input
+                  type="text"
+                  value={colors[key]}
+                  onChange={(e) => onChange({ ...colors, [key]: e.target.value })}
+                  spellCheck={false}
+                  className="mt-0.5 w-28 rounded-md border border-border bg-surface px-2 py-1 font-mono text-xs uppercase text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {!contrastOk && (
         <p className="rounded-md bg-st-pending-weak px-3 py-2 text-xs font-medium text-st-pending">
-          ⚠ লেখা ও ব্যাকগ্রাউন্ডের কনট্রাস্ট কম ({ratio}:১) — পড়তে কষ্ট হতে পারে।
+          {t.colors.contrastWarning.replace("{ratio}", ratio)}
         </p>
       )}
     </div>

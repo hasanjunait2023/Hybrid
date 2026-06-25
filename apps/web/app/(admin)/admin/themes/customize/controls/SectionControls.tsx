@@ -6,23 +6,15 @@
 // soft warning when disabled (trust signals are load-bearing in this market).
 import { SectionToggleRow } from "@hybrid/ui";
 import type { ThemeSection, SectionType } from "@/lib/theme/schema";
+import { useDict } from "@/lib/i18n/provider";
 
 interface SectionControlsProps {
   sections: ThemeSection[];
   onChange: (next: ThemeSection[]) => void;
 }
 
-const SECTION_LABELS: Record<SectionType, string> = {
-  announcement_bar: "ঘোষণা বার",
-  hero: "হিরো ব্যানার",
-  featured_products: "ফিচার্ড পণ্য",
-  collections_grid: "কালেকশন গ্রিড",
-  trust_band: "ট্রাস্ট সেকশন (COD)",
-};
-
-const TRUST_WARNING = "COD ট্রাস্ট সেকশন বন্ধ করলে বিশ্বাসযোগ্যতা কমে।";
-
 export function SectionControls({ sections, onChange }: SectionControlsProps) {
+  const t = useDict().admin.themes;
   // Always render in current position order; reorder swaps positions.
   const ordered = [...sections].sort((a, b) => a.position - b.position);
 
@@ -45,17 +37,15 @@ export function SectionControls({ sections, onChange }: SectionControlsProps) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-ink-subtle">
-        সেকশন চালু/বন্ধ করুন আর ক্রম বদলান। নতুন সেকশন যোগ করা যায় না।
-      </p>
+      <p className="text-xs text-ink-subtle">{t.sections.hint}</p>
       {ordered.map((section, i) => (
         <SectionToggleRow
           key={section.type}
-          label={SECTION_LABELS[section.type]}
+          label={t.sections.labels[section.type]}
           enabled={section.enabled}
           isFirst={i === 0}
           isLast={i === ordered.length - 1}
-          warning={section.type === "trust_band" ? TRUST_WARNING : undefined}
+          warning={section.type === "trust_band" ? t.sections.trustWarning : undefined}
           onToggle={(enabled) => setEnabled(section.type, enabled)}
           onMoveUp={() => move(section.type, -1)}
           onMoveDown={() => move(section.type, 1)}

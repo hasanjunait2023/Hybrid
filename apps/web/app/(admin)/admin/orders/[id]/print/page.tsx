@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation";
-import { formatBdtLatin } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getOrderDetail } from "@/lib/admin/orders";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney } from "@/lib/i18n/format";
 import { PrintTrigger } from "./PrintTrigger";
 
 // Printable invoice / packing slip (DESIGN §P3.5). Print-only layout: black ink
@@ -32,37 +33,40 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
     .filter(Boolean)
     .join(", ");
 
+  const { locale, d } = await getDict();
+  const t = d.admin.ordersDetail.print;
+
   return (
-    <div className="print-doc mx-auto max-w-[760px] bg-white p-6 text-black" lang="en">
+    <div className="print-doc mx-auto max-w-[760px] bg-white p-6 text-black">
       <PrintTrigger />
 
       {/* Screen-only controls (hidden in print) */}
       <div className="no-print mb-4 flex items-center justify-between">
         <a href={`/admin/orders/${order.id}`} className="text-sm text-ink-muted hover:text-primary">
-          ← অর্ডারে ফিরুন
+          {t.backToOrder}
         </a>
         <button
           type="button"
           data-print-button
           className="h-9 rounded-md bg-primary px-4 text-sm font-semibold text-white"
         >
-          প্রিন্ট করুন
+          {t.print}
         </button>
       </div>
 
       <header className="flex items-start justify-between border-b-2 border-black pb-3">
         <div>
           <h1 className="text-xl font-bold">
-            {isPacking ? "প্যাকিং স্লিপ" : "ইনভয়েস"}
+            {isPacking ? t.packingSlip : t.invoice}
           </h1>
-          <p className="font-mono text-sm">অর্ডার #{order.orderNumber}</p>
+          <p className="font-mono text-sm">{t.orderPrefix} #{order.orderNumber}</p>
         </div>
         <p className="text-right font-mono text-xs">{formatDate(order.placedAt)}</p>
       </header>
 
       {/* Recipient block — large for packing slip (the courier reads this) */}
       <section className={`mt-4 ${isPacking ? "text-base" : "text-sm"}`}>
-        <p className="text-xs font-bold uppercase">প্রাপক / Deliver to</p>
+        <p className="text-xs font-bold uppercase">{t.recipient}</p>
         <p className={isPacking ? "text-lg font-bold" : "font-semibold"}>
           {addr.recipient ?? order.customerName ?? "—"}
         </p>
@@ -73,8 +77,8 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
       {/* COD amount — unmissable */}
       {order.codAmount > 0 && (
         <section className="mt-4 border-2 border-black p-3 text-center">
-          <p className="text-xs font-bold uppercase">ডেলিভারিতে সংগ্রহ / Collect COD</p>
-          <p className="font-mono text-3xl font-extrabold">{formatBdtLatin(order.codAmount)}</p>
+          <p className="text-xs font-bold uppercase">{t.collectCod}</p>
+          <p className="font-mono text-3xl font-extrabold">{formatMoney(order.codAmount, locale)}</p>
         </section>
       )}
 
@@ -82,14 +86,14 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
       <table className="mt-4 w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-black text-left">
-            <th className="py-1 pr-2 font-bold">পণ্য</th>
+            <th className="py-1 pr-2 font-bold">{t.colProduct}</th>
             {isPacking ? (
               <th className="w-16 py-1 text-center font-bold">✓</th>
             ) : (
-              <th className="py-1 text-right font-bold">দাম</th>
+              <th className="py-1 text-right font-bold">{t.colPrice}</th>
             )}
-            <th className="w-12 py-1 text-center font-bold">পরিমাণ</th>
-            {!isPacking && <th className="py-1 text-right font-bold">মোট</th>}
+            <th className="w-12 py-1 text-center font-bold">{t.colQuantity}</th>
+            {!isPacking && <th className="py-1 text-right font-bold">{t.colTotal}</th>}
           </tr>
         </thead>
         <tbody>
@@ -104,13 +108,13 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
                 <td className="py-1.5 text-center text-lg">☐</td>
               ) : (
                 <td className="py-1.5 text-right font-mono tnum">
-                  {formatBdtLatin(it.unitPrice)}
+                  {formatMoney(it.unitPrice, locale)}
                 </td>
               )}
               <td className="py-1.5 text-center font-mono tnum">{it.quantity}</td>
               {!isPacking && (
                 <td className="py-1.5 text-right font-mono tnum">
-                  {formatBdtLatin(it.lineTotal)}
+                  {formatMoney(it.lineTotal, locale)}
                 </td>
               )}
             </tr>
@@ -121,27 +125,27 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
       {/* Totals (invoice only) */}
       {!isPacking && (
         <div className="mt-3 ml-auto w-56 space-y-1 text-sm">
-          <PrintRow label="সাবটোটাল" value={formatBdtLatin(order.subtotal)} />
-          <PrintRow label="ডেলিভারি" value={formatBdtLatin(order.shippingTotal)} />
+          <PrintRow label={t.subtotal} value={formatMoney(order.subtotal, locale)} />
+          <PrintRow label={t.delivery} value={formatMoney(order.shippingTotal, locale)} />
           <div className="flex justify-between border-t-2 border-black pt-1 font-bold">
-            <span>সর্বমোট</span>
-            <span className="font-mono tnum">{formatBdtLatin(order.grandTotal)}</span>
+            <span>{t.grandTotal}</span>
+            <span className="font-mono tnum">{formatMoney(order.grandTotal, locale)}</span>
           </div>
           <PrintRow
-            label="পেমেন্ট"
-            value={order.payment?.provider === "bkash" ? "বিকাশ" : "ক্যাশ অন ডেলিভারি"}
+            label={t.paymentLabel}
+            value={order.payment?.provider === "bkash" ? t.bkash : t.cashOnDelivery}
           />
         </div>
       )}
 
       {/* Packing slip tracking */}
       {isPacking && order.shipment?.trackingCode && (
-        <p className="mt-4 font-mono text-sm">ট্র্যাকিং: {order.shipment.trackingCode}</p>
+        <p className="mt-4 font-mono text-sm">{t.trackingPrefix} {order.shipment.trackingCode}</p>
       )}
 
       {!isPacking && (
         <p className="mt-6 text-center text-xs text-gray-600">
-          ধন্যবাদ! পণ্য পছন্দ না হলে ৭ দিনের মধ্যে ফেরত দিতে পারবেন।
+          {t.thankYou}
         </p>
       )}
     </div>

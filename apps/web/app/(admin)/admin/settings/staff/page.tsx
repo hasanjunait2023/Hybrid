@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listMembers, getMemberRole } from "@/lib/admin/staff";
+import { getDict } from "@/lib/i18n/server";
+import { formatNumber } from "@/lib/i18n/format";
 import { PageHeader } from "../../_ui";
 import { StaffManager } from "./StaffManager";
 
@@ -22,12 +24,16 @@ export default async function StaffPage() {
   const canManage = callerRole === "owner" || callerRole === "admin";
   const isOwner = callerRole === "owner";
 
+  const { locale, d } = await getDict();
+  const t = d.admin.settingsComms;
+
   return (
-    <div lang="en" className="space-y-4">
-      <PageHeader title="স্টাফ ও ভূমিকা" subtitle={`${members.length} জন সদস্য`} />
-      <p className="text-sm text-ink-muted">
-        মালিক ও অ্যাডমিন সদস্য যোগ/সরাতে পারেন। ভূমিকা: মালিক (সব), অ্যাডমিন (পরিচালনা), স্টাফ (দৈনিক কাজ)।
-      </p>
+    <div className="space-y-4">
+      <PageHeader
+        title={t.staff.title}
+        subtitle={`${formatNumber(members.length, locale)} ${t.staff.membersUnit}`}
+      />
+      <p className="text-sm text-ink-muted">{t.staff.description}</p>
       <StaffManager
         members={members}
         canManage={canManage}

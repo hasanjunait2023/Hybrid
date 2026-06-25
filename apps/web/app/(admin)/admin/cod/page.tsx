@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
-import { formatBdtLatin, StatusBadge } from "@hybrid/ui";
+import { StatusBadge } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getCodPending } from "@/lib/admin/cod";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 
 // COD-pending list (DESIGN §P7 honesty). Money owed to the seller: shipments
 // whose COD hasn't been collected (cod_status='pending') with the expected total.
@@ -16,26 +18,31 @@ export default async function CodPage() {
 
   const { rows, totalExpected, count } = await getCodPending(tenantId, session.userId);
 
+  const { locale, d } = await getDict();
+  const t = d.admin.cod.pending;
+
   return (
-    <div lang="en" className="space-y-5">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-xl font-bold text-ink">COD বকেয়া</h1>
+        <h1 className="text-xl font-bold text-ink">{t.title}</h1>
         <div className="text-right">
-          <p className="text-xs text-ink-muted">প্রত্যাশিত সংগ্রহ ({count}টি চালান)</p>
+          <p className="text-xs text-ink-muted">
+            {t.expectedCollection} ({formatNumber(count, locale)}
+            {t.shipmentsUnit})
+          </p>
           <p className="font-mono text-2xl font-bold text-st-pending tnum">
-            {formatBdtLatin(totalExpected)}
+            {formatMoney(totalExpected, locale)}
           </p>
         </div>
       </div>
 
       <p className="rounded-md bg-surface-2 px-3 py-2 text-xs text-ink-muted">
-        ⓘ এটি কুরিয়ারের কাছে এখনো সংগ্রহ-বাকি টাকার প্রত্যাশিত হিসাব। কুরিয়ার রেমিট্যান্স মিলানো
-        (reconciliation) পরের ধাপে আসবে।
+        {t.note}
       </p>
 
       {rows.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-10 text-center text-sm text-ink-muted">
-          কোনো COD বকেয়া নেই।
+          {t.empty}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -51,16 +58,16 @@ export default async function CodPage() {
                     <span className="ml-2 text-sm text-ink-muted">{r.customerName ?? "—"}</span>
                     {r.trackingCode && (
                       <div className="mt-1 font-mono text-2xs text-ink-subtle">
-                        ট্র্যাকিং: {r.trackingCode}
+                        {t.tracking}: {r.trackingCode}
                       </div>
                     )}
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="font-mono text-base font-bold text-st-pending tnum">
-                      {formatBdtLatin(r.codAmount)}
+                      {formatMoney(r.codAmount, locale)}
                     </div>
                     <div className="mt-1">
-                      <StatusBadge kind="fulfillment" value={r.shipmentStatus} />
+                      <StatusBadge kind="fulfillment" value={r.shipmentStatus} lang={locale} />
                     </div>
                   </div>
                 </div>

@@ -6,6 +6,7 @@
 // URLs here (the §P4 upload tile reuses /api/admin/upload and writes the URL
 // back; this slice keeps the field URL-based and Zod-guards the scheme).
 import type { ThemeContent } from "@/lib/theme/schema";
+import { useDict } from "@/lib/i18n/provider";
 
 interface CollectionOption {
   id: string;
@@ -19,18 +20,19 @@ interface ContentControlsProps {
 }
 
 export function ContentControls({ content, collections, onChange }: ContentControlsProps) {
+  const t = useDict().admin.themes;
   const headlineLeft = 120 - content.heroHeadline.length;
 
   return (
     <div className="space-y-4">
       <Field
-        label="দোকানের নাম"
+        label={t.content.storeName}
         value={content.storeName}
         onChange={(v) => onChange({ ...content, storeName: v })}
         maxLength={120}
       />
       <Field
-        label="লোগো URL"
+        label={t.content.logoUrl}
         value={content.logoUrl}
         onChange={(v) => onChange({ ...content, logoUrl: v })}
         placeholder="https://…"
@@ -38,28 +40,28 @@ export function ContentControls({ content, collections, onChange }: ContentContr
       />
 
       <div className="border-t border-border pt-3">
-        <p className="mb-2 text-sm font-semibold text-ink">হিরো সেকশন</p>
+        <p className="mb-2 text-sm font-semibold text-ink">{t.content.heroSection}</p>
         <Field
-          label="হেডলাইন"
+          label={t.content.headline}
           value={content.heroHeadline}
           onChange={(v) => onChange({ ...content, heroHeadline: v.slice(0, 120) })}
           maxLength={120}
-          hint={`${headlineLeft} অক্ষর বাকি`}
+          hint={t.content.headlineHint.replace("{count}", String(headlineLeft))}
         />
         <Field
-          label="সাবলাইন"
+          label={t.content.subline}
           value={content.heroSubline}
           onChange={(v) => onChange({ ...content, heroSubline: v })}
           maxLength={200}
         />
         <Field
-          label="বাটনের লেখা"
+          label={t.content.ctaText}
           value={content.heroCta}
           onChange={(v) => onChange({ ...content, heroCta: v })}
           maxLength={40}
         />
         <Field
-          label="হিরো ছবির URL"
+          label={t.content.heroImageUrl}
           value={content.heroImageUrl}
           onChange={(v) => onChange({ ...content, heroImageUrl: v })}
           placeholder="https://…"
@@ -68,7 +70,7 @@ export function ContentControls({ content, collections, onChange }: ContentContr
       </div>
 
       <div className="border-t border-border pt-3">
-        <label className="block text-sm font-medium text-ink">ফিচার্ড কালেকশন</label>
+        <label className="block text-sm font-medium text-ink">{t.content.featuredCollection}</label>
         <select
           value={content.featuredCollectionId ?? ""}
           onChange={(e) =>
@@ -79,7 +81,7 @@ export function ContentControls({ content, collections, onChange }: ContentContr
           }
           className="mt-1 min-h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <option value="">— কোনোটি নয় —</option>
+          <option value="">{t.content.none}</option>
           {collections.map((c) => (
             <option key={c.id} value={c.id}>
               {c.title}

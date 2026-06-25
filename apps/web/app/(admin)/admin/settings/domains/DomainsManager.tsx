@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Button, CopyField } from "@hybrid/ui";
 import type { DomainsView, CustomDomainView } from "@/lib/domains/data";
 import type { DomainState } from "@/lib/domains/state";
+import { useDict } from "@/lib/i18n/provider";
 import {
   addCustomDomain,
   checkDomainStatus,
@@ -22,6 +23,7 @@ const inputCls =
 
 export function DomainsManager({ view }: { view: DomainsView }) {
   const router = useRouter();
+  const t = useDict().admin.settingsGeneral.domains;
   const [domain, setDomain] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -32,7 +34,7 @@ export function DomainsManager({ view }: { view: DomainsView }) {
     fd.set("domain", domain.trim());
     startTransition(async () => {
       const result = await addCustomDomain(null, fd);
-      if (!result.ok) setError(result.error ?? "যোগ করা যায়নি।");
+      if (!result.ok) setError(result.error ?? t.addFailed);
       else {
         setDomain("");
         router.refresh();
@@ -45,7 +47,7 @@ export function DomainsManager({ view }: { view: DomainsView }) {
       {/* Always-present fallback subdomain */}
       {view.subdomain && (
         <section className="space-y-2 rounded-lg border border-border bg-surface p-4">
-          <h2 className="text-sm font-semibold text-ink">আপনার সাবডোমেইন (সবসময় কাজ করবে)</h2>
+          <h2 className="text-sm font-semibold text-ink">{t.subdomainAlwaysWorks}</h2>
           <CopyField value={view.subdomain} chip="URL" />
         </section>
       )}
@@ -53,7 +55,7 @@ export function DomainsManager({ view }: { view: DomainsView }) {
       {/* Add domain */}
       <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
         <label htmlFor="domain" className="block text-sm font-semibold text-ink">
-          আপনার ডোমেইন
+          {t.yourDomain}
         </label>
         <input
           id="domain"
@@ -64,21 +66,21 @@ export function DomainsManager({ view }: { view: DomainsView }) {
           autoComplete="off"
           className={inputCls}
         />
-        <p className="text-xs text-ink-muted">http:// বা www ছাড়া শুধু ডোমেইনটি লিখুন।</p>
+        <p className="text-xs text-ink-muted">{t.domainHint}</p>
         {error && (
           <p role="alert" className="rounded-md bg-danger-weak px-3 py-2 text-sm font-medium text-danger">
             {error}
           </p>
         )}
         <Button onClick={add} disabled={pending || !domain.trim()}>
-          {pending ? "যোগ হচ্ছে…" : "যোগ করুন"}
+          {pending ? t.adding : t.addDomain}
         </Button>
       </section>
 
       {/* Existing custom domains */}
       {view.custom.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-center text-sm text-ink-muted">
-          এখনো কোনো কাস্টম ডোমেইন যোগ করা হয়নি। আপনার নিজের ডোমেইন যোগ করুন (যেমন yourstore.com)।
+          {t.empty}
         </p>
       ) : (
         <ul className="space-y-4">
@@ -93,16 +95,12 @@ export function DomainsManager({ view }: { view: DomainsView }) {
 
 const STEP_META: Record<
   DomainState,
-  { label: string; sub?: string; tone: "pending" | "verified" | "live" | "failed" }
+  { labelKey: "pendingDns" | "dnsVerified" | "sslIssued" | "failed"; hasSub?: boolean; tone: "pending" | "verified" | "live" | "failed" }
 > = {
-  pending_dns: { label: "DNS-এর অপেক্ষায়", tone: "pending" },
-  dns_verified: {
-    label: "DNS মিলেছে · SSL তৈরি হচ্ছে",
-    sub: "🔒 সার্টিফিকেট আসছে (২–১০ মিনিট)",
-    tone: "verified",
-  },
-  ssl_issued: { label: "✓ লাইভ · নিরাপদ (HTTPS)", tone: "live" },
-  failed: { label: "সংযোগ ব্যর্থ", tone: "failed" },
+  pending_dns: { labelKey: "pendingDns", tone: "pending" },
+  dns_verified: { labelKey: "dnsVerified", hasSub: true, tone: "verified" },
+  ssl_issued: { labelKey: "sslIssued", tone: "live" },
+  failed: { labelKey: "failed", tone: "failed" },
 };
 
 const TONE_CLS: Record<string, string> = {
@@ -114,9 +112,11 @@ const TONE_CLS: Record<string, string> = {
 
 function DomainCard({ domain }: { domain: CustomDomainView }) {
   const router = useRouter();
+  const t = useDict().admin.settingsGeneral.domains;
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const meta = STEP_META[domain.state];
+  const label = t.state[meta.labelKey];
 
   function run(fn: typeof checkDomainStatus, extra?: Record<string, string>) {
     setError(null);
@@ -125,7 +125,7 @@ function DomainCard({ domain }: { domain: CustomDomainView }) {
     if (extra) for (const [k, v] of Object.entries(extra)) fd.set(k, v);
     startTransition(async () => {
       const result = await fn(null, fd);
-      if (!result.ok) setError(result.error ?? "অপারেশন ব্যর্থ।");
+      if (!result.ok) setError(result.error ?? t.operationFailed);
       else router.refresh();
     });
   }
@@ -136,30 +136,29 @@ function DomainCard({ domain }: { domain: CustomDomainView }) {
         <div className="min-w-0">
           <p className="truncate font-semibold text-ink">{domain.domain}</p>
           {domain.isPrimary && (
-            <span className="text-2xs font-semibold uppercase text-success">প্রাইমারি</span>
+            <span className="text-2xs font-semibold uppercase text-success">{t.primary}</span>
           )}
         </div>
         <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${TONE_CLS[meta.tone]}`}>
-          {meta.label}
+          {label}
         </span>
       </div>
-      {meta.sub && <p className="text-xs text-ink-muted">{meta.sub}</p>}
+      {meta.hasSub && <p className="text-xs text-ink-muted">{t.state.dnsVerifiedSub}</p>}
 
       {/* DNS records — shown until the domain is live */}
       {domain.state !== "ssl_issued" && (
         <div className="space-y-3 rounded-md bg-surface-2 p-3">
           <p className="text-xs text-ink-muted">
-            আপনার ডোমেইন প্রোভাইডারে (যেমন GoDaddy / Namecheap) নিচের রেকর্ডগুলো যোগ করুন।
+            {t.dnsInstruction}
           </p>
           {domain.records.map((r) => (
             <CopyField key={`${r.type}-${r.host}`} chip={`${r.type} · ${r.host}`} value={r.value} />
           ))}
           <p className="text-2xs text-ink-subtle">
-            CAA রেকর্ড থাকলে <code>0 issue letsencrypt.org</code> যোগ করুন — নাহলে SSL আসবে না।
+            {t.caaNote} <code>0 issue letsencrypt.org</code> {t.caaNoteSuffix}
           </p>
           <p className="rounded-md bg-primary-weak px-3 py-2 text-2xs font-medium text-primary">
-            DNS পরিবর্তন ছড়াতে কয়েক ঘণ্টা (কখনো ৪৮ ঘণ্টা পর্যন্ত) লাগতে পারে — এটা স্বাভাবিক। আমরা নিজে
-            থেকে চেক করতে থাকব।
+            {t.dnsPropagation}
           </p>
         </div>
       )}
@@ -173,19 +172,19 @@ function DomainCard({ domain }: { domain: CustomDomainView }) {
       <div className="flex flex-wrap gap-2">
         {domain.state === "failed" ? (
           <Button variant="secondary" onClick={() => run(retryDomain)} disabled={pending}>
-            আবার চেষ্টা করুন
+            {t.retry}
           </Button>
         ) : domain.state !== "ssl_issued" ? (
           <Button variant="secondary" onClick={() => run(checkDomainStatus)} disabled={pending}>
-            {pending ? "চেক হচ্ছে…" : "স্ট্যাটাস চেক করুন"}
+            {pending ? t.checking : t.checkStatus}
           </Button>
         ) : !domain.isPrimary ? (
           <Button onClick={() => run(setPrimaryDomain)} disabled={pending}>
-            প্রাইমারি করুন
+            {t.makePrimary}
           </Button>
         ) : null}
         <Button variant="ghost" onClick={() => run(removeCustomDomain)} disabled={pending}>
-          সরান
+          {t.remove}
         </Button>
       </div>
     </li>

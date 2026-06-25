@@ -7,6 +7,7 @@ import {
   getSslcommerzSettings,
 } from "@/lib/admin/settings";
 import { getProviderCallbackUrl } from "@/lib/domains/callbackUrl";
+import { getDict } from "@/lib/i18n/server";
 import { BkashForm } from "./BkashForm";
 import { NagadForm } from "./NagadForm";
 import { SslcommerzForm } from "./SslcommerzForm";
@@ -32,12 +33,15 @@ export default async function PaymentSettingsPage() {
     getProviderCallbackUrl(tenantId, userId, "sslcommerz"),
   ]);
 
+  const { d } = await getDict();
+  const t = d.admin.settingsPayments;
+
   return (
-    <div lang="en" className="max-w-xl space-y-5">
+    <div className="max-w-xl space-y-5">
       <a href="/admin/settings" className="text-sm font-medium text-ink-muted hover:text-primary">
-        ← সেটিংস
+        ← {t.backToSettings}
       </a>
-      <h1 className="text-xl font-bold text-ink">পেমেন্ট</h1>
+      <h1 className="text-xl font-bold text-ink">{t.title}</h1>
 
       <CodForm enabled={payment.cod.enabled} />
       <BkashForm settings={payment.bkash} callbackUrl={bkashCb} />

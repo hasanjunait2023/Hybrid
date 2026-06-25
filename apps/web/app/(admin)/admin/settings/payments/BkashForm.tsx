@@ -15,6 +15,7 @@ import {
   BkashIcon,
 } from "@hybrid/ui";
 import type { BkashSettings } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { saveBkash } from "./actions";
 import { testBkash } from "../test-connection/actions";
 import { ModeChip } from "../ModeChip";
@@ -27,6 +28,7 @@ export function BkashForm({
   callbackUrl: string | null;
 }) {
   const router = useRouter();
+  const t = useDict().admin.settingsPayments;
   const [enabled, setEnabled] = useState(settings.enabled);
   const [mode, setMode] = useState<"sandbox" | "live">(settings.mode);
   const [username, setUsername] = useState("");
@@ -49,7 +51,7 @@ export function BkashForm({
     fd.set("appSecret", appSecret);
     startTransition(async () => {
       const result = await saveBkash(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         setUsername("");
@@ -64,7 +66,7 @@ export function BkashForm({
   return (
     <ProviderCard
       icon={<BkashIcon className="h-6 w-6" />}
-      title="বিকাশ"
+      title={t.bkash.title}
       accent="bkash"
       configured={settings.configured}
       enabled={enabled}
@@ -73,7 +75,7 @@ export function BkashForm({
       callback={
         callbackUrl && (
           <div className="space-y-1">
-            <CopyField label="Callback URL (সার্ভার-সেট, রেফারেন্সের জন্য)" value={callbackUrl} />
+            <CopyField label={t.bkash.callbackLabel} value={callbackUrl} />
           </div>
         )
       }
@@ -83,8 +85,8 @@ export function BkashForm({
       error={error}
       saved={saved}
     >
-      <CredentialField id="bk-username" label="ইউজারনেম" value={username} onChange={setUsername} hint={settings.usernameHint} />
-      <CredentialField id="bk-password" label="পাসওয়ার্ড" value={password} onChange={setPassword} type="password" />
+      <CredentialField id="bk-username" label={t.bkash.username} value={username} onChange={setUsername} hint={settings.usernameHint} />
+      <CredentialField id="bk-password" label={t.bkash.password} value={password} onChange={setPassword} type="password" />
       <CredentialField id="bk-appKey" label="app_key" value={appKey} onChange={setAppKey} hint={settings.appKeyHint} />
       <CredentialField id="bk-appSecret" label="app_secret" value={appSecret} onChange={setAppSecret} type="password" />
     </ProviderCard>

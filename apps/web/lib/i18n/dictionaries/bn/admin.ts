@@ -6,6 +6,14 @@ import { collections } from "./admin/collections";
 import { discounts } from "./admin/discounts";
 import { returns } from "./admin/returns";
 import { reviews } from "./admin/reviews";
+import { cod } from "./admin/cod";
+import { marketing } from "./admin/marketing";
+import { reports } from "./admin/reports";
+import { ordersDetail } from "./admin/ordersDetail";
+import { themes } from "./admin/themes";
+import { settingsGeneral } from "./admin/settingsGeneral";
+import { settingsPayments } from "./admin/settingsPayments";
+import { settingsComms } from "./admin/settingsComms";
 
 export const admin: typeof EnAdmin = {
   products,
@@ -14,6 +22,14 @@ export const admin: typeof EnAdmin = {
   discounts,
   returns,
   reviews,
+  cod,
+  marketing,
+  reports,
+  ordersDetail,
+  themes,
+  settingsGeneral,
+  settingsPayments,
+  settingsComms,
 
   shell: {
     badge: "অ্যাডমিন",

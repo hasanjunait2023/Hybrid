@@ -6,21 +6,25 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { updateOrderStatus, type ActionResult } from "../actions";
 
 interface Props {
   orderId: string;
   status: string;
   nextTo: string | null;
-  nextLabel: string | null;
 }
 
-export function OrderStatusActions({ orderId, status, nextTo, nextLabel }: Props) {
+type StatusActionKey = "confirmed" | "packed" | "shipped" | "delivered";
+
+export function OrderStatusActions({ orderId, status, nextTo }: Props) {
+  const t = useDict().admin.ordersDetail.statusActions;
   const [state, formAction] = useActionState<ActionResult | null, FormData>(
     updateOrderStatus,
     null,
   );
   const terminal = status === "cancelled" || status === "returned" || status === "delivered";
+  const nextLabel = nextTo && nextTo in t ? t[nextTo as StatusActionKey] : null;
 
   return (
     <div className="space-y-2">
@@ -29,14 +33,14 @@ export function OrderStatusActions({ orderId, status, nextTo, nextLabel }: Props
           <form action={formAction}>
             <input type="hidden" name="orderId" value={orderId} />
             <input type="hidden" name="to" value={nextTo} />
-            <PrimaryButton label={nextLabel} />
+            <PrimaryButton label={nextLabel} waitLabel={t.waiting} />
           </form>
         )}
         {!terminal && (
           <form action={formAction}>
             <input type="hidden" name="orderId" value={orderId} />
             <input type="hidden" name="to" value="cancelled" />
-            <CancelButton />
+            <CancelButton label={t.cancel} />
           </form>
         )}
       </div>
@@ -49,20 +53,20 @@ export function OrderStatusActions({ orderId, status, nextTo, nextLabel }: Props
   );
 }
 
-function PrimaryButton({ label }: { label: string }) {
+function PrimaryButton({ label, waitLabel }: { label: string; waitLabel: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? "অপেক্ষা করুন…" : label}
+      {pending ? waitLabel : label}
     </Button>
   );
 }
 
-function CancelButton() {
+function CancelButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" variant="secondary" disabled={pending} className="text-danger">
-      বাতিল করুন
+      {label}
     </Button>
   );
 }

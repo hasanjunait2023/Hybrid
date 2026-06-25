@@ -4,6 +4,7 @@
 // each a radio list of the pre-approved fonts with a live "আপনার দোকান" sample.
 // No upload, no URL — the radio set IS the allowlist (FONT_CHOICES).
 import { FONT_CHOICES, type ThemeTypography, type FontChoice } from "@/lib/theme/schema";
+import { useDict } from "@/lib/i18n/provider";
 
 interface TypographyControlsProps {
   typography: ThemeTypography;
@@ -11,16 +12,17 @@ interface TypographyControlsProps {
 }
 
 export function TypographyControls({ typography, onChange }: TypographyControlsProps) {
+  const t = useDict().admin.themes;
   return (
     <div className="space-y-5">
       <FontRadioGroup
-        legend="হেডিং ফন্ট"
+        legend={t.typography.headingFont}
         name="headingFont"
         value={typography.headingFont}
         onChange={(f) => onChange({ ...typography, headingFont: f })}
       />
       <FontRadioGroup
-        legend="বডি ফন্ট"
+        legend={t.typography.bodyFont}
         name="bodyFont"
         value={typography.bodyFont}
         onChange={(f) => onChange({ ...typography, bodyFont: f })}
@@ -40,6 +42,7 @@ function FontRadioGroup({
   value: FontChoice;
   onChange: (f: FontChoice) => void;
 }) {
+  const t = useDict().admin.themes;
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-semibold text-ink">{legend}</legend>
@@ -66,7 +69,7 @@ function FontRadioGroup({
                   className="bn-heading block text-lg text-ink"
                   style={{ fontFamily: `"${font}", var(--font-bangla)` }}
                 >
-                  আপনার দোকান
+                  {t.typography.sampleText}
                 </span>
               </span>
             </label>

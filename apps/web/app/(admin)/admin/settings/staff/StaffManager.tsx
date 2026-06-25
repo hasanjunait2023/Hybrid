@@ -6,6 +6,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { addMemberAction, changeRoleAction, removeMemberAction } from "./actions";
 
 type MemberRole = "owner" | "admin" | "staff";
@@ -17,7 +18,6 @@ interface Member {
   role: MemberRole;
 }
 
-const ROLE_BN: Record<MemberRole, string> = { owner: "মালিক", admin: "অ্যাডমিন", staff: "স্টাফ" };
 const ROLE_CLS: Record<MemberRole, string> = {
   owner: "bg-primary-weak text-primary",
   admin: "bg-st-confirmed-weak text-st-confirmed",
@@ -36,6 +36,9 @@ export function StaffManager({
   selfUserId: string;
 }) {
   const router = useRouter();
+  const d = useDict();
+  const t = d.admin.settingsComms;
+  const roleLabels = t.staff.roles;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +48,7 @@ export function StaffManager({
     setError(null);
     startTransition(async () => {
       const res = await fn();
-      if (!res.ok) setError(res.error ?? "ব্যর্থ হয়েছে।");
+      if (!res.ok) setError(res.error ?? t.staff.failed);
       else router.refresh();
     });
   };
@@ -62,23 +65,23 @@ export function StaffManager({
       {canManage && (
         <form action={add} className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4">
           <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">ইমেইল</span>
+            <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{t.staff.emailLabel}</span>
             <input name="email" type="email" required placeholder="staff@example.com"
               className="h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none" />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">নাম</span>
-            <input name="fullName" placeholder="ঐচ্ছিক"
+            <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{t.staff.nameLabel}</span>
+            <input name="fullName" placeholder={d.common.label.optional}
               className="h-11 w-36 rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none" />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">ভূমিকা</span>
+            <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{t.staff.roleLabel}</span>
             <select name="role" defaultValue="staff"
               className="h-11 rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none">
-              {roleOptions.map((r) => (<option key={r} value={r}>{ROLE_BN[r]}</option>))}
+              {roleOptions.map((r) => (<option key={r} value={r}>{roleLabels[r]}</option>))}
             </select>
           </label>
-          <Button type="submit" disabled={pending}>{pending ? "…" : "যোগ করুন"}</Button>
+          <Button type="submit" disabled={pending}>{pending ? "…" : t.staff.addMember}</Button>
         </form>
       )}
 
@@ -91,7 +94,7 @@ export function StaffManager({
           <li key={m.userId} className="flex flex-wrap items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">{m.fullName ?? m.email}</p>
-              <p className="truncate text-xs text-ink-muted">{m.email}{m.userId === selfUserId ? " · আপনি" : ""}</p>
+              <p className="truncate text-xs text-ink-muted">{m.email}{m.userId === selfUserId ? t.staff.youSuffix : ""}</p>
             </div>
             {canManage ? (
               <select
@@ -101,11 +104,11 @@ export function StaffManager({
                 className="h-9 rounded-md border border-border-strong bg-surface px-2 text-sm text-ink focus:border-primary focus:outline-none"
               >
                 {(["owner", "admin", "staff"] as MemberRole[]).map((r) => (
-                  <option key={r} value={r} disabled={r === "owner" && !isOwner}>{ROLE_BN[r]}</option>
+                  <option key={r} value={r} disabled={r === "owner" && !isOwner}>{roleLabels[r]}</option>
                 ))}
               </select>
             ) : (
-              <span className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${ROLE_CLS[m.role]}`}>{ROLE_BN[m.role]}</span>
+              <span className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${ROLE_CLS[m.role]}`}>{roleLabels[m.role]}</span>
             )}
             {canManage && m.userId !== selfUserId && (
               <button
@@ -114,7 +117,7 @@ export function StaffManager({
                 onClick={() => act(() => removeMemberAction(m.userId))}
                 className="rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-danger-weak disabled:opacity-50"
               >
-                সরান
+                {d.common.action.remove}
               </button>
             )}
           </li>

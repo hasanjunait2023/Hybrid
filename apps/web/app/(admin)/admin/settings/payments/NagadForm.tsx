@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ProviderCard, CredentialField, CopyField, TestConnectionButton, ShieldIcon } from "@hybrid/ui";
 import type { NagadSettings } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { saveNagad } from "./actions";
 import { testNagad } from "../test-connection/actions";
 import { ModeChip } from "../ModeChip";
@@ -21,6 +22,7 @@ export function NagadForm({
   callbackUrl: string | null;
 }) {
   const router = useRouter();
+  const t = useDict().admin.settingsPayments;
   const [enabled, setEnabled] = useState(settings.enabled);
   const [mode, setMode] = useState<"sandbox" | "live">(settings.mode);
   const [merchantId, setMerchantId] = useState("");
@@ -41,7 +43,7 @@ export function NagadForm({
     fd.set("nagadPublicKey", nagadPublicKey);
     startTransition(async () => {
       const result = await saveNagad(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         setMerchantId("");
@@ -55,21 +57,21 @@ export function NagadForm({
   return (
     <ProviderCard
       icon={<ShieldIcon className="h-6 w-6" />}
-      title="নগদ"
+      title={t.nagad.title}
       configured={settings.configured}
       enabled={enabled}
       onEnabledChange={setEnabled}
       mode={<ModeChip mode={mode} onChange={setMode} />}
       callback={
         <div className="space-y-1.5 rounded-md bg-surface-2 p-3">
-          <CopyField label="Callback URL" value={callbackUrl ?? ""} />
+          <CopyField label={t.nagad.callbackLabel} value={callbackUrl ?? ""} />
           {callbackUrl ? (
             <p className="text-2xs font-medium text-warning">
-              এই URL আপনার নগদ পোর্টালে callback হিসেবে বসান — না বসালে পেমেন্ট কনফার্ম হবে না।
+              {t.nagad.callbackWarning}
             </p>
           ) : (
             <p className="text-2xs font-medium text-ink-muted">
-              আগে একটি ডোমেইন ভেরিফাই করুন — তারপর সঠিক callback URL এখানে দেখা যাবে।
+              {t.nagad.callbackHint}
             </p>
           )}
         </div>

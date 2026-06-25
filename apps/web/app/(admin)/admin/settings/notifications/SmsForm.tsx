@@ -7,10 +7,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ProviderCard, CredentialField, ChatIcon } from "@hybrid/ui";
 import type { SmsSettings } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { saveSms } from "./actions";
 
 export function SmsForm({ settings }: { settings: SmsSettings }) {
   const router = useRouter();
+  const t = useDict().admin.settingsComms;
   const [enabled, setEnabled] = useState(settings.enabled);
   const [apiKey, setApiKey] = useState("");
   const [senderId, setSenderId] = useState(settings.senderId);
@@ -27,7 +29,7 @@ export function SmsForm({ settings }: { settings: SmsSettings }) {
     fd.set("senderId", senderId);
     startTransition(async () => {
       const result = await saveSms(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         setApiKey("");
@@ -49,7 +51,7 @@ export function SmsForm({ settings }: { settings: SmsSettings }) {
       saved={saved}
     >
       <CredentialField id="sms-apiKey" label="api_key" value={apiKey} onChange={setApiKey} hint={settings.apiKeyHint} />
-      <CredentialField id="sms-senderId" label="sender_id (ঐচ্ছিক)" value={senderId} onChange={setSenderId} />
+      <CredentialField id="sms-senderId" label={t.notifications.sms.senderIdLabel} value={senderId} onChange={setSenderId} />
     </ProviderCard>
   );
 }

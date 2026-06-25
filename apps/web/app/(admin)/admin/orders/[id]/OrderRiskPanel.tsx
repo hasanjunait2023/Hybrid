@@ -3,6 +3,7 @@
 // cancels/returns, RTO rate) plus the external phone-risk lookup when a provider
 // credential is configured. Server component — calls the data layer directly.
 import { getOrderRiskSignals, getExternalPhoneRisk } from "@/lib/admin/fraud";
+import { getDict } from "@/lib/i18n/server";
 import { BlockPhoneButton } from "./BlockPhoneButton";
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -20,6 +21,9 @@ export async function OrderRiskPanel({
   if (!risk.phone) return null;
   const external = await getExternalPhoneRisk(risk.phone);
 
+  const { d } = await getDict();
+  const t = d.admin.ordersDetail.risk;
+
   // High risk = blocked, or a recent duplicate, or >40% of prior orders bad.
   const highRisk = risk.blocked || risk.duplicateRecent > 0 || (risk.priorOrders >= 2 && risk.rtoRate > 0.4);
 
@@ -29,33 +33,33 @@ export async function OrderRiskPanel({
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className={`text-sm font-bold ${highRisk ? "text-danger" : "text-ink"}`}>
-          ঝুঁকি যাচাই
+          {t.heading}
         </h2>
         <BlockPhoneButton phone={risk.phone} blocked={risk.blocked} />
       </div>
 
       {risk.blocked && (
         <p className="mt-2 rounded-md bg-danger px-3 py-1.5 text-xs font-semibold text-ink-on-primary">
-          এই নম্বর ব্লক করা — সতর্ক থাকুন।
+          {t.blockedWarning}
         </p>
       )}
 
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
-        <Stat label="আগের অর্ডার" value={String(risk.priorOrders)} />
-        <Stat label="২৪ঘ-এ ডুপ্লিকেট" value={String(risk.duplicateRecent)} warn={risk.duplicateRecent > 0} />
-        <Stat label="বাতিল" value={String(risk.priorCancelled)} warn={risk.priorCancelled > 0} />
-        <Stat label="ফেরত / RTO" value={String(risk.priorReturned)} warn={risk.priorReturned > 0} />
+        <Stat label={t.priorOrders} value={String(risk.priorOrders)} />
+        <Stat label={t.duplicate24h} value={String(risk.duplicateRecent)} warn={risk.duplicateRecent > 0} />
+        <Stat label={t.cancelled} value={String(risk.priorCancelled)} warn={risk.priorCancelled > 0} />
+        <Stat label={t.returnedRto} value={String(risk.priorReturned)} warn={risk.priorReturned > 0} />
         {risk.priorOrders >= 1 && (
-          <Stat label="RTO রেট" value={pct(risk.rtoRate)} warn={risk.rtoRate > 0.4} />
+          <Stat label={t.rtoRate} value={pct(risk.rtoRate)} warn={risk.rtoRate > 0.4} />
         )}
         {external.configured && external.successRatio !== undefined && (
-          <Stat label="কুরিয়ার সাকসেস" value={pct(external.successRatio)} warn={external.successRatio < 0.6} />
+          <Stat label={t.courierSuccess} value={pct(external.successRatio)} warn={external.successRatio < 0.6} />
         )}
       </dl>
 
       {!external.configured && (
         <p className="mt-3 text-2xs text-ink-subtle">
-          বাহ্যিক ফ্রড-চেক চালু নেই — শুধু আপনার নিজের অর্ডার ইতিহাস থেকে সংকেত দেখানো হচ্ছে।
+          {t.externalDisabled}
         </p>
       )}
     </section>

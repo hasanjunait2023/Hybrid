@@ -4,10 +4,12 @@
 // server actions; refreshes the route so the panel re-reads the signal.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useDict } from "@/lib/i18n/provider";
 import { blockPhoneAction, unblockPhoneAction } from "../../customers/blacklist/actions";
 
 export function BlockPhoneButton({ phone, blocked }: { phone: string; blocked: boolean }) {
   const router = useRouter();
+  const t = useDict().admin.ordersDetail.blockPhone;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -16,8 +18,8 @@ export function BlockPhoneButton({ phone, blocked }: { phone: string; blocked: b
     startTransition(async () => {
       const res = blocked
         ? await unblockPhoneAction(phone)
-        : await blockPhoneAction(phone, "অর্ডার পেজ থেকে ব্লক");
-      if (!res.ok) setError(res.error ?? "ব্যর্থ");
+        : await blockPhoneAction(phone, t.reason);
+      if (!res.ok) setError(res.error ?? t.failed);
       else router.refresh();
     });
   };
@@ -35,7 +37,7 @@ export function BlockPhoneButton({ phone, blocked }: { phone: string; blocked: b
             : "bg-danger text-ink-on-primary hover:opacity-90"
         }`}
       >
-        {pending ? "…" : blocked ? "আনব্লক" : "নম্বর ব্লক করুন"}
+        {pending ? t.working : blocked ? t.unblock : t.block}
       </button>
     </span>
   );

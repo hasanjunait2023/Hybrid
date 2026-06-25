@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ProviderCard, CredentialField, CopyField, TestConnectionButton, ShieldIcon } from "@hybrid/ui";
 import type { SslcommerzSettings } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { saveSslcommerz } from "./actions";
 import { testSslcommerz } from "../test-connection/actions";
 import { ModeChip } from "../ModeChip";
@@ -20,6 +21,7 @@ export function SslcommerzForm({
   ipnUrl: string | null;
 }) {
   const router = useRouter();
+  const t = useDict().admin.settingsPayments;
   const [enabled, setEnabled] = useState(settings.enabled);
   const [mode, setMode] = useState<"sandbox" | "live">(settings.mode);
   const [storeId, setStoreId] = useState("");
@@ -38,7 +40,7 @@ export function SslcommerzForm({
     fd.set("storePassword", storePassword);
     startTransition(async () => {
       const result = await saveSslcommerz(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         setStoreId("");
@@ -51,21 +53,21 @@ export function SslcommerzForm({
   return (
     <ProviderCard
       icon={<ShieldIcon className="h-6 w-6" />}
-      title="SSLCommerz"
+      title={t.sslcommerz.title}
       configured={settings.configured}
       enabled={enabled}
       onEnabledChange={setEnabled}
       mode={<ModeChip mode={mode} onChange={setMode} />}
       callback={
         <div className="space-y-1.5 rounded-md bg-surface-2 p-3">
-          <CopyField label="IPN URL" value={ipnUrl ?? ""} />
+          <CopyField label={t.sslcommerz.ipnLabel} value={ipnUrl ?? ""} />
           {ipnUrl ? (
             <p className="text-2xs font-medium text-warning">
-              এই URL আপনার SSLCommerz প্যানেলে IPN হিসেবে রেজিস্টার করুন — না করলে পেমেন্ট কনফার্ম হবে না।
+              {t.sslcommerz.ipnWarning}
             </p>
           ) : (
             <p className="text-2xs font-medium text-ink-muted">
-              আগে একটি ডোমেইন ভেরিফাই করুন — তারপর সঠিক IPN URL এখানে দেখা যাবে।
+              {t.sslcommerz.ipnHint}
             </p>
           )}
         </div>

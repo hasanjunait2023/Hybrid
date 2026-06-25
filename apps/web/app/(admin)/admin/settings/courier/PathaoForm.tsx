@@ -9,12 +9,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ProviderCard, CredentialField, TestConnectionButton, TruckIcon } from "@hybrid/ui";
 import type { PathaoSettings } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { savePathao } from "./actions";
 import { testPathao } from "../test-connection/actions";
 import { ModeChip } from "../ModeChip";
 
 export function PathaoForm({ settings }: { settings: PathaoSettings }) {
   const router = useRouter();
+  const t = useDict().admin.settingsComms;
   const [enabled, setEnabled] = useState(settings.enabled);
   const [mode, setMode] = useState<"stage" | "live">(settings.mode);
   const [clientId, setClientId] = useState("");
@@ -37,7 +39,7 @@ export function PathaoForm({ settings }: { settings: PathaoSettings }) {
     fd.set("password", password);
     startTransition(async () => {
       const result = await savePathao(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         setClientId("");

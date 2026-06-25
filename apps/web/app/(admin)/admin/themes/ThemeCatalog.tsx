@@ -7,6 +7,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, cn } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { activateThemeAction } from "./actions";
 
 interface ThemeCard {
@@ -15,12 +16,6 @@ interface ThemeCard {
   descriptor: string;
   category: "general" | "fashion" | "electronics";
 }
-
-const CATEGORY_BN: Record<ThemeCard["category"], string> = {
-  general: "সাধারণ",
-  fashion: "ফ্যাশন",
-  electronics: "ইলেকট্রনিক্স",
-};
 
 interface ThemeCatalogProps {
   themes: ThemeCard[];
@@ -31,6 +26,7 @@ interface ThemeCatalogProps {
 
 export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogProps) {
   const router = useRouter();
+  const t = useDict().admin.themes;
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +36,7 @@ export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogPr
     startTransition(async () => {
       const res = await activateThemeAction(code);
       if (!res.ok) {
-        setError(res.error ?? "থিম চালু করা যায়নি।");
+        setError(res.error ?? t.catalog.activateFailed);
         setConfirming(null);
         return;
       }
@@ -73,7 +69,7 @@ export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogPr
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-base font-bold text-ink">{theme.name}</h3>
                   <span className="rounded-full bg-surface-2 px-2 py-0.5 text-2xs font-semibold text-ink-muted">
-                    {CATEGORY_BN[theme.category]}
+                    {t.catalog.category[theme.category]}
                   </span>
                 </div>
                 <p className="bn-body flex-1 text-sm text-ink-muted">{theme.descriptor}</p>
@@ -86,7 +82,7 @@ export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogPr
                       rel="noopener noreferrer"
                       className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-ink hover:bg-surface-2"
                     >
-                      প্রিভিউ
+                      {t.catalog.preview}
                     </a>
                   )}
                   {isActive ? (
@@ -94,7 +90,7 @@ export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogPr
                       href="/admin/themes/customize"
                       className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-primary px-3 text-sm font-semibold text-white hover:opacity-90"
                     >
-                      কাস্টমাইজ করুন
+                      {t.catalog.customize}
                     </a>
                   ) : (
                     <Button
@@ -103,7 +99,7 @@ export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogPr
                       disabled={pending}
                       className="min-h-11 flex-1"
                     >
-                      এই থিম চালু করুন
+                      {t.catalog.activate}
                     </Button>
                   )}
                 </div>
@@ -128,6 +124,7 @@ export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogPr
 // Active-theme badge sits on a token-colored tile (no preview image asset ships
 // this wave; the tile communicates the theme's primary palette instead).
 function ThemePreviewTile({ code, isActive }: { code: string; isActive: boolean }) {
+  const t = useDict().admin.themes;
   const palette: Record<string, string> = {
     doreja: "from-[#1D4ED8] to-[#F59E0B]",
     megh: "from-[#7C3AED] to-[#EC4899]",
@@ -142,7 +139,7 @@ function ThemePreviewTile({ code, isActive }: { code: string; isActive: boolean 
     >
       {isActive && (
         <span className="absolute left-2 top-2 rounded-full bg-success-weak px-2 py-0.5 text-2xs font-semibold text-success">
-          ✓ বর্তমান থিম
+          ✓ {t.catalog.currentTheme}
         </span>
       )}
       <span className="text-lg font-bold text-white/90 drop-shadow">{code}</span>
@@ -161,6 +158,7 @@ function ConfirmActivate({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const t = useDict().admin.themes;
   return (
     <div
       className="fixed inset-0 z-modal flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
@@ -170,13 +168,9 @@ function ConfirmActivate({
     >
       <div className="w-full max-w-md rounded-t-2xl bg-surface p-5 sm:rounded-2xl">
         <h2 id="activate-title" className="text-lg font-bold text-ink">
-          {themeName} থিম চালু করবেন?
+          {t.catalog.confirm.title.replace("{theme}", themeName)}
         </h2>
-        <p className="bn-body mt-2 text-sm text-ink-muted">
-          নতুন থিমে আপনার রং আর হিরো আবার দেখে নিন — থিমগুলোর গঠন আলাদা, তাই কিছু
-          কাস্টমাইজেশন আবার ঠিক করতে হতে পারে। এটি এখনই লাইভ স্টোরে যাবে না; আপনি
-          কাস্টমাইজ করে তারপর প্রকাশ করবেন।
-        </p>
+        <p className="bn-body mt-2 text-sm text-ink-muted">{t.catalog.confirm.body}</p>
         <div className="mt-5 flex gap-2">
           <button
             type="button"
@@ -184,10 +178,10 @@ function ConfirmActivate({
             disabled={pending}
             className="min-h-11 flex-1 rounded-md border border-border text-sm font-medium text-ink hover:bg-surface-2"
           >
-            বাতিল
+            {t.catalog.confirm.cancel}
           </button>
           <Button type="button" onClick={onConfirm} disabled={pending} className="min-h-11 flex-1">
-            {pending ? "চালু হচ্ছে…" : "চালু করুন"}
+            {pending ? t.catalog.confirm.activating : t.catalog.confirm.activate}
           </Button>
         </div>
       </div>

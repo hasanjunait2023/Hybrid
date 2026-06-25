@@ -5,20 +5,23 @@
 // confirm. The real collected/remitted figures are NOT altered (audit intact).
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useDict } from "@/lib/i18n/provider";
 import { resolveDiscrepancy, type ResolveResult } from "./settlement-actions";
 
 export function ResolveButton({ shipmentId }: { shipmentId: string }) {
+  const d = useDict();
+  const t = d.admin.cod.resolve;
   const [state, formAction] = useActionState<ResolveResult | null, FormData>(resolveDiscrepancy, null);
 
   if (state?.ok) {
-    return <span className="text-2xs font-medium text-cod">✓ সমাধান হয়েছে</span>;
+    return <span className="text-2xs font-medium text-cod">{t.resolved}</span>;
   }
 
   return (
     <form
       action={formAction}
       onSubmit={(e) => {
-        if (!confirm("কুরিয়ারের সাথে মিটমাট হয়েছে — সমাধান চিহ্নিত করবেন?")) e.preventDefault();
+        if (!confirm(t.confirm)) e.preventDefault();
       }}
     >
       <input type="hidden" name="shipmentId" value={shipmentId} />
@@ -33,6 +36,8 @@ export function ResolveButton({ shipmentId }: { shipmentId: string }) {
 }
 
 function SubmitButton() {
+  const d = useDict();
+  const t = d.admin.cod.resolve;
   const { pending } = useFormStatus();
   return (
     <button
@@ -40,7 +45,7 @@ function SubmitButton() {
       disabled={pending}
       className="rounded-md border border-border-strong px-2 py-1 text-2xs font-medium text-ink-muted hover:bg-surface-2 disabled:opacity-50"
     >
-      {pending ? "…" : "সমাধান হয়েছে"}
+      {pending ? t.pending : t.button}
     </button>
   );
 }

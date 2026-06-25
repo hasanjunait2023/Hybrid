@@ -1,8 +1,10 @@
 import { notFound, redirect } from "next/navigation";
-import { formatBdtLatin, StatusBadge, StatusStepper, PhoneIcon, ChatIcon } from "@hybrid/ui";
+import { StatusBadge, StatusStepper, PhoneIcon, ChatIcon } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getOrderDetail, nextAction } from "@/lib/admin/orders";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney } from "@/lib/i18n/format";
 import { OrderStatusActions } from "./OrderStatusActions";
 import { SendToCourierButton } from "./SendToCourierButton";
 import { OrderRiskPanel } from "./OrderRiskPanel";
@@ -27,10 +29,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
   const action = nextAction(order.fulfillmentStatus);
   const addr = order.shippingAddress;
 
+  const { locale, d } = await getDict();
+  const t = d.admin.ordersDetail;
+
   return (
-    <div lang="en" className="space-y-5">
+    <div className="space-y-5">
       <a href="/admin/orders" className="text-sm font-medium text-ink-muted hover:text-primary">
-        ← অর্ডার তালিকা
+        {t.backToList}
       </a>
 
       {/* Header */}
@@ -39,15 +44,15 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           <div>
             <h1 className="font-mono text-2xl font-bold text-ink tnum">#{order.orderNumber}</h1>
             <p className="mt-1 text-xs text-ink-muted">
-              {order.source === "manual" ? "ম্যানুয়াল" : "স্টোরফ্রন্ট"} ·{" "}
+              {order.source === "manual" ? t.source.manual : t.source.storefront} ·{" "}
               {formatDate(order.placedAt)}
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            <StatusBadge kind="fulfillment" value={order.fulfillmentStatus} />
-            <StatusBadge kind="payment" value={order.paymentStatus} />
+            <StatusBadge kind="fulfillment" value={order.fulfillmentStatus} lang={locale} />
+            <StatusBadge kind="payment" value={order.paymentStatus} lang={locale} />
             {order.codAmount > 0 && order.paymentStatus === "unpaid" && (
-              <StatusBadge kind="cod" value={order.shipment?.codStatus ?? "pending"} />
+              <StatusBadge kind="cod" value={order.shipment?.codStatus ?? "pending"} lang={locale} />
             )}
           </div>
         </div>
@@ -61,7 +66,6 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             orderId={order.id}
             status={order.fulfillmentStatus}
             nextTo={action?.to ?? null}
-            nextLabel={action?.bn ?? null}
           />
           <div className="ml-auto flex gap-2">
             <a
@@ -69,14 +73,14 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               target="_blank"
               className="inline-flex h-9 items-center rounded-md border border-border-strong bg-surface px-3 text-sm font-semibold text-ink hover:bg-surface-2"
             >
-              ইনভয়েস
+              {t.invoice}
             </a>
             <a
               href={`/admin/orders/${order.id}/print?doc=packing`}
               target="_blank"
               className="inline-flex h-9 items-center rounded-md border border-border-strong bg-surface px-3 text-sm font-semibold text-ink hover:bg-surface-2"
             >
-              প্যাকিং স্লিপ
+              {t.packingSlip}
             </a>
           </div>
         </div>
@@ -95,7 +99,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
         <div className="space-y-5">
           {/* Items */}
           <section className="overflow-hidden rounded-lg border border-border bg-surface">
-            <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">পণ্য</h2>
+            <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">{t.items.heading}</h2>
             <table className="w-full text-sm">
               <tbody className="divide-y divide-border">
                 {order.items.map((it) => (
@@ -110,22 +114,22 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-ink-muted tnum">
-                      {formatBdtLatin(it.unitPrice)} × {it.quantity}
+                      {formatMoney(it.unitPrice, locale)} × {it.quantity}
                     </td>
                     <td className="px-4 py-3 text-right font-mono font-semibold text-ink tnum">
-                      {formatBdtLatin(it.lineTotal)}
+                      {formatMoney(it.lineTotal, locale)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <dl className="space-y-1.5 border-t border-border px-4 py-3 text-sm">
-              <Row label="সাবটোটাল" value={formatBdtLatin(order.subtotal)} />
-              <Row label="ডেলিভারি চার্জ" value={formatBdtLatin(order.shippingTotal)} />
+              <Row label={t.items.subtotal} value={formatMoney(order.subtotal, locale)} />
+              <Row label={t.items.deliveryCharge} value={formatMoney(order.shippingTotal, locale)} />
               <div className="flex items-center justify-between border-t border-border pt-2">
-                <dt className="font-bold text-ink">সর্বমোট</dt>
+                <dt className="font-bold text-ink">{t.items.grandTotal}</dt>
                 <dd className="font-mono text-lg font-bold text-ink tnum">
-                  {formatBdtLatin(order.grandTotal)}
+                  {formatMoney(order.grandTotal, locale)}
                 </dd>
               </div>
             </dl>
@@ -133,19 +137,19 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
           {/* Payment */}
           <section className="rounded-lg border border-border bg-surface p-4">
-            <h2 className="mb-3 text-sm font-bold text-ink">পেমেন্ট</h2>
+            <h2 className="mb-3 text-sm font-bold text-ink">{t.payment.heading}</h2>
             <div className="flex flex-wrap items-center gap-2">
-              {order.payment && <StatusBadge kind="method" value={order.payment.provider} />}
-              <StatusBadge kind="payment" value={order.paymentStatus} />
+              {order.payment && <StatusBadge kind="method" value={order.payment.provider} lang={locale} />}
+              <StatusBadge kind="payment" value={order.paymentStatus} lang={locale} />
               {order.codAmount > 0 && (
                 <span className="font-mono text-sm font-semibold text-cod tnum">
-                  COD: {formatBdtLatin(order.codAmount)}
+                  COD: {formatMoney(order.codAmount, locale)}
                 </span>
               )}
             </div>
             {order.payment?.transactionId && (
               <p className="mt-2 font-mono text-xs text-ink-muted">
-                trxID: {order.payment.transactionId}
+                {t.payment.transactionPrefix} {order.payment.transactionId}
               </p>
             )}
           </section>
@@ -155,17 +159,17 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             order.fulfillmentStatus === "confirmed" ||
             order.fulfillmentStatus === "packed") && (
             <section className="rounded-lg border border-border bg-surface p-4">
-              <h2 className="mb-3 text-sm font-bold text-ink">কুরিয়ার</h2>
+              <h2 className="mb-3 text-sm font-bold text-ink">{t.courier.heading}</h2>
               {order.shipment ? (
                 <dl className="space-y-1 text-sm">
-                  <Row label="প্রোভাইডার" value={order.shipment.provider} mono />
+                  <Row label={t.courier.provider} value={order.shipment.provider} mono />
                   {order.shipment.consignmentId && (
-                    <Row label="কনসাইনমেন্ট" value={order.shipment.consignmentId} mono />
+                    <Row label={t.courier.consignment} value={order.shipment.consignmentId} mono />
                   )}
                   {order.shipment.trackingCode && (
-                    <Row label="ট্র্যাকিং" value={order.shipment.trackingCode} mono />
+                    <Row label={t.courier.tracking} value={order.shipment.trackingCode} mono />
                   )}
-                  <Row label="স্ট্যাটাস" value={order.shipment.status} mono />
+                  <Row label={t.courier.status} value={order.shipment.status} mono />
                 </dl>
               ) : (
                 <SendToCourierButton orderId={order.id} />
@@ -178,7 +182,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
         <aside className="space-y-5">
           {/* Customer */}
           <section className="rounded-lg border border-border bg-surface p-4">
-            <h2 className="mb-3 text-sm font-bold text-ink">গ্রাহক</h2>
+            <h2 className="mb-3 text-sm font-bold text-ink">{t.customer.heading}</h2>
             <p className="font-medium text-ink">{order.customerName ?? "—"}</p>
             {order.customerPhone && (
               <div className="mt-2 flex items-center gap-3">
@@ -193,7 +197,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-ink-subtle hover:text-primary"
-                  aria-label="Messenger"
+                  aria-label={t.customer.messengerAria}
                 >
                   <ChatIcon className="h-4 w-4" />
                 </a>
@@ -204,14 +208,14 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 href={`/admin/customers/${order.customerId}`}
                 className="mt-3 inline-block text-xs font-semibold text-primary hover:underline"
               >
-                গ্রাহকের বিস্তারিত →
+                {t.customer.viewDetails}
               </a>
             )}
           </section>
 
           {/* Shipping address */}
           <section className="rounded-lg border border-border bg-surface p-4">
-            <h2 className="mb-3 text-sm font-bold text-ink">ডেলিভারি ঠিকানা</h2>
+            <h2 className="mb-3 text-sm font-bold text-ink">{t.shipping.heading}</h2>
             <address className="space-y-0.5 text-sm not-italic text-ink-muted">
               {addr.recipient && <div className="font-medium text-ink">{addr.recipient}</div>}
               {addr.phone && <div className="font-mono tnum">{addr.phone}</div>}
@@ -224,7 +228,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
           {order.note && (
             <section className="rounded-lg border border-border bg-surface p-4">
-              <h2 className="mb-2 text-sm font-bold text-ink">নোট</h2>
+              <h2 className="mb-2 text-sm font-bold text-ink">{t.note.heading}</h2>
               <p className="text-sm text-ink-muted">{order.note}</p>
             </section>
           )}

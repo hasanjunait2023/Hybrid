@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getSmsSettings, getWhatsAppSettings } from "@/lib/admin/settings";
+import { getDict } from "@/lib/i18n/server";
 import { SmsForm } from "./SmsForm";
 import { WhatsAppForm } from "./WhatsAppForm";
 
@@ -19,12 +20,15 @@ export default async function NotificationSettingsPage() {
     getWhatsAppSettings(tenantId, session.userId),
   ]);
 
+  const { d } = await getDict();
+  const t = d.admin.settingsComms;
+
   return (
-    <div lang="en" className="max-w-xl space-y-5">
+    <div className="max-w-xl space-y-5">
       <a href="/admin/settings" className="text-sm font-medium text-ink-muted hover:text-primary">
-        ← সেটিংস
+        ← {t.settingsLink}
       </a>
-      <h1 className="text-xl font-bold text-ink">নোটিফিকেশন</h1>
+      <h1 className="text-xl font-bold text-ink">{t.notifications.title}</h1>
       <SmsForm settings={sms} />
       <WhatsAppForm settings={whatsapp} />
     </div>

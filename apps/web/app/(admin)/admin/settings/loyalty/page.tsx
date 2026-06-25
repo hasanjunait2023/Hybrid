@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getProgram } from "@/lib/admin/loyalty";
+import { getDict } from "@/lib/i18n/server";
 import { PageHeader } from "../../_ui";
 import { LoyaltyForm } from "./LoyaltyForm";
 
@@ -18,9 +19,12 @@ export default async function LoyaltySettingsPage() {
 
   const program = await getProgram(tenantId, session.userId);
 
+  const { d } = await getDict();
+  const t = d.admin.settingsGeneral.loyalty;
+
   return (
-    <div lang="en" className="space-y-4">
-      <PageHeader title="লয়্যালটি পয়েন্ট" subtitle="রিপিট ক্রেতাদের পুরস্কার দিন" />
+    <div className="space-y-4">
+      <PageHeader title={t.title} subtitle={t.subtitle} />
       <LoyaltyForm program={program} />
     </div>
   );

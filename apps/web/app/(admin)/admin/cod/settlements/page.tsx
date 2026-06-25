@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
-import { formatBdtLatin, StatusBadge, DeltaAmount, DiscrepancyStat, EmptyState } from "@hybrid/ui";
+import { StatusBadge, DeltaAmount, DiscrepancyStat, EmptyState } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getSettlements } from "@/lib/admin/cod";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { RemittanceUpload } from "./RemittanceUpload";
 import { ResolveButton } from "./ResolveButton";
 
@@ -18,51 +20,55 @@ export default async function SettlementsPage() {
 
   const { summary, rows, batches } = await getSettlements(tenantId, session.userId);
 
+  const { locale, d } = await getDict();
+  const t = d.admin.cod.settlements;
+
   return (
-    <div lang="en" className="space-y-5">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-xl font-bold text-ink">COD ও সেটেলমেন্ট</h1>
+        <h1 className="text-xl font-bold text-ink">{t.title}</h1>
         <RemittanceUpload />
       </div>
 
       {/* Q3.1 Summary band — the morning glance. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="rounded-lg border border-border bg-surface p-3">
-          <p className="text-xs font-medium text-ink-muted">প্রত্যাশিত COD</p>
-          <p className="mt-1 font-mono text-2xl font-bold tnum text-ink">{formatBdtLatin(summary.expected)}</p>
+          <p className="text-xs font-medium text-ink-muted">{t.summary.expected}</p>
+          <p className="mt-1 font-mono text-2xl font-bold tnum text-ink">{formatMoney(summary.expected, locale)}</p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-3">
-          <p className="text-xs font-medium text-ink-muted">সংগৃহীত</p>
-          <p className="mt-1 font-mono text-2xl font-bold tnum text-cod">{formatBdtLatin(summary.collected)}</p>
+          <p className="text-xs font-medium text-ink-muted">{t.summary.collected}</p>
+          <p className="mt-1 font-mono text-2xl font-bold tnum text-cod">{formatMoney(summary.collected, locale)}</p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-3">
-          <p className="text-xs font-medium text-ink-muted">জমা হয়েছে</p>
-          <p className="mt-1 font-mono text-2xl font-bold tnum text-cod">{formatBdtLatin(summary.remitted)}</p>
+          <p className="text-xs font-medium text-ink-muted">{t.summary.remitted}</p>
+          <p className="mt-1 font-mono text-2xl font-bold tnum text-cod">{formatMoney(summary.remitted, locale)}</p>
         </div>
         <DiscrepancyStat
-          label="গরমিল / বকেয়া"
+          label={t.summary.discrepancyLabel}
           amount={summary.discrepancy}
           discrepancyCount={summary.discrepancyCount}
+          lang={locale}
         />
       </div>
 
       {/* Q3.2 Per-shipment match table — the evidence. */}
       {rows.length === 0 ? (
         <EmptyState
-          title="এখনো কোনো COD চালান নেই"
-          hint="অর্ডার কুরিয়ারে পাঠালে এখানে দেখা যাবে; রেমিট্যান্স CSV আপলোড করে মিলিয়ে নিন।"
+          title={t.emptyRows.title}
+          hint={t.emptyRows.hint}
         />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-surface">
           <table className="w-full text-sm">
             <thead className="bg-surface-2 text-2xs uppercase text-ink-muted">
               <tr>
-                <th className="px-3 py-2 text-left font-semibold">চালান / অর্ডার</th>
-                <th className="px-3 py-2 text-right font-semibold">প্রত্যাশিত</th>
-                <th className="px-3 py-2 text-right font-semibold">সংগৃহীত</th>
-                <th className="px-3 py-2 text-right font-semibold">জমা</th>
-                <th className="px-3 py-2 text-right font-semibold">Δ গরমিল</th>
-                <th className="px-3 py-2 text-left font-semibold">অবস্থা</th>
+                <th className="px-3 py-2 text-left font-semibold">{t.table.shipmentOrder}</th>
+                <th className="px-3 py-2 text-right font-semibold">{t.table.expected}</th>
+                <th className="px-3 py-2 text-right font-semibold">{t.table.collected}</th>
+                <th className="px-3 py-2 text-right font-semibold">{t.table.remitted}</th>
+                <th className="px-3 py-2 text-right font-semibold">{t.table.discrepancy}</th>
+                <th className="px-3 py-2 text-left font-semibold">{t.table.status}</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -88,22 +94,22 @@ export default async function SettlementsPage() {
                       <div className="text-2xs text-ink-muted">{r.customerName ?? "—"}</div>
                       {missing && (
                         <div className="mt-0.5 text-2xs font-semibold text-danger">
-                          ⚠ রেমিট্যান্স পাওয়া যায়নি
+                          {t.missingRemittance}
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tnum text-ink">{formatBdtLatin(r.expected)}</td>
+                    <td className="px-3 py-2 text-right font-mono tnum text-ink">{formatMoney(r.expected, locale)}</td>
                     <td className="px-3 py-2 text-right font-mono tnum text-ink-muted">
-                      {r.collected == null ? "—" : formatBdtLatin(r.collected)}
+                      {r.collected == null ? "—" : formatMoney(r.collected, locale)}
                     </td>
                     <td className="px-3 py-2 text-right font-mono tnum text-ink-muted">
-                      {r.remitted == null ? "—" : formatBdtLatin(r.remitted)}
+                      {r.remitted == null ? "—" : formatMoney(r.remitted, locale)}
                     </td>
                     <td className="px-3 py-2 text-right">
                       <DeltaAmount amount={r.discrepancy} missing={missing} />
                     </td>
                     <td className="px-3 py-2">
-                      <StatusBadge kind="cod" value={r.codStatus} />
+                      <StatusBadge kind="cod" value={r.codStatus} lang={locale} />
                     </td>
                     <td className="px-3 py-2 text-right">
                       {isDiscrepancy && <ResolveButton shipmentId={r.shipmentId} />}
@@ -118,11 +124,11 @@ export default async function SettlementsPage() {
 
       {/* Q3.3 Remittance batch list. */}
       <section className="space-y-2">
-        <h2 className="text-sm font-bold text-ink">রেমিট্যান্স ব্যাচ</h2>
+        <h2 className="text-sm font-bold text-ink">{t.batchesHeading}</h2>
         {batches.length === 0 ? (
           <EmptyState
-            title="এখনো কোনো রেমিট্যান্স আপলোড হয়নি"
-            hint="কুরিয়ার থেকে CSV নামিয়ে আপলোড করুন।"
+            title={t.emptyBatches.title}
+            hint={t.emptyBatches.hint}
           />
         ) : (
           <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
@@ -134,12 +140,12 @@ export default async function SettlementsPage() {
                   <div className="text-2xs text-ink-muted">
                     {new Date(b.createdAt).toLocaleDateString("en-GB")}
                     {b.unmatchedCount > 0 && (
-                      <span className="ml-2 text-warning">মেলেনি: {b.unmatchedCount}</span>
+                      <span className="ml-2 text-warning">{t.unmatched}: {formatNumber(b.unmatchedCount, locale)}</span>
                     )}
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="font-mono text-sm font-semibold tnum text-ink">{formatBdtLatin(b.totalAmount)}</div>
+                  <div className="font-mono text-sm font-semibold tnum text-ink">{formatMoney(b.totalAmount, locale)}</div>
                   <span className="text-2xs text-ink-muted">{b.status}</span>
                 </div>
               </li>
@@ -149,7 +155,7 @@ export default async function SettlementsPage() {
       </section>
 
       <p className="rounded-md bg-surface-2 px-3 py-2 text-2xs text-ink-muted">
-        সব হিসাব আপনার নিজের ডেটা থেকে — Hybrid কোনো টাকা ছোঁয় না।
+        {t.footnote}
       </p>
     </div>
   );

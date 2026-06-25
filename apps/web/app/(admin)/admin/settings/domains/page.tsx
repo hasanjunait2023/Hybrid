@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getDomainsView } from "@/lib/domains/data";
+import { getDict } from "@/lib/i18n/server";
 import { DomainsManager } from "./DomainsManager";
 
 // Custom domain connect (DESIGN §Q5). Add domain → DNS records → status states →
@@ -15,12 +16,15 @@ export default async function DomainsSettingsPage() {
 
   const view = await getDomainsView(tenantId, session.userId);
 
+  const { d } = await getDict();
+  const t = d.admin.settingsGeneral;
+
   return (
-    <div lang="en" className="max-w-xl space-y-5">
+    <div className="max-w-xl space-y-5">
       <a href="/admin/settings" className="text-sm font-medium text-ink-muted hover:text-primary">
-        ← সেটিংস
+        ← {t.title}
       </a>
-      <h1 className="text-xl font-bold text-ink">কাস্টম ডোমেইন</h1>
+      <h1 className="text-xl font-bold text-ink">{t.domains.title}</h1>
       <DomainsManager view={view} />
     </div>
   );

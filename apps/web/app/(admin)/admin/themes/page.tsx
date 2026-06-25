@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getActiveThemeCode, getTenantSlug } from "@/lib/theme/data";
 import { THEME_CATALOG } from "@/lib/theme/catalog";
+import { getDict } from "@/lib/i18n/server";
 import { ThemeCatalog } from "./ThemeCatalog";
 
 // Theme catalog / picker (DESIGN §Q2). Operator-facing. Lists the 3 starter
@@ -32,13 +33,14 @@ export default async function ThemesPage() {
     category: t.category,
   }));
 
+  const { d } = await getDict();
+  const t = d.admin.themes;
+
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-xl font-bold text-ink">থিম ও ডিজাইন</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          একটি থিম বাছুন, তারপর রং, ফন্ট ও কন্টেন্ট কাস্টমাইজ করুন।
-        </p>
+        <h1 className="text-xl font-bold text-ink">{t.title}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.subtitle}</p>
       </header>
 
       <ThemeCatalog

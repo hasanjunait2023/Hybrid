@@ -9,10 +9,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ProviderCard, CredentialField, ChatIcon } from "@hybrid/ui";
 import type { WhatsAppSettings } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { saveWhatsApp } from "./actions";
 
 export function WhatsAppForm({ settings }: { settings: WhatsAppSettings }) {
   const router = useRouter();
+  const t = useDict().admin.settingsComms;
   const [enabled, setEnabled] = useState(settings.enabled);
   const [wabaId, setWabaId] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
@@ -31,7 +33,7 @@ export function WhatsAppForm({ settings }: { settings: WhatsAppSettings }) {
     fd.set("accessToken", accessToken);
     startTransition(async () => {
       const result = await saveWhatsApp(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         setAccessToken("");
@@ -53,8 +55,7 @@ export function WhatsAppForm({ settings }: { settings: WhatsAppSettings }) {
       saved={saved}
     >
       <p className="rounded-md bg-warning-weak px-3 py-2 text-xs font-medium text-warning">
-        ⚠ অর্ডার কনফার্মেশনের বাংলা টেমপ্লেটটি Meta-তে অনুমোদিত হতে হবে (Utility
-        template)। অনুমোদন না হওয়া পর্যন্ত মেসেজ পাঠানো যাবে না।
+        {t.notifications.whatsapp.templateWarning}
       </p>
       <CredentialField
         id="whatsapp-wabaId"
@@ -65,14 +66,14 @@ export function WhatsAppForm({ settings }: { settings: WhatsAppSettings }) {
       />
       <CredentialField
         id="whatsapp-phoneNumberId"
-        label="ফোন নম্বর ID"
+        label={t.notifications.whatsapp.phoneNumberIdLabel}
         value={phoneNumberId}
         onChange={setPhoneNumberId}
         hint={settings.phoneNumberIdHint}
       />
       <CredentialField
         id="whatsapp-accessToken"
-        label="অ্যাক্সেস টোকেন"
+        label={t.notifications.whatsapp.accessTokenLabel}
         value={accessToken}
         onChange={setAccessToken}
         hint={settings.configured ? "••••" : null}

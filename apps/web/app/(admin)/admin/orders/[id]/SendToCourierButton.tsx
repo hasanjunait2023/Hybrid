@@ -7,9 +7,11 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Button, TruckIcon } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { sendToCourier, type CourierActionResult } from "./courier-actions";
 
 export function SendToCourierButton({ orderId }: { orderId: string }) {
+  const t = useDict().admin.ordersDetail.sendCourier;
   const [state, formAction] = useActionState<CourierActionResult | null, FormData>(
     sendToCourier,
     null,
@@ -19,7 +21,7 @@ export function SendToCourierButton({ orderId }: { orderId: string }) {
     return (
       <p className="inline-flex items-center gap-1.5 text-sm font-medium text-st-shipped">
         <TruckIcon className="h-4 w-4" />
-        কুরিয়ারে পাঠানো হয়েছে — ট্র্যাকিং {state.trackingCode}
+        {t.sentPrefix} {state.trackingCode}
       </p>
     );
   }
@@ -28,7 +30,7 @@ export function SendToCourierButton({ orderId }: { orderId: string }) {
     <div className="space-y-1.5">
       <form action={formAction}>
         <input type="hidden" name="orderId" value={orderId} />
-        <SubmitButton />
+        <SubmitButton label={t.send} sendingLabel={t.sending} />
       </form>
       {state?.error && (
         <p role="alert" className="text-xs font-medium text-danger">
@@ -39,12 +41,12 @@ export function SendToCourierButton({ orderId }: { orderId: string }) {
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ label, sendingLabel }: { label: string; sendingLabel: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
       <TruckIcon className="mr-1.5 h-4 w-4" />
-      {pending ? "পাঠানো হচ্ছে…" : "কুরিয়ারে পাঠান"}
+      {pending ? sendingLabel : label}
     </Button>
   );
 }

@@ -8,11 +8,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ProviderCard, CredentialField, TestConnectionButton, TruckIcon } from "@hybrid/ui";
 import type { CourierSettings } from "@/lib/admin/settings";
+import { useDict } from "@/lib/i18n/provider";
 import { saveSteadfast } from "./actions";
 import { testSteadfast } from "../test-connection/actions";
 
 export function SteadfastForm({ settings }: { settings: CourierSettings }) {
   const router = useRouter();
+  const t = useDict().admin.settingsComms;
   const [enabled, setEnabled] = useState(settings.enabled);
   const [apiKey, setApiKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
@@ -29,7 +31,7 @@ export function SteadfastForm({ settings }: { settings: CourierSettings }) {
     fd.set("secretKey", secretKey);
     startTransition(async () => {
       const result = await saveSteadfast(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.saveFailed);
       else {
         setSaved(true);
         setApiKey("");
@@ -48,8 +50,7 @@ export function SteadfastForm({ settings }: { settings: CourierSettings }) {
       onEnabledChange={setEnabled}
       mode={
         <p className="rounded-md bg-warning-weak px-3 py-2 text-xs font-medium text-warning">
-          ⚠ Steadfast-এর কোনো স্যান্ডবক্স নেই — লাইভ ডেলিভারির জন্য portal.steadfast.com.bd-এ আসল
-          মার্চেন্ট অ্যাকাউন্ট লাগবে।
+          {t.courier.steadfast.noSandbox}
         </p>
       }
       test={<TestConnectionButton onTest={testSteadfast} disabled={!settings.configured} />}
