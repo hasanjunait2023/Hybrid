@@ -32,3 +32,10 @@
       (DB dumps + MinIO images) to **Cloudflare R2** bucket `hybrid-backups` via `mc mirror --remove`
       (cron 03:00). Survives full VPS loss. R2 creds in `/root/.r2-backup.env` (600, not in repo);
       repo copy of script at `infra/backup/hybrid-backup.sh`. Verified: dumps present in R2.
+
+## M3 prod gaps (post-deploy, 2026-06-25)
+- [x] Live AUTH_PROVIDER=supabase/GoTrue path automated test — DONE 90bbd62 (7 tests, injectable client seam).
+- [x] Returns WIP parked off master — DONE (branch wip/returns; master builds clean). Finish+review+test before merge.
+- [x] Off-site backups → Cloudflare R2 — DONE 2026-06-25 (founder).
+- [ ] 🔴 CRITICAL: Cloudflare 2-level-subdomain TLS — ALL of *.hybrid.ecomex.cloud (store-a/admin/app/cdn) return 000 publicly (TLS handshake fails at CF edge). Universal SSL covers only *.ecomex.cloud (1 level). Caddy origin certs are valid. Tenant storefronts + admin UNREACHABLE over internet; only marketing apex works. FIX (founder, needs CF dashboard): enable Advanced Certificate Manager / Total TLS with a wildcard cert for *.hybrid.ecomex.cloud (keeps proxy + edge cache; ~$10/mo) — OR grey-cloud (DNS-only) the records to serve Caddy LE certs directly (loses CF cache/DDoS; needs Caddy on-demand-TLS for unbounded tenant subdomains). Architecture decision for tenant-subdomain TLS at scale.
+- [ ] Test isolation: the @hybrid/db suite shares ONE embedded-pg DB + seed across all 22 test files → cross-file unique-key contention (tenant_slug/order_number/shipment_consignment dup-key) makes full-suite runs flaky (every file passes ALONE; worsening as files grow). Plus Windows AV crashes the in-repo .pgtmp cluster (use PGTMP_DIR outside repo). FIX: per-file data isolation (unique slugs/tenants per file) or per-file DB/schema; Linux CI currently masks it.
