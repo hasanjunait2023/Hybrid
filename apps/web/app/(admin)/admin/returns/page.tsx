@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { formatBdtLatin } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import {
@@ -8,7 +7,9 @@ import {
   type ReturnStatus,
   type ReturnType,
 } from "@/lib/admin/returns";
-import { timeAgoBn } from "@/lib/admin/format";
+import { timeAgo } from "@/lib/admin/format";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { PageHeader, StatStrip, StatCard } from "../_ui";
 import { ReturnStatusChip, ReturnTypeChip } from "./ReturnStatusChip";
 
@@ -19,28 +20,17 @@ interface ReturnsPageProps {
   searchParams: Promise<{ status?: string; type?: string; q?: string }>;
 }
 
-const STATUS_PILLS: { value: string; bn: string }[] = [
-  { value: "all", bn: "সব" },
-  { value: "requested", bn: "অনুরোধ" },
-  { value: "approved", bn: "অনুমোদিত" },
-  { value: "in_transit", bn: "পথে" },
-  { value: "received", bn: "গৃহীত" },
-  { value: "refunded", bn: "রিফান্ডেড" },
-  { value: "completed", bn: "সম্পন্ন" },
-  { value: "rejected", bn: "প্রত্যাখ্যাত" },
-  { value: "cancelled", bn: "বাতিল" },
-];
-
-const REASON_BN: Record<string, string> = {
-  wrong_item: "ভুল পণ্য",
-  damaged: "ক্ষতিগ্রস্ত",
-  size_issue: "সাইজ সমস্যা",
-  not_as_described: "বর্ণনা মেলেনি",
-  customer_refused: "গ্রাহক প্রত্যাখ্যান",
-  rto_undelivered: "ডেলিভারি ব্যর্থ",
-  fake_order: "ভুয়া অর্ডার",
-  other: "অন্যান্য",
-};
+const STATUS_PILL_KEYS = [
+  "all",
+  "requested",
+  "approved",
+  "in_transit",
+  "received",
+  "refunded",
+  "completed",
+  "rejected",
+  "cancelled",
+] as const;
 
 const STATUS_VALUES: ReturnStatus[] = [
   "requested",
@@ -84,50 +74,53 @@ export default async function AdminReturnsPage({ searchParams }: ReturnsPageProp
 
   const activeKey = type === "rto" ? "rto" : (status ?? "all");
 
+  const { locale, d } = await getDict();
+  const t = d.admin.returns;
+
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <PageHeader
-        title="রিটার্ন / RTO"
-        subtitle={`${stats.open} খোলা · ${stats.rtoQueue} RTO`}
+        title={t.title}
+        subtitle={`${formatNumber(stats.open, locale)} ${t.open} · ${formatNumber(stats.rtoQueue, locale)} ${t.rto}`}
       />
 
       <StatStrip>
-        <StatCard label="খোলা রিটার্ন" value={String(stats.open)} tone="pending" />
+        <StatCard label={t.stats.openReturns} value={formatNumber(stats.open, locale)} tone="pending" />
         <a href="/admin/returns?type=rto" className="contents">
           <StatCard
-            label="RTO কিউ"
-            value={String(stats.rtoQueue)}
+            label={t.stats.rtoQueue}
+            value={formatNumber(stats.rtoQueue, locale)}
             tone={stats.rtoQueue > 0 ? "warning" : "muted"}
             tappable
           />
         </a>
         <StatCard
-          label="এই মাসে রিফান্ড"
-          value={String(stats.refundedThisMonth)}
+          label={t.stats.refundedThisMonth}
+          value={formatNumber(stats.refundedThisMonth, locale)}
           tone="success"
         />
         <StatCard
-          label="রিফান্ড টাকা"
-          value={formatBdtLatin(stats.refundAmountThisMonth)}
+          label={t.stats.refundAmount}
+          value={formatMoney(stats.refundAmountThisMonth, locale)}
           mono
         />
       </StatStrip>
 
       {/* Filter pills (status + RTO type), horizontal-scroll */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        {STATUS_PILLS.map((pill) => {
-          const active = activeKey === pill.value;
+        {STATUS_PILL_KEYS.map((key) => {
+          const active = activeKey === key;
           return (
             <a
-              key={pill.value}
-              href={buildHref({ status: pill.value })}
+              key={key}
+              href={buildHref({ status: key })}
               className={`inline-flex shrink-0 items-center rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${
                 active
                   ? "bg-primary text-ink-on-primary"
                   : "border border-border bg-surface text-ink-muted hover:bg-surface-2"
               }`}
             >
-              {pill.bn}
+              {t.statusPills[key]}
             </a>
           );
         })}
@@ -145,7 +138,7 @@ export default async function AdminReturnsPage({ searchParams }: ReturnsPageProp
 
       {rows.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-12 text-center text-ink-muted">
-          কোনো রিটার্ন নেই।
+          {t.empty}
         </p>
       ) : (
         <>
@@ -161,7 +154,7 @@ export default async function AdminReturnsPage({ searchParams }: ReturnsPageProp
                     <span className="font-mono text-sm font-bold text-ink tnum">
                       #{r.orderNumber}
                     </span>
-                    <span className="text-2xs text-ink-subtle">{timeAgoBn(r.createdAt)}</span>
+                    <span className="text-2xs text-ink-subtle">{timeAgo(r.createdAt, locale)}</span>
                   </div>
                   <div className="mt-1 flex items-baseline justify-between gap-2">
                     <div className="min-w-0">
@@ -173,14 +166,14 @@ export default async function AdminReturnsPage({ searchParams }: ReturnsPageProp
                       )}
                     </div>
                     <span className="font-mono text-base font-bold text-ink tnum">
-                      {formatBdtLatin(r.refundAmount)}
+                      {formatMoney(r.refundAmount, locale)}
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <ReturnTypeChip type={r.type} />
-                    <ReturnStatusChip status={r.status} />
+                    <ReturnTypeChip type={r.type} lang={locale} />
+                    <ReturnStatusChip status={r.status} lang={locale} />
                     <span className="text-2xs text-ink-subtle">
-                      {REASON_BN[r.reason] ?? r.reason} · {r.itemCount} পণ্য
+                      {t.reason[r.reason as keyof typeof t.reason] ?? r.reason} · {formatNumber(r.itemCount, locale)} {t.itemsUnit}
                     </span>
                   </div>
                 </a>
@@ -194,13 +187,13 @@ export default async function AdminReturnsPage({ searchParams }: ReturnsPageProp
               <thead>
                 <tr className="border-b border-border-strong text-left text-xs uppercase tracking-wide text-ink-muted">
                   <th className="px-3 py-2.5 font-semibold">Order#</th>
-                  <th className="px-3 py-2.5 font-semibold">গ্রাহক</th>
-                  <th className="px-3 py-2.5 font-semibold">ধরন</th>
-                  <th className="px-3 py-2.5 font-semibold">কারণ</th>
-                  <th className="px-3 py-2.5 text-right font-semibold">পণ্য</th>
-                  <th className="px-3 py-2.5 text-right font-semibold">রিফান্ড</th>
-                  <th className="px-3 py-2.5 font-semibold">স্ট্যাটাস</th>
-                  <th className="px-3 py-2.5 font-semibold">তারিখ</th>
+                  <th className="px-3 py-2.5 font-semibold">{t.col.customer}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t.col.type}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t.col.reason}</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">{t.col.items}</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">{t.col.refund}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t.col.status}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t.col.date}</th>
                 </tr>
               </thead>
               <tbody>
@@ -223,21 +216,21 @@ export default async function AdminReturnsPage({ searchParams }: ReturnsPageProp
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <ReturnTypeChip type={r.type} />
+                      <ReturnTypeChip type={r.type} lang={locale} />
                     </td>
                     <td className="px-3 py-2.5 text-ink-muted">
-                      {REASON_BN[r.reason] ?? r.reason}
+                      {t.reason[r.reason as keyof typeof t.reason] ?? r.reason}
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-ink-muted tnum">
-                      {r.itemCount}
+                      {formatNumber(r.itemCount, locale)}
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono font-semibold text-ink tnum">
-                      {formatBdtLatin(r.refundAmount)}
+                      {formatMoney(r.refundAmount, locale)}
                     </td>
                     <td className="px-3 py-2.5">
-                      <ReturnStatusChip status={r.status} />
+                      <ReturnStatusChip status={r.status} lang={locale} />
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-ink-muted">{timeAgoBn(r.createdAt)}</td>
+                    <td className="px-3 py-2.5 text-xs text-ink-muted">{timeAgo(r.createdAt, locale)}</td>
                   </tr>
                 ))}
               </tbody>

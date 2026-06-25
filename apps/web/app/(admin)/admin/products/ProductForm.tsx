@@ -9,6 +9,7 @@
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button, TrashIcon, PlusIcon } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import {
   uploadProductImage,
   createProduct,
@@ -58,6 +59,8 @@ export function ProductForm({
   collections: CollectionOption[];
 }) {
   const router = useRouter();
+  const d = useDict();
+  const t = d.admin.products;
   const isEdit = Boolean(initial.id);
 
   const [title, setTitle] = useState(initial.title);
@@ -169,7 +172,7 @@ export function ProductForm({
       const action = isEdit ? updateProduct : createProduct;
       const result = await action(null, fd);
       // createProduct redirects on success (no result); updateProduct returns ok.
-      if (result && !result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (result && !result.ok) setError(result.error ?? t.form.saveFailed);
       else if (result?.ok) {
         setSaved(true);
         router.refresh();
@@ -192,11 +195,11 @@ export function ProductForm({
         {/* Basics */}
         <section className="space-y-4 rounded-lg border border-border bg-surface p-4">
           <div>
-            <label htmlFor="title" className="mb-1 block text-sm font-semibold text-ink">নাম</label>
+            <label htmlFor="title" className="mb-1 block text-sm font-semibold text-ink">{t.form.name}</label>
             <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label htmlFor="description" className="mb-1 block text-sm font-semibold text-ink">বিবরণ</label>
+            <label htmlFor="description" className="mb-1 block text-sm font-semibold text-ink">{t.form.description}</label>
             <textarea
               id="description"
               rows={4}
@@ -213,10 +216,10 @@ export function ProductForm({
         {/* Options + variant matrix */}
         <section className="space-y-4 rounded-lg border border-border bg-surface p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-ink">ভ্যারিয়েন্ট</h2>
+            <h2 className="text-sm font-bold text-ink">{t.form.variants}</h2>
             {options.length < 3 && (
               <button type="button" onClick={addOption} className="text-xs font-semibold text-primary hover:underline">
-                + অপশন যোগ করুন
+                + {t.form.addOption}
               </button>
             )}
           </div>
@@ -252,23 +255,23 @@ export function ProductForm({
       <aside className="space-y-5">
         <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
           <div>
-            <label htmlFor="status" className="mb-1 block text-sm font-semibold text-ink">স্ট্যাটাস</label>
+            <label htmlFor="status" className="mb-1 block text-sm font-semibold text-ink">{t.form.status}</label>
             <select
               id="status"
               value={status}
               onChange={(e) => setStatus(e.target.value as ProductFormData["status"])}
               className={inputCls}
             >
-              <option value="active">Active</option>
-              <option value="draft">Draft</option>
-              <option value="archived">Archived</option>
+              <option value="active">{t.statusPills.active}</option>
+              <option value="draft">{t.statusPills.draft}</option>
+              <option value="archived">{t.statusPills.archived}</option>
             </select>
           </div>
         </section>
 
         {collections.length > 0 && (
           <section className="space-y-2 rounded-lg border border-border bg-surface p-4">
-            <h2 className="text-sm font-bold text-ink">কালেকশন</h2>
+            <h2 className="text-sm font-bold text-ink">{t.form.collections}</h2>
             <ul className="space-y-1.5">
               {collections.map((c) => (
                 <li key={c.id}>
@@ -295,15 +298,15 @@ export function ProductForm({
           )}
           {saved && (
             <p role="status" className="rounded-md bg-success-weak px-3 py-2 text-sm font-medium text-success">
-              সেভ হয়েছে।
+              {t.form.saved}
             </p>
           )}
           <Button onClick={submit} disabled={pending} fullWidth>
-            {pending ? "সেভ হচ্ছে…" : isEdit ? "সেভ করুন" : "পণ্য তৈরি করুন"}
+            {pending ? t.form.saving : isEdit ? t.form.saveProduct : t.form.createProduct}
           </Button>
           {isEdit && (
             <Button onClick={onDelete} variant="secondary" disabled={pending} fullWidth className="text-danger">
-              পণ্য মুছুন
+              {t.form.deleteProduct}
             </Button>
           )}
         </div>
@@ -323,6 +326,7 @@ function OptionEditor({
   onChange: (patch: Partial<ProductFormOption>) => void;
   onRemove: () => void;
 }) {
+  const t = useDict().admin.products;
   const [valueDraft, setValueDraft] = useState("");
 
   function addValue() {
@@ -338,10 +342,10 @@ function OptionEditor({
         <input
           value={option.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="অপশনের নাম (যেমন সাইজ)"
+          placeholder={t.form.optionNamePlaceholder}
           className="h-9 flex-1 rounded-sm border border-border-strong bg-surface px-2 text-sm text-ink"
         />
-        <button type="button" onClick={onRemove} aria-label="অপশন সরান" className="text-ink-subtle hover:text-danger">
+        <button type="button" onClick={onRemove} aria-label={t.form.removeOption} className="text-ink-subtle hover:text-danger">
           <TrashIcon className="h-4 w-4" />
         </button>
       </div>
@@ -352,7 +356,7 @@ function OptionEditor({
             <button
               type="button"
               onClick={() => onChange({ values: option.values.filter((x) => x !== v) })}
-              aria-label={`${v} সরান`}
+              aria-label={`${v} ${t.form.removeValueSuffix}`}
               className="text-ink-subtle hover:text-danger"
             >
               ✕
@@ -368,7 +372,7 @@ function OptionEditor({
               addValue();
             }
           }}
-          placeholder="মান + Enter"
+          placeholder={t.form.valuePlaceholder}
           className="h-8 w-28 rounded-sm border border-border-strong bg-surface px-2 text-sm text-ink"
         />
       </div>
@@ -387,6 +391,7 @@ function VariantMatrix({
   onBulkPrice: (price: number) => void;
   onBulkStock: (stock: number) => void;
 }) {
+  const t = useDict().admin.products;
   const [bulkPriceVal, setBulkPriceVal] = useState("");
   const [bulkStockVal, setBulkStockVal] = useState("");
 
@@ -400,7 +405,7 @@ function VariantMatrix({
             inputMode="numeric"
             value={bulkPriceVal}
             onChange={(e) => setBulkPriceVal(e.target.value)}
-            placeholder="৳"
+            placeholder={t.form.bulkPricePlaceholder}
             className="h-8 w-20 rounded-sm border border-border-strong bg-surface px-2 font-mono text-sm tnum"
           />
           <button
@@ -408,7 +413,7 @@ function VariantMatrix({
             onClick={() => onBulkPrice(Number(bulkPriceVal) || 0)}
             className="h-8 rounded-sm border border-border-strong bg-surface px-2 text-xs font-semibold text-ink hover:bg-surface"
           >
-            সব দামে প্রয়োগ
+            {t.form.applyAllPrices}
           </button>
         </span>
         <span className="flex items-center gap-1">
@@ -417,7 +422,7 @@ function VariantMatrix({
             inputMode="numeric"
             value={bulkStockVal}
             onChange={(e) => setBulkStockVal(e.target.value)}
-            placeholder="স্টক"
+            placeholder={t.form.bulkStockPlaceholder}
             className="h-8 w-20 rounded-sm border border-border-strong bg-surface px-2 font-mono text-sm tnum"
           />
           <button
@@ -425,7 +430,7 @@ function VariantMatrix({
             onClick={() => onBulkStock(Number(bulkStockVal) || 0)}
             className="h-8 rounded-sm border border-border-strong bg-surface px-2 text-xs font-semibold text-ink"
           >
-            সব স্টকে প্রয়োগ
+            {t.form.applyAllStock}
           </button>
         </span>
       </div>
@@ -435,10 +440,10 @@ function VariantMatrix({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase text-ink-muted">
-              <th className="py-2 pr-2">ভ্যারিয়েন্ট</th>
-              <th className="py-2 pr-2">দাম</th>
-              <th className="py-2 pr-2">স্টক</th>
-              <th className="py-2 pr-2">SKU</th>
+              <th className="py-2 pr-2">{t.form.variants}</th>
+              <th className="py-2 pr-2">{t.form.price}</th>
+              <th className="py-2 pr-2">{t.form.stock}</th>
+              <th className="py-2 pr-2">{t.form.sku}</th>
             </tr>
           </thead>
           <tbody>
@@ -482,8 +487,8 @@ function VariantMatrix({
           <li key={comboKey(v.options) + i} className="rounded-md border border-border p-2">
             <p className="mb-2 text-sm font-semibold text-ink">{Object.values(v.options).join(" / ") || "Default"}</p>
             <div className="grid grid-cols-2 gap-2">
-              <LabeledInput label="দাম" value={v.price} onChange={(n) => onField(i, { price: n })} />
-              <LabeledInput label="স্টক" value={v.inventory} onChange={(n) => onField(i, { inventory: n })} />
+              <LabeledInput label={t.form.price} value={v.price} onChange={(n) => onField(i, { price: n })} />
+              <LabeledInput label={t.form.stock} value={v.inventory} onChange={(n) => onField(i, { inventory: n })} />
             </div>
             <input
               value={v.sku ?? ""}
@@ -505,10 +510,11 @@ function SingleVariantFields({
   variant: ProductFormVariant;
   onField: (patch: Partial<ProductFormVariant>) => void;
 }) {
+  const t = useDict().admin.products;
   return (
     <div className="grid grid-cols-2 gap-3">
-      <LabeledInput label="দাম (৳)" value={variant.price} onChange={(n) => onField({ price: n })} />
-      <LabeledInput label="স্টক" value={variant.inventory} onChange={(n) => onField({ inventory: n })} />
+      <LabeledInput label={t.form.priceWithUnit} value={variant.price} onChange={(n) => onField({ price: n })} />
+      <LabeledInput label={t.form.stock} value={variant.inventory} onChange={(n) => onField({ inventory: n })} />
     </div>
   );
 }
@@ -543,6 +549,7 @@ function ImageManager({
   images: string[];
   onChange: (urls: string[]) => void;
 }) {
+  const t = useDict().admin.products;
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -557,7 +564,7 @@ function ImageManager({
       fd.set("file", file);
       const result = await uploadProductImage(fd);
       if (result.ok && result.url) next.push(result.url);
-      else setUploadError(result.error ?? "আপলোড ব্যর্থ হয়েছে।");
+      else setUploadError(result.error ?? t.form.uploadFailed);
     }
     onChange(next);
     setUploading(false);
@@ -578,28 +585,28 @@ function ImageManager({
 
   return (
     <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
-      <h2 className="text-sm font-bold text-ink">ছবি</h2>
+      <h2 className="text-sm font-bold text-ink">{t.form.images}</h2>
       <div className="flex flex-wrap gap-2">
         {images.map((url, i) => (
           <div key={url} className="relative h-20 w-20 overflow-hidden rounded-md border border-border">
             <img src={url} alt="" className="h-full w-full object-cover" />
             {i === 0 && (
               <span className="absolute left-1 top-1 rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-ink">
-                কভার
+                {t.form.cover}
               </span>
             )}
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/50 px-1">
-              <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label="বামে" className="text-xs text-white disabled:opacity-30">◀</button>
-              <button type="button" onClick={() => remove(i)} aria-label="সরান" className="text-white">
+              <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t.form.moveLeft} className="text-xs text-white disabled:opacity-30">◀</button>
+              <button type="button" onClick={() => remove(i)} aria-label={t.form.removeImage} className="text-white">
                 <TrashIcon className="h-3.5 w-3.5" />
               </button>
-              <button type="button" onClick={() => move(i, 1)} disabled={i === images.length - 1} aria-label="ডানে" className="text-xs text-white disabled:opacity-30">▶</button>
+              <button type="button" onClick={() => move(i, 1)} disabled={i === images.length - 1} aria-label={t.form.moveRight} className="text-xs text-white disabled:opacity-30">▶</button>
             </div>
           </div>
         ))}
         <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border-strong text-xs text-ink-muted hover:bg-surface-2">
           <PlusIcon className="h-5 w-5" />
-          {uploading ? "..." : "ছবি"}
+          {uploading ? "..." : t.form.imageLabel}
           <input
             ref={fileRef}
             type="file"

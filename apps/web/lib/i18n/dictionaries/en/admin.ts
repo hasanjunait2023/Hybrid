@@ -1,6 +1,20 @@
-// Tenant admin panel strings. Grows as each admin surface is localized; nav +
-// shell + dashboard first.
+// Tenant admin panel strings. Core chrome (shell/nav/dashboard/orders) lives
+// inline; each feature surface is a namespace module merged below.
+import { products } from "./admin/products";
+import { customers } from "./admin/customers";
+import { collections } from "./admin/collections";
+import { discounts } from "./admin/discounts";
+import { returns } from "./admin/returns";
+import { reviews } from "./admin/reviews";
+
 export const admin = {
+  products,
+  customers,
+  collections,
+  discounts,
+  returns,
+  reviews,
+
   shell: {
     badge: "Admin",
     nav: "Admin navigation",

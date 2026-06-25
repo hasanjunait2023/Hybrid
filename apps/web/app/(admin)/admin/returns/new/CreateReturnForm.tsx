@@ -5,8 +5,10 @@
 // it assembles the structured input and posts to createReturnAction.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, formatBdtLatin } from "@hybrid/ui";
+import { Button } from "@hybrid/ui";
 import type { ReturnType, ReturnReason } from "@/lib/admin/returns";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { createReturnAction } from "../actions";
 
 interface OrderItem {
@@ -29,24 +31,25 @@ interface ItemState {
   restock: boolean;
 }
 
-const TYPES: { value: ReturnType; bn: string }[] = [
-  { value: "return", bn: "রিটার্ন" },
-  { value: "exchange", bn: "এক্সচেঞ্জ" },
-];
+const TYPE_VALUES: ReturnType[] = ["return", "exchange"];
 
-const REASONS: { value: ReturnReason; bn: string }[] = [
-  { value: "size_issue", bn: "সাইজ সমস্যা" },
-  { value: "wrong_item", bn: "ভুল পণ্য" },
-  { value: "damaged", bn: "ক্ষতিগ্রস্ত" },
-  { value: "not_as_described", bn: "বর্ণনা মেলেনি" },
-  { value: "customer_refused", bn: "গ্রাহক প্রত্যাখ্যান" },
-  { value: "other", bn: "অন্যান্য" },
+const REASON_VALUES: ReturnReason[] = [
+  "size_issue",
+  "wrong_item",
+  "damaged",
+  "not_as_described",
+  "customer_refused",
+  "other",
 ];
 
 const DEFAULT_STATE: ItemState = { selected: false, quantity: 1, restock: true };
 
 export function CreateReturnForm({ orderId, orderNumber, items }: Props) {
   const router = useRouter();
+  const locale = useLocale();
+  const d = useDict();
+  const t = d.admin.returns;
+  const tc = t.create;
   const [itemState, setItemState] = useState<Record<string, ItemState>>(() =>
     Object.fromEntries(items.map((it) => [it.orderItemId, { ...DEFAULT_STATE }])),
   );
@@ -64,7 +67,7 @@ export function CreateReturnForm({ orderId, orderNumber, items }: Props) {
   const submit = (formData: FormData) => {
     setError(null);
     if (selectedItems.length === 0) {
-      setError("অন্তত একটি পণ্য নির্বাচন করুন।");
+      setError(tc.selectAtLeastOne);
       return;
     }
     const note = String(formData.get("note") ?? "").trim() || undefined;
@@ -87,7 +90,7 @@ export function CreateReturnForm({ orderId, orderNumber, items }: Props) {
     startTransition(async () => {
       const res = await createReturnAction(payload);
       if (res && "error" in res && res.error) {
-        setError(typeof res.error === "string" ? res.error : "তৈরি করা যায়নি।");
+        setError(typeof res.error === "string" ? res.error : tc.createFailed);
         return;
       }
       const id = res && "id" in res ? res.id : undefined;
@@ -99,7 +102,7 @@ export function CreateReturnForm({ orderId, orderNumber, items }: Props) {
     <form action={submit} className="space-y-5">
       <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">
-          পণ্য নির্বাচন — অর্ডার #{orderNumber}
+          {tc.selectItems} — {tc.fromOrderPrefix} #{orderNumber}
         </h2>
         <ul className="divide-y divide-border">
           {items.map((it) => {
@@ -116,12 +119,12 @@ export function CreateReturnForm({ orderId, orderNumber, items }: Props) {
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-ink">{it.title}</span>
                     <span className="font-mono text-xs text-ink-muted tnum">
-                      {formatBdtLatin(it.unitPrice)} · সর্বোচ্চ {it.maxQuantity}
+                      {formatMoney(it.unitPrice, locale)} · {tc.max} {formatNumber(it.maxQuantity, locale)}
                     </span>
                   </span>
                 </label>
                 <label className="flex items-center gap-1.5">
-                  <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">Qty</span>
+                  <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{tc.qty}</span>
                   <input
                     type="number"
                     min={1}
@@ -144,7 +147,7 @@ export function CreateReturnForm({ orderId, orderNumber, items }: Props) {
                     onChange={(e) => update(it.orderItemId, { restock: e.target.checked })}
                     className="h-5 w-5 rounded border-border-strong accent-primary disabled:opacity-50"
                   />
-                  <span className="text-xs text-ink-muted">রিস্টক</span>
+                  <span className="text-xs text-ink-muted">{tc.restock}</span>
                 </label>
               </li>
             );
@@ -154,31 +157,33 @@ export function CreateReturnForm({ orderId, orderNumber, items }: Props) {
 
       <section className="grid gap-4 rounded-lg border border-border bg-surface p-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">ধরন</span>
+          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{tc.type}</span>
           <select
             value={type}
             onChange={(e) => setType(e.target.value as ReturnType)}
             className="h-11 rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
           >
-            {TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.bn}</option>
+            {TYPE_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {value === "return" ? tc.typeReturn : tc.typeExchange}
+              </option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">কারণ</span>
+          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{tc.reason}</span>
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value as ReturnReason)}
             className="h-11 rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
           >
-            {REASONS.map((r) => (
-              <option key={r.value} value={r.value}>{r.bn}</option>
+            {REASON_VALUES.map((value) => (
+              <option key={value} value={value}>{t.reason[value]}</option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">নোট (ঐচ্ছিক)</span>
+          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{tc.noteOptional}</span>
           <textarea
             name="note"
             rows={3}
@@ -195,10 +200,10 @@ export function CreateReturnForm({ orderId, orderNumber, items }: Props) {
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
-          {pending ? "অপেক্ষা করুন…" : "রিটার্ন তৈরি করুন"}
+          {pending ? tc.waiting : tc.submit}
         </Button>
         <a href={`/admin/orders/${orderId}`} className="text-sm font-medium text-ink-muted hover:text-primary">
-          বাতিল
+          {tc.cancel}
         </a>
       </div>
     </form>

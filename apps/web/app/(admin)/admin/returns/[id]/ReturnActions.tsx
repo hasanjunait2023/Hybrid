@@ -7,28 +7,20 @@
 import { useState, useTransition } from "react";
 import { Button } from "@hybrid/ui";
 import type { ReturnStatus, RefundMethod } from "@/lib/admin/returns";
+import { useDict } from "@/lib/i18n/provider";
 import { updateReturnStatusAction, refundReturnAction } from "../actions";
 
-interface StatusStep {
-  to: ReturnStatus;
-  bn: string;
-}
-
-// Next forward step(s) per status. Rejected/cancelled/completed are terminal.
-const NEXT_STEP: Partial<Record<ReturnStatus, StatusStep>> = {
-  requested: { to: "approved", bn: "অনুমোদন করুন" },
-  approved: { to: "in_transit", bn: "পথে পাঠান" },
-  in_transit: { to: "received", bn: "গৃহীত চিহ্নিত করুন" },
-  received: { to: "completed", bn: "সম্পন্ন করুন" },
-  refunded: { to: "completed", bn: "সম্পন্ন করুন" },
+// Next forward step per status + the dict key for its button label.
+// Rejected/cancelled/completed are terminal.
+const NEXT_STEP: Partial<Record<ReturnStatus, { to: ReturnStatus; labelKey: "approve" | "sendInTransit" | "markReceived" | "complete" }>> = {
+  requested: { to: "approved", labelKey: "approve" },
+  approved: { to: "in_transit", labelKey: "sendInTransit" },
+  in_transit: { to: "received", labelKey: "markReceived" },
+  received: { to: "completed", labelKey: "complete" },
+  refunded: { to: "completed", labelKey: "complete" },
 };
 
-const REFUND_METHODS: { value: RefundMethod; bn: string }[] = [
-  { value: "bkash", bn: "বিকাশ" },
-  { value: "nagad", bn: "নগদ (Nagad)" },
-  { value: "cash", bn: "ক্যাশ" },
-  { value: "none", bn: "রিফান্ড নয়" },
-];
+const REFUND_METHOD_VALUES: RefundMethod[] = ["bkash", "nagad", "cash", "none"];
 
 interface Props {
   returnId: string;
@@ -37,6 +29,7 @@ interface Props {
 }
 
 export function ReturnActions({ returnId, status, defaultRefundAmount }: Props) {
+  const t = useDict().admin.returns;
   const next = NEXT_STEP[status];
   const terminal = status === "completed" || status === "cancelled" || status === "rejected";
   const canRefund = status !== "rejected" && status !== "cancelled" && status !== "refunded";
@@ -51,6 +44,14 @@ export function ReturnActions({ returnId, status, defaultRefundAmount }: Props) 
       const res = await updateReturnStatusAction(returnId, to);
       if (res && "error" in res && res.error) setError(res.error);
     });
+  };
+
+  // Refund-method option labels: bkash/cash reuse the shared method dict; nagad
+  // and "no refund" use the action-specific variants ("নগদ (Nagad)" / "রিফান্ড নয়").
+  const methodLabel = (value: RefundMethod): string => {
+    if (value === "nagad") return t.actions.methodNagad;
+    if (value === "none") return t.actions.methodNone;
+    return t.method[value];
   };
 
   const refund = (formData: FormData) => {
@@ -68,7 +69,7 @@ export function ReturnActions({ returnId, status, defaultRefundAmount }: Props) 
       <div className="flex flex-wrap items-center gap-2">
         {next && (
           <Button type="button" disabled={pending} onClick={() => advance(next.to)}>
-            {pending ? "অপেক্ষা করুন…" : next.bn}
+            {pending ? t.actions.waiting : t.actions[next.labelKey]}
           </Button>
         )}
         {!terminal && status === "requested" && (
@@ -79,7 +80,7 @@ export function ReturnActions({ returnId, status, defaultRefundAmount }: Props) 
             className="text-danger"
             onClick={() => advance("rejected")}
           >
-            প্রত্যাখ্যান
+            {t.actions.reject}
           </Button>
         )}
         {!terminal && (
@@ -90,7 +91,7 @@ export function ReturnActions({ returnId, status, defaultRefundAmount }: Props) 
             className="text-ink-muted"
             onClick={() => advance("cancelled")}
           >
-            বাতিল
+            {t.actions.cancel}
           </Button>
         )}
       </div>
@@ -98,11 +99,11 @@ export function ReturnActions({ returnId, status, defaultRefundAmount }: Props) 
       {/* Refund form */}
       {canRefund && (
         <form action={refund} className="space-y-2 border-t border-border pt-4">
-          <h3 className="text-sm font-bold text-ink">রিফান্ড</h3>
+          <h3 className="text-sm font-bold text-ink">{t.actions.refund}</h3>
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1">
               <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">
-                পরিমাণ
+                {t.actions.amount}
               </span>
               <input
                 name="amount"
@@ -117,7 +118,7 @@ export function ReturnActions({ returnId, status, defaultRefundAmount }: Props) 
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">
-                মাধ্যম
+                {t.actions.method}
               </span>
               <select
                 name="method"
@@ -125,15 +126,15 @@ export function ReturnActions({ returnId, status, defaultRefundAmount }: Props) 
                 onChange={(e) => setMethod(e.target.value as RefundMethod)}
                 className="h-11 rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
               >
-                {REFUND_METHODS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.bn}
+                {REFUND_METHOD_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {methodLabel(value)}
                   </option>
                 ))}
               </select>
             </label>
             <Button type="submit" disabled={pending}>
-              {pending ? "অপেক্ষা করুন…" : "রিফান্ড করুন"}
+              {pending ? t.actions.waiting : t.actions.refundDo}
             </Button>
           </div>
         </form>

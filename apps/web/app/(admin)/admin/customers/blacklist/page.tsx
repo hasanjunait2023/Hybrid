@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listBlocklist } from "@/lib/admin/fraud";
+import { getDict } from "@/lib/i18n/server";
+import { formatNumber } from "@/lib/i18n/format";
 import { PageHeader } from "../../_ui";
 import { BlocklistManager } from "./BlocklistManager";
 
@@ -18,14 +20,17 @@ export default async function BlacklistPage() {
 
   const rows = await listBlocklist(tenantId, session.userId);
 
+  const { locale, d } = await getDict();
+  const t = d.admin.customers.blocklist;
+
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <PageHeader
-        title="ব্লকড নম্বর"
-        subtitle={`${rows.length} টি নম্বর ব্লক করা আছে`}
+        title={t.title}
+        subtitle={`${formatNumber(rows.length, locale)} ${t.numbersBlockedSuffix}`}
       />
       <p className="text-sm text-ink-muted">
-        ব্লক করা নম্বরের অর্ডারে সতর্কতা দেখানো হবে — COD প্রতারণা / বারবার বাতিল করা গ্রাহক ঠেকাতে।
+        {t.description}
       </p>
       <BlocklistManager rows={rows} />
     </div>

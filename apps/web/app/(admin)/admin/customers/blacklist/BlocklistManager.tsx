@@ -6,6 +6,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { blockPhoneAction, unblockPhoneAction } from "./actions";
 
 interface Row {
@@ -17,6 +18,8 @@ interface Row {
 
 export function BlocklistManager({ rows }: { rows: Row[] }) {
   const router = useRouter();
+  const d = useDict();
+  const t = d.admin.customers.blocklist;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +30,7 @@ export function BlocklistManager({ rows }: { rows: Row[] }) {
     startTransition(async () => {
       const res = await blockPhoneAction(phone, reason);
       if (!res.ok) {
-        setError(res.error ?? "যোগ করা যায়নি।");
+        setError(res.error ?? t.addFailed);
         return;
       }
       router.refresh();
@@ -37,7 +40,7 @@ export function BlocklistManager({ rows }: { rows: Row[] }) {
   const remove = (phone: string) => {
     startTransition(async () => {
       const res = await unblockPhoneAction(phone);
-      if (!res.ok) setError(res.error ?? "সরানো যায়নি।");
+      if (!res.ok) setError(res.error ?? t.removeFailed);
       else router.refresh();
     });
   };
@@ -49,7 +52,7 @@ export function BlocklistManager({ rows }: { rows: Row[] }) {
         className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4"
       >
         <label className="flex flex-col gap-1.5">
-          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">ফোন নম্বর</span>
+          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{t.phoneLabel}</span>
           <input
             name="phone"
             required
@@ -59,15 +62,15 @@ export function BlocklistManager({ rows }: { rows: Row[] }) {
           />
         </label>
         <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">কারণ (ঐচ্ছিক)</span>
+          <span className="text-2xs font-semibold uppercase tracking-wide text-ink-muted">{t.reasonLabel}</span>
           <input
             name="reason"
-            placeholder="যেমন: বারবার অর্ডার বাতিল"
+            placeholder={t.reasonPlaceholder}
             className="h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
           />
         </label>
         <Button type="submit" disabled={pending}>
-          {pending ? "…" : "ব্লক করুন"}
+          {pending ? "…" : t.block}
         </Button>
       </form>
 
@@ -79,7 +82,7 @@ export function BlocklistManager({ rows }: { rows: Row[] }) {
 
       {rows.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-10 text-center text-sm text-ink-muted">
-          কোনো নম্বর ব্লক করা নেই।
+          {t.empty}
         </p>
       ) : (
         <ul className="overflow-hidden rounded-lg border border-border bg-surface divide-y divide-border">
@@ -93,7 +96,7 @@ export function BlocklistManager({ rows }: { rows: Row[] }) {
                 disabled={pending}
                 className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-danger-weak disabled:opacity-50"
               >
-                আনব্লক
+                {t.unblock}
               </button>
             </li>
           ))}

@@ -4,6 +4,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SearchIcon } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 
 export function CustomerSearch({
   defaultValue,
@@ -13,6 +14,8 @@ export function CustomerSearch({
   sort: "recent" | "spend";
 }) {
   const router = useRouter();
+  const d = useDict();
+  const t = d.admin.customers.search;
   const [value, setValue] = useState(defaultValue);
 
   function push(nextSort: "recent" | "spend", q: string) {
@@ -39,8 +42,8 @@ export function CustomerSearch({
           inputMode="tel"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="নাম বা ফোন নম্বর"
-          aria-label="গ্রাহক খুঁজুন"
+          placeholder={t.placeholder}
+          aria-label={t.aria}
           className="h-11 w-full rounded-md border border-border-strong bg-surface pl-10 pr-3 text-base text-ink placeholder:text-ink-subtle focus-visible:border-primary"
         />
       </form>
@@ -50,14 +53,14 @@ export function CustomerSearch({
           onClick={() => push("recent", value)}
           className={`rounded px-3 py-1.5 ${sort === "recent" ? "bg-primary text-ink-on-primary" : "text-ink-muted"}`}
         >
-          সাম্প্রতিক
+          {t.recent}
         </button>
         <button
           type="button"
           onClick={() => push("spend", value)}
           className={`rounded px-3 py-1.5 ${sort === "spend" ? "bg-primary text-ink-on-primary" : "text-ink-muted"}`}
         >
-          খরচ
+          {t.spend}
         </button>
       </div>
     </div>

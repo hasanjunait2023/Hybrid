@@ -4,6 +4,7 @@
 // both actions; approved/rejected show the current state with the opposite move.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useDict } from "@/lib/i18n/provider";
 import { moderateReviewAction } from "./actions";
 
 interface Review {
@@ -26,6 +27,8 @@ function Stars({ n }: { n: number }) {
 }
 
 export function ReviewRow({ review }: { review: Review }) {
+  const d = useDict();
+  const t = d.admin.reviews;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +37,7 @@ export function ReviewRow({ review }: { review: Review }) {
     setError(null);
     startTransition(async () => {
       const res = await moderateReviewAction(review.id, status);
-      if (!res.ok) setError(res.error ?? "ব্যর্থ");
+      if (!res.ok) setError(res.error ?? d.common.action.failed);
       else router.refresh();
     });
   };
@@ -47,7 +50,7 @@ export function ReviewRow({ review }: { review: Review }) {
             <Stars n={review.rating} />
             <span className="truncate text-sm font-semibold text-ink">{review.productTitle ?? "—"}</span>
           </div>
-          <p className="mt-1 text-xs text-ink-muted">{review.customerName ?? "গ্রাহক"}</p>
+          <p className="mt-1 text-xs text-ink-muted">{review.customerName ?? t.customerFallback}</p>
         </div>
         {review.status !== "pending" && (
           <span
@@ -55,7 +58,7 @@ export function ReviewRow({ review }: { review: Review }) {
               review.status === "approved" ? "bg-success-weak text-success" : "bg-danger-weak text-danger"
             }`}
           >
-            {review.status === "approved" ? "অনুমোদিত" : "বাতিল"}
+            {review.status === "approved" ? t.status.approved : t.status.rejected}
           </span>
         )}
       </div>
@@ -71,7 +74,7 @@ export function ReviewRow({ review }: { review: Review }) {
             onClick={() => moderate("approved")}
             className="rounded-md bg-success px-3 py-1.5 text-xs font-semibold text-ink-on-primary hover:opacity-90 disabled:opacity-50"
           >
-            অনুমোদন
+            {t.action.approve}
           </button>
         )}
         {review.status !== "rejected" && (
@@ -81,7 +84,7 @@ export function ReviewRow({ review }: { review: Review }) {
             onClick={() => moderate("rejected")}
             className="rounded-md border border-border-strong px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger-weak disabled:opacity-50"
           >
-            বাতিল
+            {t.action.reject}
           </button>
         )}
       </div>

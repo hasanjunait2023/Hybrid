@@ -5,6 +5,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, SearchIcon } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { saveCollection, deleteCollection } from "../products/actions";
 
 export interface CollectionFormProduct {
@@ -29,6 +30,8 @@ export function CollectionForm({
   initial: CollectionFormData;
   products: CollectionFormProduct[];
 }) {
+  const d = useDict();
+  const t = d.admin.collections;
   const router = useRouter();
   const isEdit = Boolean(initial.id);
 
@@ -60,7 +63,7 @@ export function CollectionForm({
     fd.set("productIds", JSON.stringify(memberIds));
     startTransition(async () => {
       const result = await saveCollection(null, fd);
-      if (!result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (!result.ok) setError(result.error ?? t.form.saveFailed);
       else {
         setSaved(true);
         router.refresh();
@@ -82,11 +85,11 @@ export function CollectionForm({
     <div className="max-w-xl space-y-5">
       <section className="space-y-4 rounded-lg border border-border bg-surface p-4">
         <div>
-          <label htmlFor="title" className="mb-1 block text-sm font-semibold text-ink">নাম</label>
+          <label htmlFor="title" className="mb-1 block text-sm font-semibold text-ink">{d.common.label.name}</label>
           <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
         </div>
         <div>
-          <label htmlFor="description" className="mb-1 block text-sm font-semibold text-ink">বিবরণ</label>
+          <label htmlFor="description" className="mb-1 block text-sm font-semibold text-ink">{d.common.label.description}</label>
           <textarea
             id="description"
             rows={2}
@@ -98,13 +101,13 @@ export function CollectionForm({
       </section>
 
       <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
-        <h2 className="text-sm font-bold text-ink">পণ্য নির্বাচন করুন</h2>
+        <h2 className="text-sm font-bold text-ink">{t.form.selectProducts}</h2>
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle" />
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="পণ্য খুঁজুন"
+            placeholder={t.form.searchProducts}
             className="h-10 w-full rounded-sm border border-border-strong bg-surface pl-9 pr-3 text-base text-ink focus-visible:border-primary"
           />
         </div>
@@ -123,7 +126,7 @@ export function CollectionForm({
             </li>
           ))}
           {filtered.length === 0 && (
-            <li className="px-1 py-3 text-center text-sm text-ink-muted">কোনো পণ্য নেই।</li>
+            <li className="px-1 py-3 text-center text-sm text-ink-muted">{t.form.noProducts}</li>
           )}
         </ul>
       </section>
@@ -135,17 +138,17 @@ export function CollectionForm({
       )}
       {saved && (
         <p role="status" className="rounded-md bg-success-weak px-3 py-2 text-sm font-medium text-success">
-          সেভ হয়েছে।
+          {d.common.action.saved}
         </p>
       )}
 
       <div className="flex gap-2">
         <Button onClick={submit} disabled={pending}>
-          {pending ? "সেভ হচ্ছে…" : isEdit ? "সেভ করুন" : "কালেকশন তৈরি করুন"}
+          {pending ? d.common.action.saving : isEdit ? d.common.action.save : t.form.createCollection}
         </Button>
         {isEdit && (
           <Button onClick={onDelete} variant="secondary" disabled={pending} className="text-danger">
-            মুছুন
+            {d.common.action.delete}
           </Button>
         )}
       </div>

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getDiscount } from "@/lib/admin/discounts";
+import { getDict } from "@/lib/i18n/server";
 import { DiscountForm } from "../../DiscountForm";
 
 interface EditDiscountPageProps {
@@ -32,11 +33,14 @@ export default async function EditDiscountPage({ params }: EditDiscountPageProps
   const d = await getDiscount(tenantId, session.userId, id);
   if (!d) notFound();
 
+  const { d: dict } = await getDict();
+  const t = dict.admin.discounts;
+
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <a href="/admin/discounts" className="text-sm font-medium text-ink-muted hover:text-primary">
-          ← ডিসকাউন্ট
+          ← {t.form.backToDiscounts}
         </a>
         <h1 className="truncate font-mono text-xl font-bold uppercase text-ink">{d.code}</h1>
       </div>

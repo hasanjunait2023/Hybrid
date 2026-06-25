@@ -5,10 +5,12 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { SearchIcon } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 
 export function ProductSearch({ defaultValue }: { defaultValue: string }) {
   const router = useRouter();
   const params = useSearchParams();
+  const d = useDict();
   const [value, setValue] = useState(defaultValue);
 
   function submit(e: React.FormEvent) {
@@ -27,8 +29,8 @@ export function ProductSearch({ defaultValue }: { defaultValue: string }) {
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="পণ্যের নাম দিয়ে খুঁজুন"
-        aria-label="পণ্য খুঁজুন"
+        placeholder={d.admin.products.search.placeholder}
+        aria-label={d.admin.products.search.aria}
         className="h-11 w-full rounded-md border border-border-strong bg-surface pl-10 pr-3 text-base text-ink placeholder:text-ink-subtle focus-visible:border-primary"
       />
     </form>

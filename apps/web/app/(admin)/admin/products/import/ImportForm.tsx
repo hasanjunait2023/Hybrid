@@ -5,12 +5,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@hybrid/ui";
+import { useDict, useLocale } from "@/lib/i18n/provider";
+import { formatNumber } from "@/lib/i18n/format";
 import { importProductsAction, type ImportActionResult } from "./actions";
-
-const SAMPLE = "title,price,inventory,status\nসুতি পাঞ্জাবি,1290,20,active\nডেনিম শার্ট,990,15,draft";
 
 export function ImportForm() {
   const router = useRouter();
+  const locale = useLocale();
+  const t = useDict().admin.products.import;
   const [pending, startTransition] = useTransition();
   const [text, setText] = useState("");
   const [result, setResult] = useState<ImportActionResult | null>(null);
@@ -39,41 +41,41 @@ export function ImportForm() {
           onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
           className="text-sm text-ink-muted file:mr-3 file:rounded-md file:border file:border-border-strong file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-ink"
         />
-        <button type="button" onClick={() => setText(SAMPLE)} className="text-xs font-semibold text-primary hover:underline">
-          নমুনা বসান
+        <button type="button" onClick={() => setText(t.sampleCsv)} className="text-xs font-semibold text-primary hover:underline">
+          {t.insertSample}
         </button>
       </div>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={8}
-        placeholder="এখানে CSV পেস্ট করুন…"
+        placeholder={t.pastePlaceholder}
         className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 font-mono text-xs text-ink focus:border-primary focus:outline-none"
       />
       <Button onClick={submit} disabled={pending || text.trim().length === 0}>
-        {pending ? "ইম্পোর্ট হচ্ছে…" : "ইম্পোর্ট করুন"}
+        {pending ? t.importing : t.runImport}
       </Button>
 
       {result && (
         <div className="space-y-2 rounded-md bg-surface-2 p-3 text-sm">
           {result.ok ? (
-            <p className="font-semibold text-success">{result.created ?? 0} টি পণ্য যোগ হয়েছে।</p>
+            <p className="font-semibold text-success">{formatNumber(result.created ?? 0, locale)} {t.createdSuffix}</p>
           ) : (
             <p className="font-semibold text-danger">{result.error}</p>
           )}
           {(result.parseErrors?.length ?? 0) > 0 && (
             <div>
-              <p className="text-xs font-semibold text-ink-muted">সারি ত্রুটি:</p>
+              <p className="text-xs font-semibold text-ink-muted">{t.rowErrors}</p>
               <ul className="text-xs text-danger">
                 {result.parseErrors!.slice(0, 10).map((e, i) => (
-                  <li key={i}>লাইন {e.line}: {e.reason}</li>
+                  <li key={i}>{t.lineLabel} {formatNumber(e.line, locale)}: {e.reason}</li>
                 ))}
               </ul>
             </div>
           )}
           {(result.failed?.length ?? 0) > 0 && (
             <div>
-              <p className="text-xs font-semibold text-ink-muted">যোগ হয়নি:</p>
+              <p className="text-xs font-semibold text-ink-muted">{t.notAdded}</p>
               <ul className="text-xs text-danger">
                 {result.failed!.slice(0, 10).map((f, i) => (
                   <li key={i}>{f.title}: {f.reason}</li>

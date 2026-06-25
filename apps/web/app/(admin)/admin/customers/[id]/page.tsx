@@ -1,9 +1,11 @@
 import { notFound, redirect } from "next/navigation";
-import { formatBdtLatin, StatusBadge, PhoneIcon, ChatIcon } from "@hybrid/ui";
+import { StatusBadge, PhoneIcon, ChatIcon } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getCustomerDetail } from "@/lib/admin/customers";
-import { timeAgoBn } from "@/lib/admin/format";
+import { timeAgo } from "@/lib/admin/format";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { CustomerNotes } from "./CustomerNotes";
 
 // Customer detail (DESIGN §P5). Header with trust signals (orders, spent, COD
@@ -28,10 +30,13 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
       : 0;
   const riskyReturns = returnRate >= 0.3 && customer.returnedCount > 0;
 
+  const { locale, d } = await getDict();
+  const t = d.admin.customers.detail;
+
   return (
-    <div lang="en" className="space-y-5">
+    <div className="space-y-5">
       <a href="/admin/customers" className="text-sm font-medium text-ink-muted hover:text-primary">
-        ← গ্রাহক তালিকা
+        {t.backToList}
       </a>
 
       {/* Header */}
@@ -66,17 +71,17 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
 
         {/* Trust signals */}
         <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4 text-center">
-          <Stat label="অর্ডার" value={String(customer.ordersCount)} />
-          <Stat label="মোট খরচ" value={formatBdtLatin(customer.totalSpent)} mono />
+          <Stat label={t.statOrders} value={formatNumber(customer.ordersCount, locale)} />
+          <Stat label={t.statSpent} value={formatMoney(customer.totalSpent, locale)} mono />
           <Stat
-            label="ফেরত"
-            value={`${customer.returnedCount}/${customer.deliveredCount + customer.returnedCount}`}
+            label={t.statReturns}
+            value={`${formatNumber(customer.returnedCount, locale)}/${formatNumber(customer.deliveredCount + customer.returnedCount, locale)}`}
             tone={riskyReturns ? "danger" : "default"}
           />
         </div>
         {riskyReturns && (
           <p className="mt-2 rounded-md bg-danger-weak px-3 py-1.5 text-xs font-semibold text-danger">
-            উচ্চ ফেরত হার — সতর্ক থাকুন (COD ঝুঁকি)।
+            {t.highReturnWarning}
           </p>
         )}
       </section>
@@ -84,9 +89,9 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* Order history */}
         <section className="overflow-hidden rounded-lg border border-border bg-surface">
-          <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">অর্ডার ইতিহাস</h2>
+          <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">{t.orderHistory}</h2>
           {customer.orders.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-ink-muted">কোনো অর্ডার নেই।</p>
+            <p className="px-4 py-8 text-center text-sm text-ink-muted">{t.noOrders}</p>
           ) : (
             <ul className="divide-y divide-border">
               {customer.orders.map((o) => (
@@ -96,11 +101,11 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                     className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2"
                   >
                     <span className="font-mono text-sm font-semibold text-ink tnum">#{o.orderNumber}</span>
-                    <span className="flex-1 text-xs text-ink-subtle">{timeAgoBn(o.placedAt)}</span>
+                    <span className="flex-1 text-xs text-ink-subtle">{timeAgo(o.placedAt, locale)}</span>
                     <span className="font-mono text-sm font-semibold text-ink tnum">
-                      {formatBdtLatin(o.grandTotal)}
+                      {formatMoney(o.grandTotal, locale)}
                     </span>
-                    <StatusBadge kind="fulfillment" value={o.fulfillmentStatus} />
+                    <StatusBadge kind="fulfillment" value={o.fulfillmentStatus} lang={locale} />
                   </a>
                 </li>
               ))}
@@ -111,16 +116,16 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         {/* Aside: addresses + notes */}
         <aside className="space-y-5">
           <section className="rounded-lg border border-border bg-surface p-4">
-            <h2 className="mb-3 text-sm font-bold text-ink">ঠিকানা</h2>
+            <h2 className="mb-3 text-sm font-bold text-ink">{t.addresses}</h2>
             {customer.addresses.length === 0 ? (
-              <p className="text-sm text-ink-muted">কোনো ঠিকানা নেই।</p>
+              <p className="text-sm text-ink-muted">{t.noAddresses}</p>
             ) : (
               <ul className="space-y-3">
                 {customer.addresses.map((a) => (
                   <li key={a.id} className="rounded-md border border-border p-3 text-sm">
                     {a.isDefault && (
                       <span className="mb-1 inline-block rounded-full bg-primary-weak px-2 py-0.5 text-2xs font-semibold text-primary">
-                        ডিফল্ট
+                        {t.defaultBadge}
                       </span>
                     )}
                     {a.recipient && <p className="font-medium text-ink">{a.recipient}</p>}

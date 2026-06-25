@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
-import { formatBdtLatin } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listCustomers, getCustomerStats } from "@/lib/admin/customers";
-import { timeAgoBn } from "@/lib/admin/format";
+import { timeAgo } from "@/lib/admin/format";
+import { getDict } from "@/lib/i18n/server";
+import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { CustomerSearch } from "./CustomerSearch";
 import { PageHeader, StatStrip, StatCard } from "../_ui";
 
@@ -28,41 +29,44 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
     getCustomerStats(tenantId, session.userId),
   ]);
 
+  const { locale, d } = await getDict();
+  const t = d.admin.customers;
+
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <PageHeader
-        title="গ্রাহক"
-        subtitle={`${stats.total} জন গ্রাহক · ${stats.repeat} জন রিপিট`}
+        title={t.title}
+        subtitle={`${formatNumber(stats.total, locale)} ${t.customersUnit} · ${formatNumber(stats.repeat, locale)} ${t.repeatUnit}`}
         action={
           <div className="flex items-center gap-2">
             <a
               href="/admin/customers/export"
               className="hidden h-11 items-center rounded-md border border-border-strong px-3 text-sm font-semibold text-ink hover:bg-surface-2 sm:inline-flex"
             >
-              এক্সপোর্ট
+              {t.export}
             </a>
             <a
               href="/admin/customers/blacklist"
               className="inline-flex h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink hover:bg-surface-2"
             >
-              ব্লকড নম্বর
+              {t.blockedNumbers}
             </a>
           </div>
         }
       />
 
       <StatStrip>
-        <StatCard label="মোট গ্রাহক" value={String(stats.total)} />
-        <StatCard label="রিপিট গ্রাহক" value={String(stats.repeat)} tone="success" />
-        <StatCard label="মোট আয়" value={formatBdtLatin(stats.totalRevenue)} mono />
-        <StatCard label="গড় খরচ" value={formatBdtLatin(stats.avgSpend)} mono />
+        <StatCard label={t.stats.totalCustomers} value={formatNumber(stats.total, locale)} />
+        <StatCard label={t.stats.repeatCustomers} value={formatNumber(stats.repeat, locale)} tone="success" />
+        <StatCard label={t.stats.totalRevenue} value={formatMoney(stats.totalRevenue, locale)} mono />
+        <StatCard label={t.stats.avgSpend} value={formatMoney(stats.avgSpend, locale)} mono />
       </StatStrip>
 
       <CustomerSearch defaultValue={query ?? ""} sort={sort} />
 
       {customers.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-12 text-center text-ink-muted">
-          কোনো গ্রাহক নেই।
+          {t.empty}
         </p>
       ) : (
         <>
@@ -77,13 +81,13 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                   <div className="flex items-baseline justify-between">
                     <span className="text-sm font-semibold text-ink">{c.name ?? "—"}</span>
                     <span className="font-mono text-sm font-bold text-ink tnum">
-                      {formatBdtLatin(c.totalSpent)}
+                      {formatMoney(c.totalSpent, locale)}
                     </span>
                   </div>
                   <div className="mt-0.5 flex items-center justify-between">
                     <span className="font-mono text-xs text-ink-muted tnum">{c.phone}</span>
                     <span className="text-2xs text-ink-subtle">
-                      {c.ordersCount} অর্ডার · {c.lastOrderAt ? timeAgoBn(c.lastOrderAt) : "—"}
+                      {formatNumber(c.ordersCount, locale)} {t.ordersUnit} · {c.lastOrderAt ? timeAgo(c.lastOrderAt, locale) : "—"}
                     </span>
                   </div>
                   {c.tags.length > 0 && <Tags tags={c.tags} />}
@@ -97,11 +101,11 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border-strong text-left text-xs uppercase tracking-wide text-ink-muted">
-                  <th className="px-4 py-2.5 font-semibold">নাম</th>
-                  <th className="px-4 py-2.5 font-semibold">ফোন</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">অর্ডার</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">মোট খরচ</th>
-                  <th className="px-4 py-2.5 font-semibold">শেষ অর্ডার</th>
+                  <th className="px-4 py-2.5 font-semibold">{t.table.name}</th>
+                  <th className="px-4 py-2.5 font-semibold">{t.table.phone}</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t.table.orders}</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">{t.table.totalSpent}</th>
+                  <th className="px-4 py-2.5 font-semibold">{t.table.lastOrder}</th>
                 </tr>
               </thead>
               <tbody>
@@ -117,12 +121,12 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                       {c.tags.length > 0 && <Tags tags={c.tags} />}
                     </td>
                     <td className="px-4 py-2.5 font-mono text-ink-muted tnum">{c.phone}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-ink tnum">{c.ordersCount}</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-ink tnum">{formatNumber(c.ordersCount, locale)}</td>
                     <td className="px-4 py-2.5 text-right font-mono font-semibold text-ink tnum">
-                      {formatBdtLatin(c.totalSpent)}
+                      {formatMoney(c.totalSpent, locale)}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-ink-muted">
-                      {c.lastOrderAt ? timeAgoBn(c.lastOrderAt) : "—"}
+                      {c.lastOrderAt ? timeAgo(c.lastOrderAt, locale) : "—"}
                     </td>
                   </tr>
                 ))}

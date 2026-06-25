@@ -4,6 +4,7 @@
 // Tags are comma-managed chips; risk tags render in danger-weak.
 import { useState, useTransition } from "react";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { updateCustomerNoteAndTags } from "../actions";
 
 export function CustomerNotes({
@@ -15,6 +16,8 @@ export function CustomerNotes({
   initialNote: string;
   initialTags: string[];
 }) {
+  const d = useDict();
+  const t = d.admin.customers.notes;
   const [note, setNote] = useState(initialNote);
   const [tags, setTags] = useState<string[]>(initialTags);
   const [draft, setDraft] = useState("");
@@ -42,19 +45,19 @@ export function CustomerNotes({
 
   return (
     <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
-      <h2 className="text-sm font-bold text-ink">নোট ও ট্যাগ</h2>
+      <h2 className="text-sm font-bold text-ink">{t.heading}</h2>
 
       <div className="flex flex-wrap gap-1.5">
-        {tags.map((t) => (
+        {tags.map((tag) => (
           <span
-            key={t}
+            key={tag}
             className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-ink-muted"
           >
-            {t}
+            {tag}
             <button
               type="button"
-              onClick={() => setTags(tags.filter((x) => x !== t))}
-              aria-label={`${t} সরান`}
+              onClick={() => setTags(tags.filter((x) => x !== tag))}
+              aria-label={`${tag} ${t.tagRemoveSuffix}`}
               className="text-ink-subtle hover:text-danger"
             >
               ✕
@@ -70,7 +73,7 @@ export function CustomerNotes({
               addTag();
             }
           }}
-          placeholder="ট্যাগ + Enter"
+          placeholder={t.tagPlaceholder}
           className="h-8 w-32 rounded-sm border border-border-strong bg-surface px-2 text-sm text-ink"
         />
       </div>
@@ -79,15 +82,15 @@ export function CustomerNotes({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         rows={3}
-        placeholder="গ্রাহক সম্পর্কে নোট…"
+        placeholder={t.notePlaceholder}
         className="w-full rounded-sm border border-border-strong bg-surface px-3 py-2 text-base text-ink focus-visible:border-primary"
       />
 
       <div className="flex items-center gap-3">
         <Button onClick={save} size="sm" disabled={pending}>
-          {pending ? "সেভ হচ্ছে…" : "সেভ করুন"}
+          {pending ? t.saving : t.save}
         </Button>
-        {saved && <span className="text-xs font-medium text-success">সেভ হয়েছে।</span>}
+        {saved && <span className="text-xs font-medium text-success">{t.saved}</span>}
       </div>
     </section>
   );

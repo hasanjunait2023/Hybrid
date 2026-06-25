@@ -1,7 +1,20 @@
 // Bangla mirror of en/admin.ts.
 import type { admin as EnAdmin } from "../en/admin";
+import { products } from "./admin/products";
+import { customers } from "./admin/customers";
+import { collections } from "./admin/collections";
+import { discounts } from "./admin/discounts";
+import { returns } from "./admin/returns";
+import { reviews } from "./admin/reviews";
 
 export const admin: typeof EnAdmin = {
+  products,
+  customers,
+  collections,
+  discounts,
+  returns,
+  reviews,
+
   shell: {
     badge: "অ্যাডমিন",
     nav: "অ্যাডমিন নেভিগেশন",

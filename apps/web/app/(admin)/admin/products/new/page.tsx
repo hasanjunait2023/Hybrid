@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listCollections } from "@/lib/admin/catalog";
+import { getDict } from "@/lib/i18n/server";
 import { ProductForm, type ProductFormData } from "../ProductForm";
 
 // New product (DESIGN §P4). Starts with a single default variant; adding options
@@ -13,6 +14,8 @@ export default async function NewProductPage() {
   if (!tenantId) redirect("/platform");
 
   const collections = await listCollections(tenantId, session.userId);
+  const { d } = await getDict();
+  const t = d.admin.products;
 
   const initial: ProductFormData = {
     title: "",
@@ -25,12 +28,12 @@ export default async function NewProductPage() {
   };
 
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <a href="/admin/products" className="text-sm font-medium text-ink-muted hover:text-primary">
-          ← পণ্য
+          ← {t.title}
         </a>
-        <h1 className="text-xl font-bold text-ink">নতুন পণ্য</h1>
+        <h1 className="text-xl font-bold text-ink">{t.newProduct}</h1>
       </div>
       <ProductForm
         initial={initial}

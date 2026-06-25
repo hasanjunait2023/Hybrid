@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listReviews, getReviewStats, type ReviewStatus } from "@/lib/admin/reviews";
+import { getDict } from "@/lib/i18n/server";
+import { formatNumber } from "@/lib/i18n/format";
 import { PageHeader, StatStrip, StatCard } from "../_ui";
 import { ReviewRow } from "./ReviewRow";
 
@@ -14,11 +16,11 @@ interface ReviewsPageProps {
   searchParams: Promise<{ status?: string }>;
 }
 
-const STATUSES: { value: string; bn: string }[] = [
-  { value: "pending", bn: "অপেক্ষমাণ" },
-  { value: "approved", bn: "অনুমোদিত" },
-  { value: "rejected", bn: "বাতিল" },
-];
+const STATUSES = [
+  { value: "pending" },
+  { value: "approved" },
+  { value: "rejected" },
+] as const;
 
 export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const session = await getSession();
@@ -34,15 +36,18 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     getReviewStats(tenantId, session.userId),
   ]);
 
+  const { locale, d } = await getDict();
+  const t = d.admin.reviews;
+
   return (
-    <div lang="en" className="space-y-4">
-      <PageHeader title="রিভিউ" subtitle={`${stats.pending} টি অপেক্ষমাণ`} />
+    <div className="space-y-4">
+      <PageHeader title={t.title} subtitle={`${formatNumber(stats.pending, locale)} ${t.pendingSuffix}`} />
 
       <StatStrip>
-        <StatCard label="অপেক্ষমাণ" value={String(stats.pending)} tone={stats.pending > 0 ? "pending" : "muted"} />
-        <StatCard label="অনুমোদিত" value={String(stats.approved)} tone="success" />
-        <StatCard label="গড় রেটিং" value={stats.avgRating > 0 ? stats.avgRating.toFixed(2) : "—"} />
-        <StatCard label="মোট" value={String(stats.pending + stats.approved)} />
+        <StatCard label={t.stat.pending} value={formatNumber(stats.pending, locale)} tone={stats.pending > 0 ? "pending" : "muted"} />
+        <StatCard label={t.stat.approved} value={formatNumber(stats.approved, locale)} tone="success" />
+        <StatCard label={t.stat.avgRating} value={stats.avgRating > 0 ? stats.avgRating.toFixed(2) : "—"} />
+        <StatCard label={t.stat.total} value={formatNumber(stats.pending + stats.approved, locale)} />
       </StatStrip>
 
       <div className="flex gap-2">
@@ -56,7 +61,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                 active ? "bg-primary text-ink-on-primary" : "border border-border bg-surface text-ink-muted hover:bg-surface-2"
               }`}
             >
-              {s.bn}
+              {t.status[s.value]}
             </a>
           );
         })}
@@ -64,7 +69,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
 
       {reviews.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-12 text-center text-ink-muted">
-          কোনো রিভিউ নেই।
+          {t.empty}
         </p>
       ) : (
         <ul className="space-y-3">

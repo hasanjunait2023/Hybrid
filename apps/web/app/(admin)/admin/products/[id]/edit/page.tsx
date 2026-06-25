@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getProductFull, listCollections } from "@/lib/admin/catalog";
+import { getDict } from "@/lib/i18n/server";
 import { ProductForm, type ProductFormData } from "../../ProductForm";
 
 // Edit a product (DESIGN §P4) — full options/variant-matrix/images/collections.
@@ -26,6 +27,8 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
   ]);
   if (!product) notFound();
 
+  const { d } = await getDict();
+
   const initial: ProductFormData = {
     id: product.id,
     title: product.title,
@@ -46,10 +49,10 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
   };
 
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <a href="/admin/products" className="text-sm font-medium text-ink-muted hover:text-primary">
-          ← পণ্য
+          ← {d.admin.products.title}
         </a>
         <h1 className="truncate text-xl font-bold text-ink">{product.title}</h1>
       </div>

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getOrderDetail } from "@/lib/admin/orders";
+import { getDict } from "@/lib/i18n/server";
 import { PageHeader } from "../../_ui";
 import { CreateReturnForm } from "./CreateReturnForm";
 
@@ -23,27 +24,34 @@ export default async function NewReturnPage({ searchParams }: NewReturnPageProps
 
   const order = orderId ? await getOrderDetail(tenantId, session.userId, orderId) : null;
 
+  const { d } = await getDict();
+  const t = d.admin.returns;
+
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <a href="/admin/returns" className="text-sm font-medium text-ink-muted hover:text-primary">
-        ← রিটার্ন তালিকা
+        ← {t.backToList}
       </a>
 
       <PageHeader
-        title="নতুন রিটার্ন"
-        subtitle={order ? `অর্ডার #${order.orderNumber} থেকে` : undefined}
+        title={t.create.title}
+        subtitle={
+          order
+            ? `${t.create.fromOrderPrefix} #${order.orderNumber}${t.create.fromOrderSuffix ? ` ${t.create.fromOrderSuffix}` : ""}`
+            : undefined
+        }
       />
 
       {!order ? (
         <div className="rounded-lg border border-border bg-surface px-4 py-12 text-center">
           <p className="text-ink-muted">
-            রিটার্ন তৈরি করতে একটি অর্ডার নির্বাচন করুন। অর্ডারের বিস্তারিত পেজ থেকে রিটার্ন শুরু করুন।
+            {t.create.instruction}
           </p>
           <a
             href="/admin/orders"
             className="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover"
           >
-            অর্ডার তালিকা
+            {t.create.ordersList}
           </a>
         </div>
       ) : (

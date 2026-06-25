@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
+import { getDict } from "@/lib/i18n/server";
 import { DiscountForm } from "../DiscountForm";
 
 export default async function NewDiscountPage() {
@@ -9,13 +10,16 @@ export default async function NewDiscountPage() {
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 
+  const { d } = await getDict();
+  const t = d.admin.discounts;
+
   return (
-    <div lang="en" className="space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <a href="/admin/discounts" className="text-sm font-medium text-ink-muted hover:text-primary">
-          ← ডিসকাউন্ট
+          ← {t.form.backToDiscounts}
         </a>
-        <h1 className="text-xl font-bold text-ink">নতুন ডিসকাউন্ট</h1>
+        <h1 className="text-xl font-bold text-ink">{t.form.newDiscount}</h1>
       </div>
       <DiscountForm
         initial={{

@@ -5,6 +5,7 @@
 // (lang="en" on the wrapper page). Posts saveDiscount; deleteDiscount removes.
 import { useState, useTransition } from "react";
 import { Button } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 import { saveDiscount, deleteDiscount } from "./actions";
 import type { DiscountType, DiscountStatus } from "@/lib/admin/discounts";
 
@@ -25,20 +26,18 @@ export interface DiscountFormData {
 const inputCls =
   "h-11 w-full rounded-sm border border-border-strong bg-surface px-3 text-base text-ink placeholder:text-ink-subtle focus-visible:border-primary";
 
-const TYPES: { value: DiscountType; label: string }[] = [
-  { value: "percentage", label: "শতকরা (%)" },
-  { value: "fixed_amount", label: "নির্দিষ্ট (৳)" },
-  { value: "free_shipping", label: "ফ্রি ডেলিভারি" },
-];
+const TYPE_VALUES: DiscountType[] = ["percentage", "fixed_amount", "free_shipping"];
 
-const STATUSES: { value: DiscountStatus; label: string }[] = [
-  { value: "active", label: "সক্রিয়" },
-  { value: "scheduled", label: "নির্ধারিত" },
-  { value: "disabled", label: "বন্ধ" },
-  { value: "expired", label: "মেয়াদোত্তীর্ণ" },
-];
+const STATUS_VALUES: DiscountStatus[] = ["active", "scheduled", "disabled", "expired"];
 
 export function DiscountForm({ initial }: { initial: DiscountFormData }) {
+  const d = useDict();
+  const t = d.admin.discounts;
+  const typeLabels: Record<DiscountType, string> = {
+    percentage: t.form.typePercentage,
+    fixed_amount: t.form.typeFixed,
+    free_shipping: t.form.typeFreeShipping,
+  };
   const isEdit = Boolean(initial.id);
 
   const [code, setCode] = useState(initial.code);
@@ -73,7 +72,7 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
     startTransition(async () => {
       const result = await saveDiscount(null, fd);
       // On success the action redirects; a returned envelope means an error.
-      if (result && !result.ok) setError(result.error ?? "সেভ ব্যর্থ হয়েছে।");
+      if (result && !result.ok) setError(result.error ?? t.form.saveFailed);
     });
   }
 
@@ -90,7 +89,7 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
     <div className="max-w-xl space-y-5">
       <section className="space-y-4 rounded-lg border border-border bg-surface p-4">
         <div>
-          <label htmlFor="code" className="mb-1 block text-sm font-semibold text-ink">কোড</label>
+          <label htmlFor="code" className="mb-1 block text-sm font-semibold text-ink">{t.form.code}</label>
           <input
             id="code"
             value={code}
@@ -101,28 +100,28 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
           />
         </div>
         <div>
-          <label htmlFor="title" className="mb-1 block text-sm font-semibold text-ink">শিরোনাম (ঐচ্ছিক)</label>
+          <label htmlFor="title" className="mb-1 block text-sm font-semibold text-ink">{t.form.titleOptional}</label>
           <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
         </div>
       </section>
 
       <section className="space-y-4 rounded-lg border border-border bg-surface p-4">
         <div>
-          <span className="mb-1.5 block text-sm font-semibold text-ink">ধরন</span>
+          <span className="mb-1.5 block text-sm font-semibold text-ink">{t.form.type}</span>
           <div className="grid grid-cols-3 gap-1 rounded-md border border-border-strong bg-surface-2 p-1">
-            {TYPES.map((t) => (
+            {TYPE_VALUES.map((typeValue) => (
               <button
-                key={t.value}
+                key={typeValue}
                 type="button"
-                onClick={() => setType(t.value)}
-                aria-pressed={type === t.value}
+                onClick={() => setType(typeValue)}
+                aria-pressed={type === typeValue}
                 className={`min-h-11 rounded-sm px-2 text-sm font-medium transition-colors ${
-                  type === t.value
+                  type === typeValue
                     ? "bg-primary text-ink-on-primary shadow-xs"
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
-                {t.label}
+                {typeLabels[typeValue]}
               </button>
             ))}
           </div>
@@ -131,7 +130,7 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
         {!isFreeShipping && (
           <div>
             <label htmlFor="value" className="mb-1 block text-sm font-semibold text-ink">
-              {type === "percentage" ? "শতকরা মান (%)" : "ছাড়ের পরিমাণ (৳)"}
+              {type === "percentage" ? t.form.percentValue : t.form.fixedValue}
             </label>
             <input
               id="value"
@@ -147,7 +146,7 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
 
         <div>
           <label htmlFor="minSubtotal" className="mb-1 block text-sm font-semibold text-ink">
-            ন্যূনতম কার্ট মূল্য (৳)
+            {t.form.minCart}
           </label>
           <input
             id="minSubtotal"
@@ -166,7 +165,7 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="usageLimit" className="mb-1 block text-sm font-semibold text-ink">
-              মোট ব্যবহার সীমা
+              {t.form.totalUsageLimit}
             </label>
             <input
               id="usageLimit"
@@ -175,13 +174,13 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
               min={1}
               value={usageLimit}
               onChange={(e) => setUsageLimit(e.target.value)}
-              placeholder="সীমাহীন"
+              placeholder={t.form.unlimited}
               className={inputCls}
             />
           </div>
           <div>
             <label htmlFor="perCustomerLimit" className="mb-1 block text-sm font-semibold text-ink">
-              প্রতি গ্রাহক সীমা
+              {t.form.perCustomerLimit}
             </label>
             <input
               id="perCustomerLimit"
@@ -190,7 +189,7 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
               min={1}
               value={perCustomerLimit}
               onChange={(e) => setPerCustomerLimit(e.target.value)}
-              placeholder="সীমাহীন"
+              placeholder={t.form.unlimited}
               className={inputCls}
             />
           </div>
@@ -198,7 +197,7 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="startsAt" className="mb-1 block text-sm font-semibold text-ink">শুরু</label>
+            <label htmlFor="startsAt" className="mb-1 block text-sm font-semibold text-ink">{t.form.starts}</label>
             <input
               id="startsAt"
               type="datetime-local"
@@ -208,7 +207,7 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
             />
           </div>
           <div>
-            <label htmlFor="endsAt" className="mb-1 block text-sm font-semibold text-ink">শেষ</label>
+            <label htmlFor="endsAt" className="mb-1 block text-sm font-semibold text-ink">{t.form.ends}</label>
             <input
               id="endsAt"
               type="datetime-local"
@@ -220,16 +219,16 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
         </div>
 
         <div>
-          <label htmlFor="status" className="mb-1 block text-sm font-semibold text-ink">অবস্থা</label>
+          <label htmlFor="status" className="mb-1 block text-sm font-semibold text-ink">{t.form.statusLabel}</label>
           <select
             id="status"
             value={status}
             onChange={(e) => setStatus(e.target.value as DiscountStatus)}
             className={inputCls}
           >
-            {STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
+            {STATUS_VALUES.map((statusValue) => (
+              <option key={statusValue} value={statusValue}>
+                {t.status[statusValue]}
               </option>
             ))}
           </select>
@@ -244,11 +243,11 @@ export function DiscountForm({ initial }: { initial: DiscountFormData }) {
 
       <div className="flex gap-2">
         <Button onClick={submit} disabled={pending}>
-          {pending ? "সেভ হচ্ছে…" : isEdit ? "সেভ করুন" : "ডিসকাউন্ট তৈরি করুন"}
+          {pending ? t.form.saving : isEdit ? t.form.save : t.form.createDiscount}
         </Button>
         {isEdit && (
           <Button onClick={onDelete} variant="secondary" disabled={pending} className="text-danger">
-            মুছুন
+            {t.form.delete}
           </Button>
         )}
       </div>
