@@ -359,7 +359,7 @@ Phase 4 (full editor, upsells, A/B, scale) is explicitly **revenue-positive but 
 | Typecheck | 4/5 packages clean (1 known pre-existing) | 5/5 | B3 fixes this |
 | Tests | 198 files, 4 fail in full suite | 0 fail | H1 fixes this |
 | TODOs in shipping code | 13 | 0 | Audit each in S0 |
-| console.log in shipping | 2 | 0 | H5 fixes this |
+| console.log in shipping code | 0 (2 in test global-setup with explicit eslint-disable — intentional) | 0 | already clean ✅ |
 | `: any` types | 0 | 0 | ✅ |
 | Raw SQL outside `packages/db` | 0 (ESLint enforced) | 0 | ✅ |
 | Lighthouse score | not measured | 90+ mobile | A3 + Trivy (G12) |
