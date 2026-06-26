@@ -1,0 +1,73 @@
+# graphify code-graph indexer ignore file.
+#
+# graphify walks every .ts/.tsx/.js/.jsx under the project root and extracts
+# AST nodes for the knowledge graph. Lines here use gitignore-style globs.
+#
+# What we DO want indexed:
+#   - apps/web/app, apps/web/lib, apps/web/components (shipping source)
+#   - apps/api (FastAPI jobs)
+#   - packages/{db,couriers,payments,ui,config}/src (all our shared code)
+#   - packages/db/sql (Postgres schema; graphify handles .sql as opaque nodes)
+#
+# What we IGNORE below:
+#   - generated/build/vendor noise (massive node_modules, .next caches)
+#   - regenerable artifacts (the graph output itself, screenshots)
+#   - test fixtures that would explode the graph (198 test files)
+
+# --- vendor / build / cache ---------------------------------------------
+node_modules/
+.pnpm-store/
+.pgtmp/
+.next/
+.turbo/
+out/
+dist/
+build/
+*.tsbuildinfo
+.swc/
+.tmp/
+.cache/
+
+# --- regenerable artifacts ----------------------------------------------
+graphify-out/
+public/
+**/*.min.js
+**/*.min.css
+**/*.map
+
+# --- test fixtures & snapshots ------------------------------------------
+# Tests are huge and the graph is about runtime call structure, not test code.
+# Keep ONE representative test graph for reference, but skip the rest.
+__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__snapshots__/
+coverage/
+
+# --- migrations (Postgres SQL — already in schema, no AST to extract) ---
+# Keep 01_schema.sql + 02_policies.sql as the canonical nodes; ignore migrations.
+packages/db/sql/[0-9]*.sql
+packages/db/sql/down/
+
+# --- docs / config / generated types ------------------------------------
+docs/
+*.md
+!README.md
+.env
+.env.*
+!.env.example
+.github/
+.gitignore
+.eslintrc*
+.prettierrc*
+*.yaml
+*.yml
+*.json
+!tsconfig*.json
+!package.json
+
+# --- big generated data dumps -------------------------------------------
+load-test/results/
+.k6/
