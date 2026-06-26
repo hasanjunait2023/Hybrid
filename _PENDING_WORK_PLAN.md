@@ -191,7 +191,15 @@ From `BUILD_CHECKLIST.md` §PHASE 4:
 | H4 | **13 TODOs in shipping code** | grep | varies | per-item |
 | H5 | **2 console.log in shipping code** | grep | 5 min | trivial |
 | H6 | **Supabase meta healthcheck intermittent** | Phase 5 | 30 min | LOW (admin-only) |
-| H7 | **WIP returns branch** parked off master (`wip/returns`) | BACKLOG | 1-2 days | MED (finish + test before merge) |
+| H7 | ~~**WIP returns branch** parked off master (`wip/returns`)~~ DONE | BACKLOG | — | already shipped |
+
+> **H7 verification (2026-06-26):** Returns feature is already in master. Commit
+> `1dd1152` shipped Returns/RTO/Exchange (P1 #1) schema+RLS+UI+test;
+> `50c31b9` added tests; `befd2ad` i18n-localized admin returns. Migration
+> `09_returns.sql` + down file both committed. Live routes
+> `/admin/returns`, `/admin/returns/new`, `/admin/returns/[id]` all return 307
+> (tenant subdomain rewrite — correct). The `wip/returns` note in BACKLOG is
+> stale; the parking was resolved before this audit.
 
 ---
 
