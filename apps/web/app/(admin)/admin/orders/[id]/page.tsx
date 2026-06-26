@@ -9,6 +9,7 @@ import { OrderStatusActions } from "./OrderStatusActions";
 import { SendToCourierButton } from "./SendToCourierButton";
 import { OrderRiskPanel } from "./OrderRiskPanel";
 import { ManualPaymentForm } from "./ManualPaymentForm";
+import { CustomerHistorySidebar } from "./CustomerHistorySidebar";
 
 // Order detail (DESIGN §P3.3). Header = order# + stepper + contextual action.
 // Two-column ≥ lg, stacked on mobile. Latin numerals, mono amounts (§4.4).
@@ -231,6 +232,14 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               <h2 className="mb-2 text-sm font-bold text-ink">{t.note.heading}</h2>
               <p className="text-sm text-ink-muted">{order.note}</p>
             </section>
+          )}
+
+          {order.customerId && order.customerHistory && (
+            <CustomerHistorySidebar
+              customerId={order.customerId}
+              history={order.customerHistory}
+              locale={locale}
+            />
           )}
         </aside>
       </div>
