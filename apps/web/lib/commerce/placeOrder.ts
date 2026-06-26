@@ -23,7 +23,18 @@ import type { Tx } from "@hybrid/db";
 import { upsertCustomerByPhone } from "./customer";
 
 export type PaymentMethod = "cod" | "bkash";
-export type OrderSource = "storefront" | "manual";
+/**
+ * Order source channel.
+ * Must match the `order_source` Postgres enum in 01_schema.sql:
+ *   ('storefront','manual','landing_page','messenger','api')
+ * DB is the source of truth — adding a new source = migration + extending this type.
+ */
+export type OrderSource =
+  | "storefront"
+  | "manual"
+  | "landing_page"
+  | "messenger"
+  | "api";
 
 export interface PlaceOrderCustomer {
   phone: string;
