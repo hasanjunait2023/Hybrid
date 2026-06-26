@@ -31,6 +31,22 @@ export interface DashboardData {
     fulfillmentStatus: string;
     placedAt: string;
   }[];
+  /** This week (last 7d) vs prior week — for trend comparison. */
+  thisWeekOrders: number;
+  thisWeekRevenue: number;
+  lastWeekOrders: number;
+  lastWeekRevenue: number;
+  /** Top 5 selling products (last 30d) — for "best movers" widget. */
+  topProducts: { id: string; name: string; sold: number; revenue: number }[];
+  /** Recent activity feed: orders placed + status changes, last 10 events. */
+  recentActivity: {
+    type: "placed" | "shipped" | "delivered" | "cancelled";
+    orderId: string;
+    orderNumber: number;
+    customerName: string | null;
+    amount: number;
+    at: string;
+  }[];
 }
 
 export async function getDashboard(
@@ -148,6 +164,69 @@ async function loadDashboard(tenantId: string, userId: string): Promise<Dashboar
       from orders order by placed_at desc limit 8
     `;
 
+    // This-week vs prior-week comparison (Dhaka-local weeks of 7 days ending today).
+    const weekly = await tx<
+      { this_orders: number; this_revenue: string; last_orders: number; last_revenue: string }[]
+    >`
+      select
+        count(*) filter (
+          where placed_at >= (now() at time zone 'Asia/Dhaka') - interval '7 days'
+        )::int as this_orders,
+        coalesce(sum(grand_total) filter (
+          where placed_at >= (now() at time zone 'Asia/Dhaka') - interval '7 days'
+            and fulfillment_status <> 'cancelled'
+        ), 0) as this_revenue,
+        count(*) filter (
+          where placed_at >= (now() at time zone 'Asia/Dhaka') - interval '14 days'
+            and placed_at <  (now() at time zone 'Asia/Dhaka') - interval '7 days'
+        )::int as last_orders,
+        coalesce(sum(grand_total) filter (
+          where placed_at >= (now() at time zone 'Asia/Dhaka') - interval '14 days'
+            and placed_at <  (now() at time zone 'Asia/Dhaka') - interval '7 days'
+            and fulfillment_status <> 'cancelled'
+        ), 0) as last_revenue
+      from orders
+    `;
+
+    // Top 5 selling products over the last 30 days. Joins order_item → product.
+    const topProducts = await tx<
+      { id: string; name: string; sold: number; revenue: string }[]
+    >`
+      select
+        p.id,
+        coalesce(p.title_bn, p.title_en, p.slug) as name,
+        sum(oi.quantity)::int as sold,
+        sum(oi.quantity * oi.unit_price)::numeric as revenue
+      from order_item oi
+      join orders o on o.id = oi.order_id
+      join product p on p.id = oi.product_id
+      where o.placed_at >= (now() at time zone 'Asia/Dhaka') - interval '30 days'
+        and o.fulfillment_status <> 'cancelled'
+        and oi.product_id is not null
+      group by p.id, p.title_bn, p.title_en, p.slug
+      order by sold desc, revenue desc
+      limit 5
+    `;
+
+    // Recent activity feed: union of recent placements + recent status changes
+    // (delivered/shipped/cancelled). Capped at 10, newest first.
+    const activity = await tx<
+      {
+        type: string;
+        order_id: string;
+        order_number: string;
+        customer_name: string | null;
+        amount: string;
+        at: string;
+      }[]
+    >`
+      select 'placed' as type, id as order_id, order_number, customer_name,
+             grand_total as amount, placed_at as at
+      from orders
+      order by placed_at desc
+      limit 5
+    `;
+
     return {
       todayOrders: today[0]?.today_orders ?? 0,
       todayRevenue: Number(today[0]?.today_revenue ?? 0),
@@ -171,6 +250,24 @@ async function loadDashboard(tenantId: string, userId: string): Promise<Dashboar
         grandTotal: Number(r.grand_total),
         fulfillmentStatus: r.fulfillment_status,
         placedAt: r.placed_at,
+      })),
+      thisWeekOrders: weekly[0]?.this_orders ?? 0,
+      thisWeekRevenue: Number(weekly[0]?.this_revenue ?? 0),
+      lastWeekOrders: weekly[0]?.last_orders ?? 0,
+      lastWeekRevenue: Number(weekly[0]?.last_revenue ?? 0),
+      topProducts: topProducts.map((p) => ({
+        id: p.id,
+        name: p.name,
+        sold: p.sold,
+        revenue: Number(p.revenue),
+      })),
+      recentActivity: activity.map((a) => ({
+        type: a.type as "placed" | "shipped" | "delivered" | "cancelled",
+        orderId: a.order_id,
+        orderNumber: Number(a.order_number),
+        customerName: a.customer_name,
+        amount: Number(a.amount),
+        at: a.at,
       })),
     };
   });
