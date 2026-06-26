@@ -60,3 +60,4 @@ graphify-out/
 .obsidian/plugins/
 .obsidian/.DS_Store
 .obsidian/graph-*.json
+public/
