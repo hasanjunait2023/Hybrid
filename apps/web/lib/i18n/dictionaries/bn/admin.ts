@@ -14,6 +14,7 @@ import { themes } from "./admin/themes";
 import { settingsGeneral } from "./admin/settingsGeneral";
 import { settingsPayments } from "./admin/settingsPayments";
 import { settingsComms } from "./admin/settingsComms";
+import { shipping } from "./admin/shipping";
 
 export const admin: typeof EnAdmin = {
   products,
@@ -30,6 +31,7 @@ export const admin: typeof EnAdmin = {
   settingsGeneral,
   settingsPayments,
   settingsComms,
+  shipping,
 
   shell: {
     badge: "অ্যাডমিন",
@@ -52,6 +54,7 @@ export const admin: typeof EnAdmin = {
     settings: "সেটিংস",
     discounts: "ডিসকাউন্ট",
     collections: "কালেকশন",
+    shipping: "শিপিং ও ডেলিভারি",
   },
 
   dashboard: {

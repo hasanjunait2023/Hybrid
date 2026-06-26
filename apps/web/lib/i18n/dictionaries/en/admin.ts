@@ -14,6 +14,7 @@ import { themes } from "./admin/themes";
 import { settingsGeneral } from "./admin/settingsGeneral";
 import { settingsPayments } from "./admin/settingsPayments";
 import { settingsComms } from "./admin/settingsComms";
+import { shipping } from "./admin/shipping";
 
 export const admin = {
   products,
@@ -30,6 +31,7 @@ export const admin = {
   settingsGeneral,
   settingsPayments,
   settingsComms,
+  shipping,
 
   shell: {
     badge: "Admin",
@@ -52,6 +54,7 @@ export const admin = {
     settings: "Settings",
     discounts: "Discounts",
     collections: "Collections",
+    shipping: "Shipping & delivery",
   },
 
   dashboard: {

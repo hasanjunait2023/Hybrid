@@ -5,6 +5,7 @@
 // gated path as the transactional SMS.
 import { withTenant } from "@hybrid/db";
 import { getSmsAdapter } from "@/lib/sms";
+import { validateSmsContent } from "@/lib/sms/validate";
 
 export type Channel = "sms";
 export type Audience = "all" | "repeat";
@@ -80,6 +81,12 @@ export async function createCampaign(
   userId: string,
   input: { channel: Channel; audience: Audience; message: string },
 ): Promise<{ id: string; recipientCount: number }> {
+  // BTRC / Unicode rule: an SMS campaign must be proper Bengali (not romanized
+  // "Banglish") and within the segment cap. Reject before saving the draft.
+  if (input.channel === "sms") {
+    const v = validateSmsContent(input.message, { requireBengali: true });
+    if (!v.ok) throw new Error(v.message);
+  }
   const { count } = await resolveAudience(tenantId, userId, input.audience);
   const rows = await withTenant(tenantId, userId, (tx) =>
     tx<{ id: string }[]>`
