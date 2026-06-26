@@ -24,6 +24,7 @@ Idempotent additive SQL in `packages/db/sql/NN_name.sql`, applied by lexical pre
 | 18 | `18_order_notify.sql` | order notifications | agent-team |
 | 19 | `19_order_assignee.sql` | order assignee | agent-team |
 | 20 | `20_abandoned_carts.sql` | abandoned-cart automation | agent-team |
+| 21 | `21_shipping.sql` | shipping_config + shipping_zone_rate (M3 calculator) | [[10-Features/shipping]] · applied to prod 2026-06-26 |
 
 > ✅ **16–20 applied to prod 2026-06-26.** They had NEVER run on prod (ledger stopped at 15;
 > `tracking_event_log`/`order_note`/`cart` were missing → those features were dead on prod).

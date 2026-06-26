@@ -19,7 +19,7 @@ Checked `- [x]` lines are done and skipped. The cron flips `[ ]`→`[x]` after a
 > Pipeline: [[vault/30-Ops/dev-brain-runbook|dev-brain runbook]]. Engine: `scripts/dev-brain/`.
 
 ## Stack research seed (Phase 1/2 foundations)
-- [ ] supabase-rls-multitenant :: Postgres RLS patterns and pitfalls for multi-tenant SaaS at scale — session GUCs, performance, BYPASSRLS roles, policy testing :: deep
+- [x] supabase-rls-multitenant :: Postgres RLS patterns and pitfalls for multi-tenant SaaS at scale — session GUCs, performance, BYPASSRLS roles, policy testing :: deep
 - [ ] nextjs15-caching :: Next.js 15 App Router caching — unstable_cache, revalidateTag, multi-instance cache handlers, ISR on self-hosted deployments :: deep
 - [ ] bkash-tokenized-checkout :: bKash Tokenized Checkout integration — grant/create/execute/query lifecycle, amount verification, replay protection, production onboarding :: deep
 - [ ] steadfast-courier-api :: Steadfast courier API for Bangladesh — consignment creation, status polling, COD reconciliation, RTO handling :: deep
