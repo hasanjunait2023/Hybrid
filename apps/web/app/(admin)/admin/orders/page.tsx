@@ -8,6 +8,7 @@ import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { OrderSearch } from "./OrderSearch";
 import { OrdersBulkTable } from "./OrdersBulkTable";
+import { EmptyOrders } from "@/components/admin/EmptyState";
 import { PageHeader } from "../_ui";
 
 // Orders list (DESIGN §P3.1). Triage-speed: status filter pills with counts,
@@ -123,9 +124,9 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       </div>
 
       {orders.length === 0 ? (
-        <p className="rounded-lg border border-border bg-surface px-4 py-12 text-center text-ink-muted">
-          {t.empty}
-        </p>
+        <div className="rounded-lg border border-border bg-surface">
+          <EmptyOrders locale={locale} />
+        </div>
       ) : (
         <>
           {/* Mobile: stacked cards */}
