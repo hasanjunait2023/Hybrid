@@ -79,9 +79,9 @@ export function ProductCard({ product, priority = false, lang = "en" }: ProductC
             </Badge>
           )}
           {!inStock && (
-            <span className="absolute left-2 top-2 rounded-full bg-danger-weak px-2 py-0.5 text-2xs font-semibold text-danger">
+            <Badge tone="danger" className="absolute left-2 top-2">
               {t.outOfStock}
-            </span>
+            </Badge>
           )}
         </div>
       </a>
