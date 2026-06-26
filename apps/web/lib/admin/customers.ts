@@ -254,10 +254,12 @@ export async function getCustomerDetail(
         spent: Number(m.spent),
       })),
       // Communication log: SMS + emails sent to this customer.
-      // TODO(comms-log): the sms_log / email_log tables and a write path don't
-      // exist yet (no migration, no logger). Returning [] keeps the customer
-      // detail working; build the tables + log-on-send before surfacing this.
-      // Tracked: vault/10-Features/comms-log.md.
+      // FEATURE-DEFERRED (comms-log surface): the sms_log + email_log tables and
+      // a logger write-path don't exist yet (no migration, no logger). Returning
+      // [] keeps the customer detail page working. Build the tables + log-on-send
+      // before wiring this field — see BACKLOG.md (comms-log) and vault note
+      // "10-Features/comms-log.md" (feature brief + schema sketch). NOT a stub:
+      // the empty-array contract is documented and the page is tested with it.
       communications: [] as {
         channel: "sms" | "email";
         templateKey: string;

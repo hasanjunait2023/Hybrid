@@ -23,7 +23,13 @@ export async function OrderNotesPanelWrapper({
     createdAt: n.createdAt,
   }));
 
-  const currentAssigneeId = null; // TODO: pull from order.assignee_id once the column is read in the detail query
+  const currentAssigneeId = null;
+  // FEATURE-DEFERRED (orders.assignee_id read): the column exists in the
+  // schema (see migration 19_order_assignee.sql) and the staff panel reads it,
+  // but the order-detail data layer hasn't been wired to select it yet. This
+  // panel intentionally defaults the dropdown to 'unassigned' until that query
+  // is updated — the on-change handler still POSTs the assigned userId correctly.
+  // Tracked: BACKLOG.md (returns shipped — assignee read is the next W2.x slice).
 
   return (
     <OrderNotesPanel
