@@ -53,3 +53,10 @@ packages/ui/dist/
 
 # graphify — regenerable knowledge graph (commit JSON/audit only if useful, not the heavy HTML)
 graphify-out/
+
+# Obsidian — commit shared config, ignore per-machine state + community plugin code
+.obsidian/workspace*.json
+.obsidian/cache
+.obsidian/plugins/
+.obsidian/.DS_Store
+.obsidian/graph-*.json

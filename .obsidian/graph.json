@@ -1,0 +1,31 @@
+{
+  "collapse-filter": true,
+  "search": "",
+  "showTags": false,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    { "query": "path:vault/10-Features", "color": { "a": 1, "rgb": 5025616 } },
+    { "query": "path:vault/15-Architecture", "color": { "a": 1, "rgb": 1920472 } },
+    { "query": "path:vault/20-Decisions", "color": { "a": 1, "rgb": 10233776 } },
+    { "query": "path:vault/30-Ops", "color": { "a": 1, "rgb": 16750592 } },
+    { "query": "path:vault/40-Agents", "color": { "a": 1, "rgb": 2201331 } },
+    { "query": "path:vault/50-Knowledge", "color": { "a": 1, "rgb": 38536 } },
+    { "query": "path:vault/60-Research", "color": { "a": 1, "rgb": 15484569 } },
+    { "query": "path:docs", "color": { "a": 1, "rgb": 10395294 } }
+  ],
+  "collapse-display": true,
+  "showArrow": false,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": true,
+  "centerStrength": 0.518,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 250,
+  "scale": 1,
+  "close": false
+}

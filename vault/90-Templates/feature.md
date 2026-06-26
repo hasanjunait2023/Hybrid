@@ -6,10 +6,10 @@ area: ""
 migrations: []
 commit: ""
 owner: ""
-created: <% tp.date.now("YYYY-MM-DD") %>
+created: {{date:YYYY-MM-DD}}
 ---
 
-# <% tp.file.title %>
+# {{title}}
 
 ## What
 One-line description.

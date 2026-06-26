@@ -1,9 +1,9 @@
 ---
 type: daily
-date: <% tp.date.now("YYYY-MM-DD") %>
+date: {{date:YYYY-MM-DD}}
 ---
 
-# <% tp.date.now("YYYY-MM-DD") %>
+# {{date:YYYY-MM-DD}}
 
 ## Done
 

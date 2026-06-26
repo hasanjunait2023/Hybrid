@@ -1,0 +1,6 @@
+{
+  "folder": "vault/70-Daily",
+  "format": "YYYY-MM-DD",
+  "template": "vault/90-Templates/daily",
+  "autorun": false
+}

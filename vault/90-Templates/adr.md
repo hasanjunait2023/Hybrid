@@ -1,14 +1,14 @@
 ---
 type: adr
 status: proposed
-date: <% tp.date.now("YYYY-MM-DD") %>
+date: {{date:YYYY-MM-DD}}
 supersedes: ""
 ---
 
-# <% tp.file.title %>
+# {{title}}
 
 **Status:** proposed | accepted | superseded
-**Date:** <% tp.date.now("YYYY-MM-DD") %>
+**Date:** {{date:YYYY-MM-DD}}
 
 ## Context
 What forces the decision? Constraints, trade-offs.
