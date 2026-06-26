@@ -194,7 +194,7 @@ async function loadDashboard(tenantId: string, userId: string): Promise<Dashboar
     >`
       select
         p.id,
-        coalesce(p.title_bn, p.title_en, p.slug) as name,
+        coalesce(p.title, p.slug::text) as name,
         sum(oi.quantity)::int as sold,
         sum(oi.quantity * oi.unit_price)::numeric as revenue
       from order_item oi
@@ -203,7 +203,7 @@ async function loadDashboard(tenantId: string, userId: string): Promise<Dashboar
       where o.placed_at >= (now() at time zone 'Asia/Dhaka') - interval '30 days'
         and o.fulfillment_status <> 'cancelled'
         and oi.product_id is not null
-      group by p.id, p.title_bn, p.title_en, p.slug
+      group by p.id, p.title, p.slug
       order by sold desc, revenue desc
       limit 5
     `;
