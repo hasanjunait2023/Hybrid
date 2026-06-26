@@ -109,3 +109,27 @@ export async function bulkSendToCourier(orderIds: string[]): Promise<BulkResult>
   revalidateTag(`tenant:${auth.tenantId}:dashboard`);
   return { ok: true, succeeded, failed };
 }
+
+// Bulk cancel — marks many orders as cancelled and restores inventory. Delegates
+// to bulkAdvanceStatusCore (which already handles cancel + restore-inventory).
+export async function bulkCancel(orderIds: string[]): Promise<BulkResult> {
+  return bulkAdvanceStatus(orderIds, "cancelled");
+}
+
+// Bulk print — returns the list of order IDs that have a printable invoice
+// page. The client opens each print URL in a new tab so the browser handles
+// pagination/print dialog. Returns the URLs so the client can fall back to a
+// single combined window if popups are blocked.
+export async function bulkPrintInvoices(orderIds: string[]): Promise<BulkResult & { urls: string[] }> {
+  const auth = await authTenant();
+  if (!auth.ok) return { ok: false, succeeded: 0, failed: [], error: auth.error, urls: [] };
+  const ids = IdsSchema.safeParse(orderIds);
+  if (!ids.success) {
+    return { ok: false, succeeded: 0, failed: [], error: "অবৈধ অনুরোধ।", urls: [] };
+  }
+  // All orders are printable — the print page exists for every order. Return
+  // absolute URLs the client can open in new tabs.
+  const urls = ids.data.map((id) => `/admin/orders/${id}/print`);
+  revalidateTag(`tenant:${auth.tenantId}:orders`);
+  return { ok: true, succeeded: urls.length, failed: [], urls };
+}
