@@ -5,7 +5,7 @@
 // asPlatformAdmin, as the non-superuser app_runtime_login role (RLS FORCED).
 // Uses the fixed seed UUIDs from sql/03_seed.sql.
 // ============================================================================
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { withTenant, asPlatformAdmin } from "../src/index";
 
 const TENANT_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa000a";
@@ -20,6 +20,20 @@ describe("RLS tenant isolation", () => {
     await asPlatformAdmin(async (tx) => {
       await tx`delete from orders where tenant_id in (${TENANT_A}, ${TENANT_B})`;
       await tx`delete from order_counter where tenant_id in (${TENANT_A}, ${TENANT_B})`;
+    });
+  });
+
+  // Per-test cleanup: delete ONLY test-fixture rows (not the canonical seed).
+  // Other test files may have created extra products/campaigns under TENANT_A
+  // via asPlatformAdmin; beforeEach resets the slate without nuking the seed.
+  // We do NOT truncate — we delete rows that look like test fixtures:
+  //   - product with slug starting 'test-' OR title 'sneaky'
+  //   - campaign rows (marketing test creates these transiently)
+  beforeEach(async () => {
+    await asPlatformAdmin(async (tx) => {
+      await tx`delete from product where tenant_id = ${TENANT_A} and (slug like 'test-%' or slug = 'sneaky-cross' or title = 'sneaky')`;
+      await tx`delete from product where tenant_id = ${TENANT_B} and (slug like 'test-%' or slug = 'sneaky-cross' or title = 'sneaky')`;
+      await tx`delete from campaign where tenant_id in (${TENANT_A}, ${TENANT_B})`;
     });
   });
 
