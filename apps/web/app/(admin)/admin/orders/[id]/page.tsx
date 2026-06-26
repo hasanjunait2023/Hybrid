@@ -10,6 +10,7 @@ import { SendToCourierButton } from "./SendToCourierButton";
 import { OrderRiskPanel } from "./OrderRiskPanel";
 import { ManualPaymentForm } from "./ManualPaymentForm";
 import { CustomerHistorySidebar } from "./CustomerHistorySidebar";
+import { OrderNotesPanelWrapper } from "./OrderNotesPanelWrapper";
 
 // Order detail (DESIGN §P3.3). Header = order# + stepper + contextual action.
 // Two-column ≥ lg, stacked on mobile. Latin numerals, mono amounts (§4.4).
@@ -241,6 +242,8 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               locale={locale}
             />
           )}
+
+          <OrderNotesPanelWrapper orderId={order.id} locale={locale} />
         </aside>
       </div>
     </div>
