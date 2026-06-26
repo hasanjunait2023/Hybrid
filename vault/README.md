@@ -9,6 +9,7 @@ Obsidian command center, layered over the repo. **Vault root = repo root** — o
 - `30-Ops/` — deploy runbook, migration ledger, git⟷VPS sync board.
 - `40-Agents/` — agent worklog (antidote to work living only on the VPS).
 - `50-Knowledge/` — BD commerce domain + EN↔BN i18n glossary.
+- `60-Research/` — NotebookLM-fed research notes (dev-brain loop). See [[vault/30-Ops/dev-brain-runbook|runbook]].
 - `70-Daily/` — daily dev log.
 - `90-Templates/` — Templater templates for the above.
 

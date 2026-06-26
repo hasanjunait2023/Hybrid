@@ -50,3 +50,6 @@ ds-bundle/
 .design-sync/node_modules
 .ds-sync/
 packages/ui/dist/
+
+# graphify — regenerable knowledge graph (commit JSON/audit only if useful, not the heavy HTML)
+graphify-out/

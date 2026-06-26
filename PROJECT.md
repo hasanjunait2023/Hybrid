@@ -36,6 +36,10 @@ WHERE type = "feature" AND status = "done"
 SORT file.name ASC
 ```
 
+## 🗺 Architecture (machine map)
+- [[vault/15-Architecture/how-we-use-graphify|How we use graphify + this vault]] — the build loop
+- [[vault/15-Architecture/_moc|Architecture MOC]] — god nodes + community map (graph-derived)
+
 ## 🧱 Decisions (ADRs)
 ```dataview
 TABLE status, date
