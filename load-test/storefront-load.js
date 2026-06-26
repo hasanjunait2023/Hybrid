@@ -21,10 +21,9 @@ const BASE_URL = __ENV.BASE_URL || 'http://store-a.lvh.me:3000';
 const VUS = parseInt(__ENV.VUS || '5'); // Virtual Users
 const DURATION = __ENV.DURATION || '30s';
 
-// The test runs read-only scenarios: product listing, product detail, marketing page
-const SCENARIOS = [
-  {
-    name: 'storefront-reads',
+// k6 v0.50 expects scenarios as a MAP keyed by scenario name (not an array).
+const SCENARIOS = {
+  'storefront-reads': {
     executor: 'ramping-vus',
     startVUs: 0,
     stages: [
@@ -33,7 +32,7 @@ const SCENARIOS = [
       { duration: '5s', target: 0 },
     ],
   },
-];
+};
 
 export const options = {
   scenarios: SCENARIOS,
@@ -50,12 +49,12 @@ export const options = {
 // ==============================================================================
 
 function makeRequest(url, name = '', tags = {}) {
-  const response = http.get(url, {
-    tags: {
-      ...tags,
-      staticAsset: tags.staticAsset || false,
-    },
-  });
+  // k6 v0.50 Babel-compiled runtime doesn't support object spread — build the
+  // tags object explicitly.
+  const mergedTags = {};
+  for (const k in tags) mergedTags[k] = tags[k];
+  mergedTags.staticAsset = tags.staticAsset || false;
+  const response = http.get(url, { tags: mergedTags });
 
   check(response, {
     [`${name || url} — status 200`]: (r) => r.status === 200,
@@ -140,23 +139,40 @@ function textSummary(data, options = {}) {
 
   // Request metrics
   if (metrics.http_req_duration) {
-    const samples = metrics.http_req_duration.values;
-    output += `${indent}HTTP Request Duration\n`;
-    output += `${indent}  avg: ${metrics.http_req_duration.value.toFixed(2)} ms\n`;
-    if (metrics['http_req_duration{staticAsset:false}']?.value) {
-      output += `${indent}  pages avg: ${metrics['http_req_duration{staticAsset:false}'].value.toFixed(2)} ms\n`;
+    const dur = metrics.http_req_duration;
+    // k6 can hand us a metric with no samples at the very end of a run — guard
+    // so the custom textSummary doesn't throw a TypeError on .toFixed(null).
+    if (dur && typeof dur.value === 'number') {
+      const samples = dur.values;
+      output += `${indent}HTTP Request Duration\n`;
+      output += `${indent}  avg: ${dur.value.toFixed(2)} ms\n`;
+      const pageMetric = metrics['http_req_duration{staticAsset:false}'];
+      if (pageMetric && typeof pageMetric.value === 'number') {
+        output += `${indent}  pages avg: ${pageMetric.value.toFixed(2)} ms\n`;
+      }
+      output += `${indent}  p(95): ${getPercentile(samples, 0.95).toFixed(2)} ms\n\n`;
     }
-    output += `${indent}  p(95): ${getPercentile(samples, 0.95).toFixed(2)} ms\n\n`;
   }
 
-  // Error rate
+  // Error rate — k6 v0.50 keys this 'http_req_failed' with a .rate accessor
+  // (not .value). Guard explicitly so the cosmetic summary never crashes.
   if (metrics.http_req_failed) {
-    output += `${indent}Error Rate: ${(metrics.http_req_failed.value * 100).toFixed(2)}%\n\n`;
+    const rate = metrics.http_req_failed.rate;
+    if (typeof rate === 'number') {
+      output += `${indent}Error Rate: ${(rate * 100).toFixed(2)}%\n\n`;
+    } else if (typeof metrics.http_req_failed.value === 'number') {
+      output += `${indent}Error Rate: ${(metrics.http_req_failed.value * 100).toFixed(2)}%\n\n`;
+    }
   }
 
-  // Throughput
+  // Throughput — k6 uses 'http_reqs' with .count.
   if (metrics.http_reqs) {
-    output += `${indent}Total Requests: ${metrics.http_reqs.value}\n\n`;
+    const count = metrics.http_reqs.count;
+    if (typeof count === 'number') {
+      output += `${indent}Total Requests: ${count}\n\n`;
+    } else if (typeof metrics.http_reqs.value === 'number') {
+      output += `${indent}Total Requests: ${metrics.http_reqs.value}\n\n`;
+    }
   }
 
   // Thresholds
