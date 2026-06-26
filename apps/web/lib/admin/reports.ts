@@ -258,3 +258,55 @@ export function defaultRange(todayDhaka: string): DateRange {
   start.setUTCDate(start.getUTCDate() - 29);
   return { from: start.toISOString().slice(0, 10), to: todayDhaka };
 }
+
+// CSV export helpers — server-side stringification so the client can trigger
+// a download via blob URL. Standard RFC 4180 escaping (quotes, commas, newlines).
+
+function csvCell(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  const s = String(v);
+  if (/[",\n\r]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+export function toCsv<T extends Record<string, unknown>>(
+  rows: T[],
+  columns: { key: keyof T & string; label: string }[],
+): string {
+  const header = columns.map((c) => csvCell(c.label)).join(",");
+  const body = rows.map((row) =>
+    columns.map((c) => csvCell(row[c.key])).join(","),
+  );
+  return [header, ...body].join("\n");
+}
+
+// Convenience: build a date range from common presets.
+export function presetRange(preset: "today" | "7d" | "30d" | "mtd" | "ytd"): DateRange {
+  const now = new Date();
+  // Asia/Dhaka is UTC+6, no DST.
+  const dhaka = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+  const today = dhaka.toISOString().slice(0, 10);
+  switch (preset) {
+    case "today":
+      return { from: today, to: today };
+    case "7d": {
+      const start = new Date(dhaka.getTime() - 6 * 24 * 60 * 60 * 1000)
+        .toISOString().slice(0, 10);
+      return { from: start, to: today };
+    }
+    case "30d": {
+      const start = new Date(dhaka.getTime() - 29 * 24 * 60 * 60 * 1000)
+        .toISOString().slice(0, 10);
+      return { from: start, to: today };
+    }
+    case "mtd": {
+      const start = today.slice(0, 8) + "01";
+      return { from: start, to: today };
+    }
+    case "ytd": {
+      return { from: `${today.slice(0, 4)}-01-01`, to: today };
+    }
+  }
+}
