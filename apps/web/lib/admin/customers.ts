@@ -129,6 +129,15 @@ export interface CustomerDetail {
   returnedCount: number;
   addresses: CustomerAddress[];
   orders: CustomerOrderRow[];
+  /** Monthly spend history (last 12 months) for timeline chart. */
+  monthlySpend?: { month: string; orders: number; spent: number }[];
+  /** Communication log: SMS sent + emails sent for this customer. */
+  communications?: {
+    channel: "sms" | "email";
+    templateKey: string;
+    sentAt: string;
+    status: string;
+  }[];
 }
 
 export async function getCustomerDetail(
@@ -221,6 +230,45 @@ export async function getCustomerDetail(
         fulfillmentStatus: o.fulfillment_status,
         paymentStatus: o.payment_status,
         placedAt: o.placed_at,
+      })),
+      // Monthly spend series: 12 months ending current month, zero-filled.
+      monthlySpend: (await tx<{ month: string; orders: number; spent: string }[]>`
+        select
+          m::date::text as month,
+          coalesce(count(o.id), 0)::int as orders,
+          coalesce(sum(o.grand_total) filter (where o.fulfillment_status <> 'cancelled'), 0) as spent
+        from generate_series(
+          date_trunc('month', (now() at time zone 'Asia/Dhaka')::date - interval '11 months'),
+          date_trunc('month', (now() at time zone 'Asia/Dhaka')::date),
+          interval '1 month'
+        ) m
+        left join orders o
+          on o.customer_id = ${customerId}
+          and date_trunc('month', o.placed_at at time zone 'Asia/Dhaka') = m
+          and o.fulfillment_status <> 'cancelled'
+        group by m
+        order by m
+      `).map((m) => ({
+        month: m.month,
+        orders: m.orders,
+        spent: Number(m.spent),
+      })),
+      // Communication log: SMS + emails sent to this customer (last 20).
+      communications: (await tx<{ channel: string; template_key: string; sent_at: string; status: string }[]>`
+        select 'sms' as channel, template_key, sent_at, status
+        from sms_log
+        where customer_id = ${customerId}
+        union all
+        select 'email' as channel, template_key, sent_at, status
+        from email_log
+        where customer_id = ${customerId}
+        order by sent_at desc
+        limit 20
+      `).map((c) => ({
+        channel: c.channel as "sms" | "email",
+        templateKey: c.template_key,
+        sentAt: c.sent_at,
+        status: c.status,
       })),
     };
   });
