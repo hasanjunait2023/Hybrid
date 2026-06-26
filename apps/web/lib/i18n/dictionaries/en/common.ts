@@ -88,4 +88,13 @@ export const common = {
     toggleTo: "বাংলা",
     ariaLabel: "Switch language to Bangla",
   },
+
+  cookie: {
+    title: "Cookies on Hybrid",
+    body:
+      "We use cookies for essential site functions (login, cart) and analytics to improve your experience. Marketing cookies are only set if you accept. You can change your choice anytime.",
+    accept: "Accept all",
+    essential: "Essential only",
+    policy: "Privacy policy",
+  },
 };

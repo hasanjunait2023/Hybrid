@@ -15,6 +15,7 @@ import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { PageHeader, StatStrip, StatCard } from "../_ui";
 import { TrendChart, StatusBars } from "../DashboardCharts";
+import { ReportsControls } from "./ReportsControls";
 
 // Reports & Finance (tenant roadmap P2-1). Range-bounded sales trend, top
 // products, fulfilment/RTO breakdown, COD collection, and gross profit/margin.
@@ -72,6 +73,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   return (
     <div className="space-y-5">
       <PageHeader title={t.title} subtitle={`${range.from} — ${range.to}`} />
+
+      <ReportsControls initialRange={range} locale={locale} />
 
       {/* Range presets */}
       <div className="flex gap-2">

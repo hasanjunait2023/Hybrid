@@ -11,8 +11,16 @@ interface ProductGridProps {
 }
 
 const EMPTY = {
-  bn: "এই মুহূর্তে কোনো পণ্য নেই।",
-  en: "No products right now.",
+  bn: {
+    message: "এই মুহূর্তে কোনো পণ্য নেই।",
+    hint: "শীঘ্রই নতুন পণ্য যোগ হবে।",
+    cta: "হোমপেজে ফিরে যান",
+  },
+  en: {
+    message: "No products right now.",
+    hint: "New products are coming soon.",
+    cta: "Back to home",
+  },
 } as const;
 
 // DESIGN §6.1 #4 — 2-col mobile (BD norm), 3 (md) → 4 (lg) → 5 (xl).
@@ -24,10 +32,21 @@ export function ProductGrid({
   lang = "en",
 }: ProductGridProps) {
   if (products.length === 0) {
+    const t = EMPTY[lang];
     return (
-      <p className="bn-body px-4 py-10 text-center text-ink-muted">
-        {EMPTY[lang]}
-      </p>
+      <div
+        className="mx-auto flex max-w-storefront flex-col items-center gap-3 px-4 py-16 text-center"
+        role="status"
+      >
+        <p className="bn-body text-lg font-semibold text-ink">{t.message}</p>
+        <p className="bn-body text-sm text-ink-muted">{t.hint}</p>
+        <a
+          href="/"
+          className="mt-2 inline-flex h-11 items-center justify-center rounded-md bg-primary px-6 text-sm font-semibold text-white transition hover:bg-primary-hover"
+        >
+          {t.cta}
+        </a>
+      </div>
     );
   }
 

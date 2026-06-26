@@ -8,7 +8,10 @@ import { getSmsAdapter } from "./index";
 import {
   customerOrderConfirmationSms,
   sellerNewOrderAlertSms,
+  customerOrderStatusSms,
   type OrderNotificationData,
+  type OrderStatusNotificationData,
+  type StatusChangeKind,
 } from "./templates";
 import { notifyOrderPlacedWhatsApp } from "@/lib/whatsapp/notify";
 
@@ -70,4 +73,18 @@ async function safeSend(
   } catch (error) {
     console.error(`[sms] send failed (${context}):`, error);
   }
+}
+
+// Phase 6 — Status-change notifications (shipped / delivered / cancelled).
+// Buyer-facing. Same non-blocking guarantee: a gateway failure here must never
+// surface as an order-management error to the merchant.
+export async function sendOrderStatusNotification(
+  input: OrderStatusNotificationData,
+  kind: StatusChangeKind,
+): Promise<void> {
+  const sms = getSmsAdapter();
+  await safeSend(
+    () => sms.send(input.customerPhone, customerOrderStatusSms(input, kind)),
+    `customer ${input.customerPhone} order #${input.orderNumber} status=${kind}`,
+  );
 }

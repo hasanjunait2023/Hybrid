@@ -98,6 +98,10 @@ export async function setup(): Promise<void> {
     port,
     persistent: false,
     authMethod: "password",
+    // When tests run as root (CI / containers / `sudo pnpm`), Postgres refuses
+    // to start. embedded-postgres will spawn a dedicated unprivileged user
+    // (`embedded-postgres`) to run initdb + the server. Safe no-op on non-root.
+    createPostgresUser: true,
     // Force UTF-8 so Bangla text fields round-trip on Windows too (the default
     // initdb on Windows is WIN1252, which cannot store Bangla — was tech-debt
     // known-issue #4). --locale=C pairs safely with UTF8 on any platform and

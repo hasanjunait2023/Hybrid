@@ -81,7 +81,6 @@ export interface CreateAppUserResult {
 }
 
 // Create a standalone app_user. Own auth (SHIFT 1) makes this the ONLY identity
-// path: signup OTP-verifies, then calls createAppUser with the Argon2id
 // passwordHash. Idempotent on email so a retried signup matches the existing
 // user instead of erroring; the `created` flag lets callers tell new-vs-existing
 // apart (the signup action refuses the latter — account-takeover guard).

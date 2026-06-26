@@ -11,7 +11,7 @@ import { timeAgo } from "@/lib/admin/format";
 import { useDict, useLocale } from "@/lib/i18n/provider";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import type { OrderListRow } from "@/lib/admin/orders";
-import { bulkAdvanceStatus, bulkSendToCourier } from "./bulk-actions";
+import { bulkAdvanceStatus, bulkSendToCourier, bulkPrintInvoices, bulkCancel } from "./bulk-actions";
 
 export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
   const router = useRouter();
@@ -69,6 +69,34 @@ export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
             </BulkBtn>
             <BulkBtn disabled={pending} primary onClick={() => run(() => bulkSendToCourier(ids()), t.courierShort)}>
               {t.sendCourier}
+            </BulkBtn>
+            <BulkBtn
+              disabled={pending}
+              onClick={async () => {
+                startTransition(async () => {
+                  setMessage(null);
+                  const res = await bulkPrintInvoices(ids());
+                  if (res.urls.length > 0) {
+                    // Open each invoice in a new tab — browser handles print dialog
+                    res.urls.forEach((u) => window.open(u, "_blank"));
+                    setMessage(`প্রিন্টের জন্য ${formatNumber(res.succeeded, locale)} টি ইনভয়েস খোলা হয়েছে।`);
+                  } else if (res.error) {
+                    setMessage(res.error);
+                  }
+                });
+              }}
+            >
+              প্রিন্ট ইনভয়েস
+            </BulkBtn>
+            <BulkBtn
+              disabled={pending}
+              onClick={() => {
+                if (confirm(`${formatNumber(selected.size, locale)} টি অর্ডার বাতিল করতে চান?`)) {
+                  run(() => bulkCancel(ids()), "বাতিল");
+                }
+              }}
+            >
+              বাতিল
             </BulkBtn>
           </div>
         </div>

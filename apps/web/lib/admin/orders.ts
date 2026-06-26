@@ -306,6 +306,23 @@ export interface OrderDetail {
   items: OrderItemRow[];
   payment: OrderPayment | null;
   shipment: OrderShipment | null;
+  /** Customer's other orders summary (excludes the current order). */
+  customerHistory?: {
+    totalOrders: number;
+    lifetimeValue: number;
+    firstOrderAt: string | null;
+    lastOrderAt: string | null;
+    cancelledCount: number;
+    returnedCount: number;
+    /** Up to 5 most recent other orders. */
+    recentOrders: {
+      id: string;
+      orderNumber: number;
+      grandTotal: number;
+      fulfillmentStatus: string;
+      placedAt: string;
+    }[];
+  };
 }
 
 export async function getOrderDetail(
@@ -378,6 +395,64 @@ export async function getOrderDetail(
       from shipment where order_id = ${orderId} order by created_at desc limit 1
     `;
 
+    // Customer history: only when the order has a customer_id. Pulls aggregate
+    // stats + 5 most recent other orders (excluding the current one) for the
+    // sidebar. Single round-trip; uses index on (customer_id, placed_at desc).
+    let customerHistory: OrderDetail["customerHistory"];
+    if (o.customer_id) {
+      const summary = await tx<
+        {
+          total_orders: number;
+          lifetime_value: string;
+          first_order_at: string | null;
+          last_order_at: string | null;
+          cancelled_count: number;
+          returned_count: number;
+        }[]
+      >`
+        select
+          count(*)::int as total_orders,
+          coalesce(sum(grand_total) filter (where fulfillment_status <> 'cancelled'), 0) as lifetime_value,
+          min(placed_at) as first_order_at,
+          max(placed_at) filter (where id <> ${orderId}) as last_order_at,
+          count(*) filter (where fulfillment_status = 'cancelled')::int as cancelled_count,
+          count(*) filter (where fulfillment_status = 'returned')::int as returned_count
+        from orders
+        where customer_id = ${o.customer_id}
+      `;
+      const recent = await tx<
+        {
+          id: string;
+          order_number: string;
+          grand_total: string;
+          fulfillment_status: string;
+          placed_at: string;
+        }[]
+      >`
+        select id, order_number, grand_total, fulfillment_status, placed_at
+        from orders
+        where customer_id = ${o.customer_id} and id <> ${orderId}
+        order by placed_at desc
+        limit 5
+      `;
+      const s = summary[0];
+      customerHistory = {
+        totalOrders: s?.total_orders ?? 0,
+        lifetimeValue: Number(s?.lifetime_value ?? 0),
+        firstOrderAt: s?.first_order_at ?? null,
+        lastOrderAt: s?.last_order_at ?? null,
+        cancelledCount: s?.cancelled_count ?? 0,
+        returnedCount: s?.returned_count ?? 0,
+        recentOrders: recent.map((r) => ({
+          id: r.id,
+          orderNumber: Number(r.order_number),
+          grandTotal: Number(r.grand_total),
+          fulfillmentStatus: r.fulfillment_status,
+          placedAt: r.placed_at,
+        })),
+      };
+    }
+
     return {
       id: o.id,
       orderNumber: Number(o.order_number),
@@ -422,6 +497,7 @@ export async function getOrderDetail(
             codStatus: shipments[0].cod_status,
           }
         : null,
+      customerHistory,
     };
   });
 }

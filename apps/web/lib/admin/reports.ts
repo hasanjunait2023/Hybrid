@@ -3,13 +3,19 @@
 // — no new schema. Range-bounded by Asia/Dhaka local dates. Money as numbers
 // (postgres.js returns numeric as string → Number()).
 import { withTenant } from "@hybrid/db";
+import type { DateRange } from "./reports-shared";
 
-export interface DateRange {
-  /** inclusive Dhaka-local start date, 'YYYY-MM-DD'. */
-  from: string;
-  /** inclusive Dhaka-local end date, 'YYYY-MM-DD'. */
-  to: string;
-}
+// Re-export client-safe helpers from reports-shared.ts (no DB import, so they
+// are safe to use from "use client" components without bundling postgres.js
+// or node:crypto).
+export type { DateRange, ReportPreset } from "./reports-shared";
+export {
+  presetRange,
+  defaultRange,
+  toCsv,
+  todayDhaka,
+  addDays,
+} from "./reports-shared";
 
 export interface SalesReport {
   days: { day: string; orders: number; revenue: number }[];
@@ -251,10 +257,3 @@ export async function getCourierPerformance(
   });
 }
 
-// Default range: last 30 Dhaka-local days, inclusive.
-export function defaultRange(todayDhaka: string): DateRange {
-  const end = new Date(todayDhaka + "T00:00:00+06:00");
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 29);
-  return { from: start.toISOString().slice(0, 10), to: todayDhaka };
-}

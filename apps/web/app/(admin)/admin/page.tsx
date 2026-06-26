@@ -7,6 +7,8 @@ import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { TrendChart, StatusBars } from "./DashboardCharts";
+import { WeeklyComparison, TopProducts, ActivityFeed } from "./DashboardWidgets";
+import { MobileQuickStats } from "./MobileQuickStats";
 import { PageHeader, StatStrip, StatCard } from "./_ui";
 
 // Admin dashboard (DESIGN §P2.3), reference layout: KPI row → trend chart +
@@ -40,6 +42,16 @@ export default async function AdminDashboardPage() {
             + {t.newOrder}
           </a>
         }
+      />
+
+      {/* Mobile-only horizontal stat strip (snap-scrollable cards) */}
+      <MobileQuickStats
+        todayOrders={data.todayOrders}
+        todayRevenue={data.todayRevenue}
+        pendingConfirm={data.pendingConfirmCount}
+        codPending={data.codPendingAmount}
+        lowStock={data.lowStockCount}
+        locale={locale}
       />
 
       {/* KPI row — order = operational urgency. */}
@@ -121,6 +133,24 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Weekly comparison + Top products + Recent activity */}
+      <section className="grid gap-4 lg:grid-cols-3">
+        <WeeklyComparison
+          thisWeekOrders={data.thisWeekOrders}
+          thisWeekRevenue={data.thisWeekRevenue}
+          lastWeekOrders={data.lastWeekOrders}
+          lastWeekRevenue={data.lastWeekRevenue}
+          locale={locale}
+          ordersLabel={t.ordersUnit}
+        />
+        <TopProducts
+          products={data.topProducts}
+          locale={locale}
+          seeAllHref="/admin/products?sort=top"
+        />
+        <ActivityFeed items={data.recentActivity} locale={locale} />
       </section>
 
       {/* Recent orders table (2/3) + status panel (1/3) */}

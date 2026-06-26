@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CheckIcon } from "@hybrid/ui";
 import {
@@ -10,6 +11,39 @@ import { AddToCart } from "./AddToCart";
 
 interface ProductDetailPageProps {
   params: Promise<{ tenant: string; slug: string }>;
+}
+
+// SEO (Phase 1 storefront polish — P1.1): per-product title + description +
+// OpenGraph image so social shares and search snippets actually render product
+// info instead of the bare template. Bengali title falls back to Latin when the
+// product only has a Latin name; same for description.
+export async function generateMetadata({
+  params,
+}: ProductDetailPageProps): Promise<Metadata> {
+  const { tenant: slug, slug: productSlug } = await params;
+  const ctx = await getTenantContextBySlug(slug);
+  if (!ctx) return { title: "Product" };
+  const product = await getStorefrontProductBySlug(ctx.id, productSlug);
+  if (!product) return { title: "Product" };
+  const description =
+    product.description?.replace(/\s+/g, " ").trim().slice(0, 160) ??
+    `${product.title} — ${ctx.store.name}`;
+  return {
+    title: `${product.title} — ${ctx.store.name}`,
+    description,
+    openGraph: {
+      title: product.title,
+      description,
+      images: product.imageUrl ? [{ url: product.imageUrl }] : undefined,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.title,
+      description,
+      images: product.imageUrl ? [product.imageUrl] : undefined,
+    },
+  };
 }
 
 // PDP (blueprint §7, DESIGN P1 / §6.3). Server-rendered detail via the cached

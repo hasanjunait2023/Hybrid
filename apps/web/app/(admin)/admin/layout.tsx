@@ -6,6 +6,7 @@ import { getDict } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/provider";
 import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
 import { AdminNav } from "./AdminNav";
+import { LiveOrdersBanner } from "./LiveOrdersBanner";
 
 // Auth-gated shell: must run per request so the session is evaluated at runtime
 // (never statically prerendered into a baked redirect to /dev-login). getSession
@@ -64,6 +65,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         {/* Mobile bottom tab bar (base–md) */}
         <AdminNav variant="tabs" tenantId={tenantId} />
       </div>
+      <LiveOrdersBanner />
     </LocaleProvider>
   );
 }

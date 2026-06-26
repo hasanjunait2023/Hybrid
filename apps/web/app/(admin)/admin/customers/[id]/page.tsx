@@ -7,6 +7,7 @@ import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { CustomerNotes } from "./CustomerNotes";
+import { MonthlySpendChart, CommunicationLog } from "./CustomerTimeline";
 
 // Customer detail (DESIGN §P5). Header with trust signals (orders, spent, COD
 // reliability = delivered vs returned), order history, addresses, notes/tags.
@@ -144,6 +145,14 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
             initialNote={customer.note ?? ""}
             initialTags={customer.tags}
           />
+
+          {customer.monthlySpend && (
+            <MonthlySpendChart data={customer.monthlySpend} locale={locale} />
+          )}
+
+          {customer.communications && (
+            <CommunicationLog items={customer.communications} locale={locale} />
+          )}
         </aside>
       </div>
     </div>

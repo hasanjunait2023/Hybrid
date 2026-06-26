@@ -17,6 +17,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { canTransition, canCancelOrder, restoreInventory } from "@/lib/admin/orders";
 import { findCustomerByPhone, type CustomerPrefill } from "@/lib/admin/customers";
 import { placeOrder, InsufficientStockError } from "@/lib/commerce/placeOrder";
+import { recordAudit, type AuditAction } from "@/lib/audit/record";
 
 export interface ActionResult {
   ok: boolean;
@@ -120,6 +121,79 @@ export async function updateOrderStatus(
 
   bustOrderTags(auth.tenantId, orderId);
   revalidateTag(`tenant:${auth.tenantId}:products`); // inventory restore may change stock
+
+  // P1.1 — audit trail. Critical money/inventory action; record who
+  // changed the order status, what it changed to, and the order id.
+  // Best-effort: a failure here never surfaces to the merchant UI.
+  const auditAction: AuditAction =
+    to === "cancelled"
+      ? "order.cancel"
+      : to === "returned"
+        ? "order.refund"
+        : "settings.update";
+  void recordAudit({
+    tenantId: auth.tenantId,
+    actorUserId: auth.userId,
+    action: auditAction,
+    resourceType: "order",
+    resourceId: orderId,
+    details: { from: "see orders table", to },
+  });
+
+  // Phase 6 — fire-and-forget status-change SMS to the customer. Non-blocking:
+  // the merchant's UI already returned OK; SMS failures are isolated and never
+  // surface as order-management errors. We re-fetch the row outside the txn so
+  // we get the post-update state (tracking code, store name, phone, etc.).
+  if (to === "shipped" || to === "delivered" || to === "cancelled") {
+    try {
+      const rows = await withTenant(auth.tenantId, auth.userId, (tx) =>
+        tx<
+          {
+            order_number: number;
+            total: string;
+            payment_method: string;
+            customer_name: string;
+            customer_phone: string;
+            tracking_code: string | null;
+            store_name: string;
+          }[]
+        >`select o.order_number, o.total, o.payment_method,
+                 c.name as customer_name, c.phone as customer_phone,
+                 s.tracking_code,
+                 t.name as store_name
+            from orders o
+            join customer c on c.id = o.customer_id
+            join tenant t on t.id = o.tenant_id
+            left join shipment s on s.order_id = o.id
+           where o.id = ${orderId}
+           limit 1`,
+      );
+      const r = rows[0];
+      if (r) {
+        // P1.4 — enqueue via Redis-backed queue instead of awaiting the
+        // gateway inline. The merchant's UI returned OK the moment we
+        // enqueued; the actual SMS fires 5–30s later on the background
+        // drainer. Gateway timeouts NEVER block order completion.
+        const { enqueueStatusSms } = await import("@/lib/sms/queue");
+        await enqueueStatusSms(
+          {
+            storeName: r.store_name,
+            orderNumber: r.order_number,
+            total: Number(r.total),
+            paymentMethod: r.payment_method === "bkash" ? "bkash" : "cod",
+            customerName: r.customer_name,
+            customerPhone: r.customer_phone,
+            trackingCode: r.tracking_code,
+          },
+          to,
+        );
+      }
+    } catch (err) {
+      // Swallow — never let notification failure affect the API result.
+      console.error("[updateOrderStatus] status SMS failed", err);
+    }
+  }
+
   return { ok: true };
 }
 
