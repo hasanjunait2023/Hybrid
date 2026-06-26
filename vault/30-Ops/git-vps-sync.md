@@ -54,11 +54,23 @@ docker compose --env-file .env.deploy -f docker-compose.prod.yml up -d --force-r
 - **Read-only deploy key** on GitHub (`hybrid-vps-deploy`) → VPS can `git fetch` the private repo
   (SSH remote). Verified.
 
+## Reconciled (2026-06-26) — VPS ↔ GitHub aligned
+The 484-file divergence was triaged: 409 = `graphify-out/` junk, 1 = `.env.deploy` (secret), the
+rest real. Outcome:
+- **Captured all real VPS-only work → GitHub** (`44797bd`): `_ui.tsx` Breadcrumbs + its use across
+  order/customer/payment detail pages (merged with the i18n versions — breadcrumbs use the dict),
+  admin `error/loading/not-found.tsx`, `scripts/` ops tooling, `docs/P1_5_SUPABASE_OAUTH.md`,
+  `docs/agent-reports/`, `.claude/hooks/anti-fabrication.md`. `deploy.sh` added to the repo (`4b4a1b5`).
+- **Kept GitHub canonical** for the 6 db/i18n fix files (VPS had the buggy pre-fix versions).
+- **Aligned VPS source → `origin/master`** (recovery point `13a18a3`), then **`--no-cache` rebuild**.
+  Running container now has every fix: `title_bn`/`sms_log` crashes gone, oauth fix, breadcrumbs,
+  error boundaries. Verified by build-string counts. Prod healthy.
+
+GitHub == VPS source == running container. Future deploys: `git pull` (ff-only works now) + `deploy.sh`.
+
 ## Open
-- [ ] **VPS tree ↔ GitHub full alignment**: they diverged (484 files; VPS has runtime/extra files,
-  lacks `vault/`). A blind `reset --hard origin/master` is unsafe with active agents — reconcile
-  deliberately (diff `13a18a3` vs `origin/master`, decide per file) before switching to pure
-  pull-deploy.
-- [ ] **Stop the other agent from overwriting `/opt/hybrid`** at the source — the root cause. Until
-  then, the guards above contain the damage.
-- [x] Secrets durability · [x] `.env.deploy` self-heal · [x] git version-control · [x] deploy key
+- [ ] **Stop the other agent from overwriting `/opt/hybrid`** at the source — the root cause. The
+  guards (git tracking, env at `/root`, env-guard cron, deploy.sh self-heal) now **contain** it: a
+  revert shows as `git status` and recovers via `git checkout`.
+- [x] Secrets durability · [x] `.env.deploy` self-heal · [x] git version-control · [x] deploy key ·
+  [x] VPS↔GitHub alignment · [x] fixes deployed to prod
