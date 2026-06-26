@@ -11,6 +11,7 @@ import { OrderRiskPanel } from "./OrderRiskPanel";
 import { ManualPaymentForm } from "./ManualPaymentForm";
 import { CustomerHistorySidebar } from "./CustomerHistorySidebar";
 import { OrderNotesPanelWrapper } from "./OrderNotesPanelWrapper";
+import { Breadcrumbs } from "../../_ui";
 
 // Order detail (DESIGN §P3.3). Header = order# + stepper + contextual action.
 // Two-column ≥ lg, stacked on mobile. Latin numerals, mono amounts (§4.4).
@@ -36,10 +37,12 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
   return (
     <div className="space-y-5">
-      <a href="/admin/orders" className="text-sm font-medium text-ink-muted hover:text-primary">
-        {t.backToList}
-      </a>
-
+      <Breadcrumbs
+        items={[
+          { label: d.admin.nav.orders, href: "/admin/orders" },
+          { label: `#${order.orderNumber}` },
+        ]}
+      />
       {/* Header */}
       <div className="rounded-lg border border-border bg-surface p-4 shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-3">

@@ -3,6 +3,7 @@
 // header (title + optional subtitle + right-aligned action) and the summary
 // StatCard strip. Server components (no client state). Hybrid indigo brand,
 // Latin numerals / tabular-nums (admin §4.4).
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 export function PageHeader({
@@ -74,5 +75,44 @@ export function StatCard({
       </p>
       {sub && <p className={`mt-1.5 text-2xs ${subTone}`}>{sub}</p>}
     </div>
+  );
+}
+
+// Breadcrumb trail for deep admin pages (order detail, customer detail,
+// settings sub-pages). Each item is {label, href?}. The last item renders
+// as plain text (current page). Renders nothing if only 1 item.
+export type Crumb = { label: string; href?: string };
+
+export function Breadcrumbs({ items }: { items: Crumb[] }) {
+  if (!items || items.length <= 1) return null;
+  return (
+    <nav aria-label="Breadcrumb" className="mb-2">
+      <ol className="flex flex-wrap items-center gap-1 text-xs text-ink-muted">
+        {items.map((c, i) => {
+          const last = i === items.length - 1;
+          return (
+            <li key={`${c.label}-${i}`} className="flex items-center gap-1">
+              {c.href && !last ? (
+                <Link
+                  href={c.href}
+                  className="rounded px-1 py-0.5 hover:bg-surface-2 hover:text-ink"
+                >
+                  {c.label}
+                </Link>
+              ) : (
+                <span className="px-1 py-0.5 text-ink" aria-current={last ? "page" : undefined}>
+                  {c.label}
+                </span>
+              )}
+              {!last && (
+                <span aria-hidden="true" className="text-ink-subtle">
+                  ›
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

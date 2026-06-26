@@ -12,6 +12,7 @@ import { BkashForm } from "./BkashForm";
 import { NagadForm } from "./NagadForm";
 import { SslcommerzForm } from "./SslcommerzForm";
 import { CodForm } from "./CodForm";
+import { Breadcrumbs } from "../../_ui";
 
 // Payment settings (DESIGN §Q4). COD (market default) + bKash + Nagad +
 // SSLCommerz, each on the shared <ProviderCard>. Secrets are write-masked.
@@ -38,9 +39,12 @@ export default async function PaymentSettingsPage() {
 
   return (
     <div className="max-w-xl space-y-5">
-      <a href="/admin/settings" className="text-sm font-medium text-ink-muted hover:text-primary">
-        ← {t.backToSettings}
-      </a>
+      <Breadcrumbs
+        items={[
+          { label: d.admin.nav.settings, href: "/admin/settings" },
+          { label: t.title },
+        ]}
+      />
       <h1 className="text-xl font-bold text-ink">{t.title}</h1>
 
       <CodForm enabled={payment.cod.enabled} />

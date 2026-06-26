@@ -8,6 +8,7 @@ import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { CustomerNotes } from "./CustomerNotes";
 import { MonthlySpendChart, CommunicationLog } from "./CustomerTimeline";
+import { Breadcrumbs } from "../../_ui";
 
 // Customer detail (DESIGN §P5). Header with trust signals (orders, spent, COD
 // reliability = delivered vs returned), order history, addresses, notes/tags.
@@ -36,9 +37,12 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
 
   return (
     <div className="space-y-5">
-      <a href="/admin/customers" className="text-sm font-medium text-ink-muted hover:text-primary">
-        {t.backToList}
-      </a>
+      <Breadcrumbs
+        items={[
+          { label: d.admin.nav.customers, href: "/admin/customers" },
+          { label: customer.name ?? "—" },
+        ]}
+      />
 
       {/* Header */}
       <section className="rounded-lg border border-border bg-surface p-4">
