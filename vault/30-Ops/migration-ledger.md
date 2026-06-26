@@ -25,4 +25,9 @@ Idempotent additive SQL in `packages/db/sql/NN_name.sql`, applied by lexical pre
 | 19 | `19_order_assignee.sql` | order assignee | agent-team |
 | 20 | `20_abandoned_carts.sql` | abandoned-cart automation | agent-team |
 
-> ⚠️ Verify 16–20 are applied to the prod `_migrations` ledger (they were authored on the VPS).
+> ✅ **16–20 applied to prod 2026-06-26.** They had NEVER run on prod (ledger stopped at 15;
+> `tracking_event_log`/`order_note`/`cart` were missing → those features were dead on prod).
+> Applied the fixed/idempotent versions. `audit_log` was also migrated **old→new schema**:
+> 01_schema shipped a stale `bigint`/`text`/`created_at` design that diverged from migration 17 +
+> `lib/audit/record.ts` (`uuid`/`audit_action`/`occurred_at`); the empty old table was dropped and
+> recreated. Fix committed `8a23229`; idempotent guards added to 16/17 so re-application is safe.
