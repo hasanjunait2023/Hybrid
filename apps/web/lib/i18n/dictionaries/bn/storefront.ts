@@ -70,6 +70,8 @@ export const storefront: typeof EnStorefront = {
     promoPlaceholder: "কোড থাকলে লিখুন",
     orderSummary: "অর্ডার সারাংশ",
     subtotal: "সাবটোটাল",
+    shipping: "ডেলিভারি চার্জ",
+    freeShipping: "ফ্রি",
     total: "সর্বমোট",
     payWithBkash: "বিকাশে পেমেন্ট করুন",
     placeOrder: "অর্ডার করুন",

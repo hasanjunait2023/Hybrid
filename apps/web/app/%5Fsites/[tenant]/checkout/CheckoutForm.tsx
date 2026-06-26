@@ -3,7 +3,7 @@
 // numerals. Phone-first, minimum fields, COD default (loudest, COD-green) +
 // bKash (single pink), Division→District→Thana bottom sheets, order summary,
 // sticky "অর্ডার করুন" bar. Submits to the submitCheckout Server Action.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, BkashIcon, CheckIcon } from "@hybrid/ui";
 import type { LocationTree, CascadeOption } from "@/lib/location";
 import { useDict, useLocale } from "@/lib/i18n/provider";
@@ -11,7 +11,7 @@ import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import type { Locale } from "@/lib/i18n/config";
 import type { Messages } from "@/lib/i18n/dictionaries";
 import { useCart } from "../cart/useCart";
-import { submitCheckout } from "./actions";
+import { submitCheckout, quoteShipping } from "./actions";
 import { LocationSheet } from "./LocationSheet";
 
 interface CheckoutFormProps {
@@ -47,6 +47,33 @@ export function CheckoutForm({
   const [promoCode, setPromoCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Live shipping charge for display (null = not configured / not yet quoted).
+  // The authoritative value is re-computed server-side at submit.
+  const [shipping, setShipping] = useState<number | null>(null);
+
+  // Quote shipping whenever the destination (division+district) or cart changes.
+  const destDivision = division?.bn ?? null;
+  const destDistrict = district?.bn ?? null;
+  const itemsKey = cart.lines.map((l) => `${l.variantId}:${l.quantity}`).join(",");
+  useEffect(() => {
+    if (!destDivision || !destDistrict || cart.lines.length === 0) {
+      setShipping(null);
+      return;
+    }
+    let cancelled = false;
+    void quoteShipping({
+      tenantSlug,
+      division: destDivision,
+      district: destDistrict,
+      items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+    }).then((res) => {
+      if (!cancelled) setShipping(res.amount);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // itemsKey captures cart line changes; cart.lines is derived from it.
+  }, [tenantSlug, destDivision, destDistrict, itemsKey, cart.lines]);
 
   const districts = useMemo(
     () => (division ? (locationTree.districtsByDivision[division.value] ?? []) : []),
@@ -262,6 +289,7 @@ export function CheckoutForm({
             imageUrl: l.imageUrl ?? null,
           }))}
           subtotal={cart.subtotal}
+          shipping={shipping}
           locale={locale}
           d={d}
         />
@@ -277,7 +305,7 @@ export function CheckoutForm({
           <div className="flex flex-col">
             <span className="text-2xs text-ink-muted">{t.total}</span>
             <span className="text-lg font-bold leading-none text-ink tnum">
-              {formatMoney(cart.subtotal, locale)}
+              {formatMoney(cart.subtotal + (shipping ?? 0), locale)}
             </span>
           </div>
           <Button
@@ -367,15 +395,18 @@ interface SummaryLine {
 function OrderSummary({
   lines,
   subtotal,
+  shipping,
   locale,
   d,
 }: {
   lines: SummaryLine[];
   subtotal: number;
+  shipping: number | null;
   locale: Locale;
   d: Messages;
 }) {
   const t = d.storefront.checkout;
+  const total = subtotal + (shipping ?? 0);
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3">
       <span className="bn-body text-sm font-semibold text-ink">{t.orderSummary}</span>
@@ -401,9 +432,17 @@ function OrderSummary({
         <span className="bn-body text-sm text-ink-muted">{t.subtotal}</span>
         <span className="text-sm font-semibold text-ink tnum">{formatMoney(subtotal, locale)}</span>
       </div>
+      {shipping != null && (
+        <div className="flex items-center justify-between">
+          <span className="bn-body text-sm text-ink-muted">{t.shipping}</span>
+          <span className="text-sm font-semibold text-ink tnum">
+            {shipping === 0 ? t.freeShipping : formatMoney(shipping, locale)}
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <span className="bn-body text-base font-bold text-ink">{t.total}</span>
-        <span className="text-2xl font-bold text-ink tnum">{formatMoney(subtotal, locale)}</span>
+        <span className="text-2xl font-bold text-ink tnum">{formatMoney(total, locale)}</span>
       </div>
     </div>
   );

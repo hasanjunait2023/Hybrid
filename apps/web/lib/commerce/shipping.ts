@@ -65,7 +65,6 @@ export interface ShippingQuoteInput {
   items: { variantId: string; quantity: number }[];
   destDivision: string;
   destDistrict: string;
-  subtotal: number;
 }
 
 export interface ShippingQuote {
@@ -77,12 +76,13 @@ export interface ShippingQuote {
 
 /**
  * Resolve a shipping quote for a tenant. Loads config + zone rates + the parcel
- * weight (sum of variant weight_grams * qty) under RLS, then applies the pure
- * calc. Call this from the checkout server action; pass `amount` to placeOrder.
+ * weight AND subtotal (sum of variant weight_grams / price * qty) under RLS from
+ * DB prices — never a client value — then applies the pure calc. Call this from
+ * the checkout server action; pass `amount` to placeOrder.
  */
 export async function calculateShipping(
   tenantId: string,
-  userId: string,
+  userId: string | null,
   input: ShippingQuoteInput,
 ): Promise<ShippingQuote> {
   return withTenant(tenantId, userId, async (tx) => {
@@ -122,13 +122,17 @@ export async function calculateShipping(
 
     const ids = input.items.map((i) => i.variantId);
     let weightGrams = 0;
+    let subtotal = 0;
     if (ids.length > 0) {
-      const weights = await tx<{ id: string; weight_grams: number | null }[]>`
-        select id, weight_grams from product_variant where id = any(${ids})
+      const vars = await tx<{ id: string; weight_grams: number | null; price: string }[]>`
+        select id, weight_grams, price from product_variant where id = any(${ids})
       `;
-      const byId = new Map(weights.map((w) => [w.id, w.weight_grams ?? 0]));
+      const byId = new Map(vars.map((v) => [v.id, { weight: v.weight_grams ?? 0, price: Number(v.price) }]));
       for (const item of input.items) {
-        weightGrams += (byId.get(item.variantId) ?? 0) * item.quantity;
+        const v = byId.get(item.variantId);
+        if (!v) continue;
+        weightGrams += v.weight * item.quantity;
+        subtotal += v.price * item.quantity;
       }
     }
 
@@ -136,7 +140,7 @@ export async function calculateShipping(
       { division: config.originDivision, district: config.originDistrict },
       { division: input.destDivision, district: input.destDistrict },
     );
-    const amount = computeShipping({ config, rates, zone, weightGrams, subtotal: input.subtotal });
+    const amount = computeShipping({ config, rates, zone, weightGrams, subtotal });
     return { amount, zone, weightGrams };
   });
 }

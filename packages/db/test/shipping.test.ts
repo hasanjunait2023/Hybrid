@@ -94,7 +94,6 @@ describe("shipping calculator — DB (withTenant)", () => {
       items: [{ variantId: VARIANT, quantity: 2 }],
       destDivision: "চট্টগ্রাম",
       destDistrict: "চট্টগ্রাম",
-      subtotal: 1000,
     });
     expect(q.zone).toBe("other_division");
     expect(q.weightGrams).toBe(2400);
