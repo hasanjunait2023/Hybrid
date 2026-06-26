@@ -590,19 +590,32 @@ create table analytics_event (
 );
 create index analytics_event_tenant_type_time_idx on analytics_event(tenant_id, type, occurred_at desc);
 
--- Admin action audit trail (tenant_id nullable for platform-level actions)
+-- Admin action audit trail (tenant_id nullable for platform-level actions).
+-- Canonical schema matches migration 17_audit_log.sql + the app contract in
+-- lib/audit/record.ts (audit_action enum, resource_type/resource_id/details,
+-- occurred_at). 02_policies adds the tenant-isolation policy; 17 re-applies this
+-- block idempotently.
+create type audit_action as enum (
+  'settings.update','product.create','product.update','product.delete',
+  'order.refund','order.cancel','member.invite','member.remove',
+  'member.role_change','payment_account.update',
+  'tenant.suspend','tenant.reactivate','tenant.plan_change','platform_admin.login'
+);
 create table audit_log (
-  id            bigint generated always as identity primary key,
+  id            uuid primary key default gen_random_uuid(),
   tenant_id     uuid references tenant(id) on delete cascade,
   actor_user_id uuid references app_user(id) on delete set null,
-  action        text not null,
-  entity_type   text,
-  entity_id     uuid,
-  changes       jsonb not null default '{}'::jsonb,
-  ip            text,
-  created_at    timestamptz not null default now()
+  action        audit_action not null,
+  resource_type text,
+  resource_id   text,
+  details       jsonb not null default '{}'::jsonb,
+  ip_address    inet,
+  user_agent    text,
+  occurred_at   timestamptz not null default now()
 );
-create index audit_log_tenant_idx on audit_log(tenant_id, created_at desc);
+create index audit_log_tenant_time_idx on audit_log(tenant_id, occurred_at desc);
+create index audit_log_actor_time_idx on audit_log(actor_user_id, occurred_at desc);
+create index audit_log_action_idx on audit_log(action, occurred_at desc);
 
 -- Inbound webhook idempotency (payments / couriers). tenant_id nullable.
 create table webhook_event (

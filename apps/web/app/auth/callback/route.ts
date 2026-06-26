@@ -16,7 +16,14 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest): Promise<Response> {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/admin";
+  // Open-redirect guard: only allow same-origin local paths. Reject absolute
+  // URLs ("https://evil.com") and protocol-relative ("//evil.com", "/\evil")
+  // — new URL(next, origin) would otherwise honor an absolute target.
+  const rawNext = url.searchParams.get("next") ?? "/admin";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\")
+      ? rawNext
+      : "/admin";
   const error = url.searchParams.get("error_description");
 
   if (error) {

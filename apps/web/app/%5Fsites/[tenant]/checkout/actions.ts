@@ -21,6 +21,7 @@ import {
   type DiscountErrorReason,
 } from "@/lib/commerce/placeOrder";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
+import { calculateShipping } from "@/lib/commerce/shipping";
 import { getEnabledBkash } from "@/lib/payments/bkash";
 import { toJsonRecord } from "@/lib/payments/json";
 import { sendOrderNotifications } from "@/lib/sms/notify";
@@ -125,6 +126,15 @@ export async function submitCheckout(
     }
   }
 
+  // Shipping is computed SERVER-SIDE from the tenant's zone rates + the parcel
+  // weight (DB prices/weights, never a client value), then passed to placeOrder
+  // so it lands in grand_total + cod_amount. null = shipping not configured → 0.
+  const shipQuote = await calculateShipping(ctx.id, null, {
+    items: input.items,
+    destDivision: input.division,
+    destDistrict: input.district,
+  });
+
   let placed;
   try {
     placed = await placeOrder({
@@ -144,6 +154,7 @@ export async function submitCheckout(
       note: input.note ?? null,
       source: "storefront",
       discountCode: input.discountCode ?? null,
+      shippingTotal: shipQuote.amount ?? 0,
     });
   } catch (error) {
     if (error instanceof InsufficientStockError) {
@@ -244,6 +255,32 @@ export async function submitCheckout(
     orderNumber: placed.orderNumber,
     discount: placed.discount,
   };
+}
+
+// Live shipping quote for the checkout UI — called when the buyer has picked a
+// destination so the shipping line + total update before they submit. Amount is
+// authoritative (DB rates/weights); the same calc runs again in submitCheckout,
+// so a tampered client value is never trusted.
+const quoteSchema = z.object({
+  tenantSlug: z.string().min(1),
+  division: z.string().min(1).max(60),
+  district: z.string().min(1).max(60),
+  items: z.array(itemSchema).min(1).max(50),
+});
+
+export async function quoteShipping(
+  raw: z.infer<typeof quoteSchema>,
+): Promise<{ amount: number | null }> {
+  const parsed = quoteSchema.safeParse(raw);
+  if (!parsed.success) return { amount: null };
+  const ctx = await getTenantContextBySlug(parsed.data.tenantSlug);
+  if (!ctx) return { amount: null };
+  const q = await calculateShipping(ctx.id, null, {
+    items: parsed.data.items,
+    destDivision: parsed.data.division,
+    destDistrict: parsed.data.district,
+  });
+  return { amount: q.amount };
 }
 
 // Build the trusted callback origin for this tenant: its verified primary

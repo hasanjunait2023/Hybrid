@@ -12,26 +12,32 @@
 --   - Retention: 365 days by default. A cron (P3 backlog) will prune older
 --     rows. The table is JSONB-light — only the fields compliance asks for.
 
-create type audit_action as enum (
-  -- Tenant-scoped (owner/staff)
-  'settings.update',
-  'product.create',
-  'product.update',
-  'product.delete',
-  'order.refund',
-  'order.cancel',
-  'member.invite',
-  'member.remove',
-  'member.role_change',
-  'payment_account.update',
-  -- Platform-scoped (super_admin)
-  'tenant.suspend',
-  'tenant.reactivate',
-  'tenant.plan_change',
-  'platform_admin.login'
-);
+-- Idempotent: 01_schema.sql also defines audit_log, and the SQL bookend files
+-- are applied in full on a fresh DB (test harness + initdb). Guard every object
+-- so re-application is a safe no-op (avoids 42P07 "already exists").
+do $$ begin
+  create type audit_action as enum (
+    -- Tenant-scoped (owner/staff)
+    'settings.update',
+    'product.create',
+    'product.update',
+    'product.delete',
+    'order.refund',
+    'order.cancel',
+    'member.invite',
+    'member.remove',
+    'member.role_change',
+    'payment_account.update',
+    -- Platform-scoped (super_admin)
+    'tenant.suspend',
+    'tenant.reactivate',
+    'tenant.plan_change',
+    'platform_admin.login'
+  );
+exception when duplicate_object then null;
+end $$;
 
-create table audit_log (
+create table if not exists audit_log (
   id            uuid primary key default gen_random_uuid(),
   tenant_id     uuid references tenant(id) on delete cascade, -- null for platform-only events
   actor_user_id uuid references app_user(id) on delete set null,
@@ -44,15 +50,16 @@ create table audit_log (
   occurred_at   timestamptz not null default now()
 );
 
-create index audit_log_tenant_time_idx on audit_log(tenant_id, occurred_at desc);
-create index audit_log_actor_time_idx on audit_log(actor_user_id, occurred_at desc);
-create index audit_log_action_idx on audit_log(action, occurred_at desc);
+create index if not exists audit_log_tenant_time_idx on audit_log(tenant_id, occurred_at desc);
+create index if not exists audit_log_actor_time_idx on audit_log(actor_user_id, occurred_at desc);
+create index if not exists audit_log_action_idx on audit_log(action, occurred_at desc);
 
 -- RLS — read scoped to tenant OR platform admin. Write happens via asPlatformAdmin
 -- (the helper inserts as superuser, which bypasses RLS for the INSERT — that's
 -- intentional for an audit log; the actor's identity is captured separately).
 alter table audit_log enable row level security;
 
+drop policy if exists audit_log_tenant_read on audit_log;
 create policy audit_log_tenant_read
   on audit_log
   for select

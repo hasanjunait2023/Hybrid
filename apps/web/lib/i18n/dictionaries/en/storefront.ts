@@ -69,6 +69,8 @@ export const storefront = {
     promoPlaceholder: "Enter code if you have one",
     orderSummary: "Order summary",
     subtotal: "Subtotal",
+    shipping: "Shipping",
+    freeShipping: "Free",
     total: "Total",
     payWithBkash: "Pay with bKash",
     placeOrder: "Place order",

@@ -98,10 +98,16 @@ export async function setup(): Promise<void> {
     port,
     persistent: false,
     authMethod: "password",
-    // When tests run as root (CI / containers / `sudo pnpm`), Postgres refuses
-    // to start. embedded-postgres will spawn a dedicated unprivileged user
-    // (`embedded-postgres`) to run initdb + the server. Safe no-op on non-root.
-    createPostgresUser: true,
+    // When tests run as ROOT on Linux (CI / containers / `sudo pnpm`), Postgres
+    // refuses to start, so embedded-postgres spawns a dedicated unprivileged
+    // user (via `groupadd`/`useradd`) to run initdb + the server. Gate this to
+    // root-on-Linux ONLY: on Windows (and non-root Linux) the user-creation path
+    // runs `groupadd` — which does not exist / is not permitted — and crashes
+    // setup with "Failed to create and initialize a new user on this system".
+    createPostgresUser:
+      process.platform === "linux" &&
+      typeof process.getuid === "function" &&
+      process.getuid() === 0,
     // Force UTF-8 so Bangla text fields round-trip on Windows too (the default
     // initdb on Windows is WIN1252, which cannot store Bangla — was tech-debt
     // known-issue #4). --locale=C pairs safely with UTF8 on any platform and

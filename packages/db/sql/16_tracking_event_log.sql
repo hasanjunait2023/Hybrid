@@ -15,7 +15,7 @@
 -- ---------------------------------------------------------------------------
 -- 16.1 tracking_event_log — every server-side event delivery attempt.
 -- ---------------------------------------------------------------------------
-create table tracking_event_log (
+create table if not exists tracking_event_log (
   id              uuid primary key default gen_random_uuid(),
   tenant_id       uuid not null references tenant(id) on delete cascade,
   event_id        text not null,           -- the dedup UUID (browser + server)
@@ -30,13 +30,13 @@ create table tracking_event_log (
   occurred_at     timestamptz not null default now()
 );
 
-create index tracking_event_log_tenant_time_idx
+create index if not exists tracking_event_log_tenant_time_idx
   on tracking_event_log(tenant_id, occurred_at desc);
 
-create index tracking_event_log_dedup_idx
+create index if not exists tracking_event_log_dedup_idx
   on tracking_event_log(tenant_id, event_id, platform);
 
-create index tracking_event_log_status_idx
+create index if not exists tracking_event_log_status_idx
   on tracking_event_log(tenant_id, status, occurred_at desc);
 
 -- ---------------------------------------------------------------------------
@@ -44,6 +44,7 @@ create index tracking_event_log_status_idx
 -- ---------------------------------------------------------------------------
 alter table tracking_event_log enable row level security;
 
+drop policy if exists tracking_event_log_tenant_isolation on tracking_event_log;
 create policy tracking_event_log_tenant_isolation
   on tracking_event_log
   using (tenant_id = app.current_tenant_id()::uuid or app.is_platform_admin())

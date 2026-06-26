@@ -253,23 +253,17 @@ export async function getCustomerDetail(
         orders: m.orders,
         spent: Number(m.spent),
       })),
-      // Communication log: SMS + emails sent to this customer (last 20).
-      communications: (await tx<{ channel: string; template_key: string; sent_at: string; status: string }[]>`
-        select 'sms' as channel, template_key, sent_at, status
-        from sms_log
-        where customer_id = ${customerId}
-        union all
-        select 'email' as channel, template_key, sent_at, status
-        from email_log
-        where customer_id = ${customerId}
-        order by sent_at desc
-        limit 20
-      `).map((c) => ({
-        channel: c.channel as "sms" | "email",
-        templateKey: c.template_key,
-        sentAt: c.sent_at,
-        status: c.status,
-      })),
+      // Communication log: SMS + emails sent to this customer.
+      // TODO(comms-log): the sms_log / email_log tables and a write path don't
+      // exist yet (no migration, no logger). Returning [] keeps the customer
+      // detail working; build the tables + log-on-send before surfacing this.
+      // Tracked: vault/10-Features/comms-log.md.
+      communications: [] as {
+        channel: "sms" | "email";
+        templateKey: string;
+        sentAt: string;
+        status: string;
+      }[],
     };
   });
 }
