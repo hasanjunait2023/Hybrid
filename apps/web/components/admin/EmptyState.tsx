@@ -1,16 +1,14 @@
 // Shared empty-state component. Used wherever a list has zero rows. Bilingual
 // (en/bn), server-rendered, zero deps.
 
-import type { ReactNode } from "react";
-import Link from "next/link";
 import type { Locale } from "@/lib/i18n/config";
+import Link from "next/link";
 
 export function EmptyState({
   icon = "📭",
   title,
   description,
   action,
-  locale = "en",
 }: {
   icon?: string;
   title: string;

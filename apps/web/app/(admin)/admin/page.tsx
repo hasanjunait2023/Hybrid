@@ -8,6 +8,7 @@ import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { TrendChart, StatusBars } from "./DashboardCharts";
 import { WeeklyComparison, TopProducts, ActivityFeed } from "./DashboardWidgets";
+import { MobileQuickStats } from "./MobileQuickStats";
 import { PageHeader, StatStrip, StatCard } from "./_ui";
 
 // Admin dashboard (DESIGN §P2.3), reference layout: KPI row → trend chart +
@@ -41,6 +42,16 @@ export default async function AdminDashboardPage() {
             + {t.newOrder}
           </a>
         }
+      />
+
+      {/* Mobile-only horizontal stat strip (snap-scrollable cards) */}
+      <MobileQuickStats
+        todayOrders={data.todayOrders}
+        todayRevenue={data.todayRevenue}
+        pendingConfirm={data.pendingConfirmCount}
+        codPending={data.codPendingAmount}
+        lowStock={data.lowStockCount}
+        locale={locale}
       />
 
       {/* KPI row — order = operational urgency. */}
