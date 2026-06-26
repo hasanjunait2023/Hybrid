@@ -10,6 +10,12 @@ export const auth = {
     submitting: "Logging in…",
     invalidCredentials: "Incorrect email or password.",
     genericError: "Sorry, something went wrong. Please try again.",
+    divider: "or",
+    oauthGoogle: "Continue with Google",
+    oauthFacebook: "Continue with Facebook",
+    oauthNotConfigured:
+      "Social sign-in is not enabled on this deployment. Use email and password.",
+    oauthFailed: "Could not start social sign-in. Please try again.",
   },
 
   signup: {

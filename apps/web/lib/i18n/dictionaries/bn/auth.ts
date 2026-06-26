@@ -11,6 +11,12 @@ export const auth: typeof En = {
     submitting: "লগ ইন হচ্ছে…",
     invalidCredentials: "ইমেইল বা পাসওয়ার্ড সঠিক নয়।",
     genericError: "দুঃখিত, কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।",
+    divider: "অথবা",
+    oauthGoogle: "Google দিয়ে চালিয়ে যান",
+    oauthFacebook: "Facebook দিয়ে চালিয়ে যান",
+    oauthNotConfigured:
+      "এই ডিপ্লয়মেন্টে সোশ্যাল সাইন-ইন চালু নেই। ইমেইল ও পাসওয়ার্ড ব্যবহার করুন।",
+    oauthFailed: "সোশ্যাল সাইন-ইন শুরু করা যায়নি। আবার চেষ্টা করুন।",
   },
 
   signup: {

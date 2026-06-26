@@ -26,6 +26,11 @@ export default async function LoginPage() {
             submitting: d.auth.login.submitting,
             invalidCredentials: d.auth.login.invalidCredentials,
             genericError: d.auth.login.genericError,
+            divider: d.auth.login.divider,
+            oauthGoogle: d.auth.login.oauthGoogle,
+            oauthFacebook: d.auth.login.oauthFacebook,
+            oauthNotConfigured: d.auth.login.oauthNotConfigured,
+            oauthFailed: d.auth.login.oauthFailed,
           }}
         />
       </div>
