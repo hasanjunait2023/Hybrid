@@ -6,7 +6,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { exportSalesCsv, exportTopProductsCsv } from "./export-actions";
-import { presetRange, type DateRange } from "@/lib/admin/reports";
+import { presetRange, type DateRange } from "@/lib/admin/reports-shared";
 
 const PRESETS = [
   { id: "today", labelEn: "Today", labelBn: "আজ" },
