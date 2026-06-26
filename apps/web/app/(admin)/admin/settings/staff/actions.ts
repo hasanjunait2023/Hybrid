@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin/staff";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
+import { recordAudit } from "@/lib/audit/record";
 
 export interface StaffActionResult {
   ok: boolean;
@@ -69,6 +70,14 @@ export async function addMemberAction(
   }
   await addMember(auth.tenantId, parsed.data.email, parsed.data.role, parsed.data.fullName);
   bust(auth.tenantId);
+  await recordAudit({
+    tenantId: auth.tenantId,
+    actorUserId: auth.userId,
+    action: "member.invite",
+    resourceType: "user",
+    resourceId: parsed.data.email,
+    details: { role: parsed.data.role },
+  });
   return { ok: true };
 }
 
@@ -95,6 +104,14 @@ export async function changeRoleAction(userId: string, role: string): Promise<St
     return { ok: false, error: "ভূমিকা পরিবর্তন ব্যর্থ হয়েছে।" };
   }
   bust(auth.tenantId);
+  await recordAudit({
+    tenantId: auth.tenantId,
+    actorUserId: auth.userId,
+    action: "member.role_change",
+    resourceType: "user",
+    resourceId: id.data,
+    details: { newRole: r.data },
+  });
   return { ok: true };
 }
 
@@ -115,6 +132,13 @@ export async function removeMemberAction(userId: string): Promise<StaffActionRes
     }
     return { ok: false, error: "সরানো ব্যর্থ হয়েছে।" };
   }
+  await recordAudit({
+    tenantId: auth.tenantId,
+    actorUserId: auth.userId,
+    action: "member.remove",
+    resourceType: "user",
+    resourceId: id.data,
+  });
   bust(auth.tenantId);
   return { ok: true };
 }
