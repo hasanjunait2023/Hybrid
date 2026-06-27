@@ -20,7 +20,8 @@ import { DbidReviewRow } from "@/components/platform/DbidReviewRow";
 // cycle on ~100 pending submissions).
 
 interface PageProps {
-  searchParams?: { status?: string; q?: string };
+  // Next.js 15+ App Router: searchParams is a Promise. Must await it.
+  searchParams?: Promise<{ status?: string; q?: string }>;
 }
 
 export default async function PlatformDbidPage({ searchParams }: PageProps) {
@@ -30,10 +31,11 @@ export default async function PlatformDbidPage({ searchParams }: PageProps) {
     redirect("/platform");
   }
 
-  const statusParam = (searchParams?.status ?? "submitted") as
+  const sp = (await searchParams) ?? {};
+  const statusParam = (sp.status ?? "submitted") as
     | DbidStatus
     | "all";
-  const search = (searchParams?.q ?? "").trim();
+  const search = (sp.q ?? "").trim();
 
   const [rows, stats] = await Promise.all([
     listDbidQueue({ status: statusParam, search }),
