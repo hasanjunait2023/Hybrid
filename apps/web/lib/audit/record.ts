@@ -24,7 +24,9 @@ export type AuditAction =
   | "tenant.suspend"
   | "tenant.reactivate"
   | "tenant.plan_change"
-  | "platform_admin.login";
+  | "platform_admin.login"
+  | "dbid.review_approve"
+  | "dbid.review_reject";
 
 export interface AuditEntry {
   tenantId?: string | null;
