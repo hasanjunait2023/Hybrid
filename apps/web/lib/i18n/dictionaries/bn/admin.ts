@@ -14,6 +14,7 @@ import { themes } from "./admin/themes";
 import { settingsGeneral } from "./admin/settingsGeneral";
 import { settingsPayments } from "./admin/settingsPayments";
 import { settingsComms } from "./admin/settingsComms";
+import { settingsDbid } from "./admin/settingsDbid";
 import { shipping } from "./admin/shipping";
 
 export const admin: typeof EnAdmin = {
@@ -31,6 +32,7 @@ export const admin: typeof EnAdmin = {
   settingsGeneral,
   settingsPayments,
   settingsComms,
+  settingsDbid,
   shipping,
 
   shell: {

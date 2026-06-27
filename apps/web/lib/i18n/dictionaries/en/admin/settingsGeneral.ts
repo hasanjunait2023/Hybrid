@@ -9,6 +9,7 @@ export const settingsGeneral = {
     payments: { label: "Payments", sub: "bKash, Nagad, SSLCommerz, COD" },
     courier: { label: "Courier", sub: "Steadfast, Pathao" },
     notifications: { label: "Notifications", sub: "SMS connection" },
+    dbid: { label: "DBID Compliance", sub: "Bangladesh Digital Business ID" },
     domains: { label: "Custom domain", sub: "Add your own domain" },
     analytics: { label: "Analytics", sub: "GA4, Meta Pixel/CAPI" },
     store: { label: "Store profile", sub: "Name, phone, address, policy" },

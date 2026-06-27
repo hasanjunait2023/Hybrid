@@ -10,6 +10,7 @@ const SECTION_KEYS = [
   { href: "/admin/settings/payments", key: "payments" },
   { href: "/admin/settings/courier", key: "courier" },
   { href: "/admin/settings/notifications", key: "notifications" },
+  { href: "/admin/settings/dbid", key: "dbid" },
   { href: "/admin/settings/domains", key: "domains" },
   { href: "/admin/settings/analytics", key: "analytics" },
   { href: "/admin/settings/store", key: "store" },

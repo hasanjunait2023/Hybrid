@@ -8,6 +8,7 @@ export const settingsGeneral: typeof En = {
     payments: { label: "পেমেন্ট", sub: "বিকাশ, নগদ, SSLCommerz, COD" },
     courier: { label: "কুরিয়ার", sub: "Steadfast, Pathao" },
     notifications: { label: "নোটিফিকেশন", sub: "SMS সংযোগ" },
+    dbid: { label: "DBID যাচাইকরণ", sub: "বাংলাদেশ ডিজিটাল ব্যবসা আইডি" },
     domains: { label: "কাস্টম ডোমেইন", sub: "নিজের ডোমেইন যোগ করুন" },
     analytics: { label: "অ্যানালিটিক্স", sub: "GA4, Meta Pixel/CAPI" },
     store: { label: "স্টোর প্রোফাইল", sub: "নাম, ফোন, ঠিকানা, পলিসি" },
