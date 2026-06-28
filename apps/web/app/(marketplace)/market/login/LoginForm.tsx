@@ -4,10 +4,20 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { requestBuyerOtp, verifyBuyerOtp } from "./actions";
 
+// Only allow same-origin relative paths (a single leading slash). Blocks
+// open-redirect via ?next=https://evil.com or protocol-relative //evil.com.
+function safeNext(raw: string | null): string {
+  const fallback = "/account/orders";
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) {
+    return fallback;
+  }
+  return raw;
+}
+
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/account/orders";
+  const next = safeNext(params.get("next"));
 
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState("");
