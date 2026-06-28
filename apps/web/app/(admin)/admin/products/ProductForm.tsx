@@ -41,6 +41,7 @@ export interface ProductFormData {
   variants: ProductFormVariant[];
   imageUrls: string[];
   collectionIds: string[];
+  marketplaceHidden?: boolean;
 }
 
 export interface CollectionOption {
@@ -66,6 +67,7 @@ export function ProductForm({
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
   const [status, setStatus] = useState(initial.status);
+  const [marketplaceHidden, setMarketplaceHidden] = useState(initial.marketplaceHidden ?? false);
   const [options, setOptions] = useState<ProductFormOption[]>(initial.options);
   const [variants, setVariants] = useState<ProductFormVariant[]>(initial.variants);
   const [images, setImages] = useState<string[]>(initial.imageUrls);
@@ -167,6 +169,7 @@ export function ProductForm({
     );
     fd.set("imageUrls", JSON.stringify(images));
     fd.set("collectionIds", JSON.stringify(collectionIds));
+    fd.set("marketplaceHidden", marketplaceHidden ? "on" : "");
 
     startTransition(async () => {
       const action = isEdit ? updateProduct : createProduct;
@@ -267,6 +270,15 @@ export function ProductForm({
               <option value="archived">{t.statusPills.archived}</option>
             </select>
           </div>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={marketplaceHidden}
+              onChange={(e) => setMarketplaceHidden(e.target.checked)}
+              className="h-4 w-4"
+            />
+            বাজার (মার্কেটপ্লেস) থেকে লুকান
+          </label>
         </section>
 
         {collections.length > 0 && (

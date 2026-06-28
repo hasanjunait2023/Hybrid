@@ -6,6 +6,7 @@ import { revalidateTag } from "next/cache";
 import { parseProductCsv, importProducts } from "@/lib/admin/csv";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
+import { syncMarketplaceListingsForTenant } from "@/lib/marketplace/sync";
 
 export interface ImportActionResult {
   ok: boolean;
@@ -37,5 +38,7 @@ export async function importProductsAction(csvText: string): Promise<ImportActio
   const result = await importProducts(tenantId, session.userId, rows);
   revalidateTag(`tenant:${tenantId}:products`);
   revalidateTag(`tenant:${tenantId}:dashboard`);
+  // Bulk-project the imported catalog into the marketplace (best-effort).
+  void syncMarketplaceListingsForTenant(tenantId);
   return { ok: true, created: result.created, failed: result.failed, parseErrors: errors };
 }

@@ -46,6 +46,10 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
     if (isAuthPath(url.pathname)) return NextResponse.next();
     return NextResponse.rewrite(new URL(`/admin${url.pathname}`, req.url));
   }
+  if (sub === "bazar") {
+    // The cross-vendor marketplace. Static subdomain — no DB lookup needed.
+    return NextResponse.rewrite(new URL(`/market${url.pathname}`, req.url));
+  }
 
   const tenant = await resolveTenantByHost(host);
   if (!tenant) {

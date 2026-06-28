@@ -24,6 +24,9 @@ import { upsertCustomerByPhone } from "./customer";
 
 export type PaymentMethod = "cod" | "bkash";
 export type OrderSource = "storefront" | "manual";
+// Sales channel. 'storefront' = the tenant's own store (default, unchanged).
+// 'marketplace' = a sub-order created by the cross-vendor bazaar checkout.
+export type OrderChannel = "storefront" | "marketplace";
 
 export interface PlaceOrderCustomer {
   phone: string;
@@ -60,6 +63,17 @@ export interface PlaceOrderInput {
   paymentMethod: PaymentMethod;
   note?: string | null;
   source: OrderSource;
+  /**
+   * Sales channel (default 'storefront'). The marketplace split-cart orchestrator
+   * passes 'marketplace' so the vendor's order is tagged without changing the
+   * order_source enum or existing source-keyed reports.
+   */
+  channel?: OrderChannel;
+  /**
+   * Parent marketplace_order id when this order is one leg of a split cart. A
+   * VALUE link only (no hard FK across the RLS boundary). Null for normal orders.
+   */
+  marketplaceOrderId?: string | null;
   /** Optional flat shipping charge (BDT). P1 has no shipping calculator. */
   shippingTotal?: number;
   /**
@@ -399,7 +413,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         shipping_address,
         subtotal, discount_total, discount_code,
         shipping_total, grand_total, cod_amount, currency,
-        payment_status, fulfillment_status, source, note
+        payment_status, fulfillment_status, source, channel, marketplace_order_id, note
       ) values (
         ${input.tenantId}, ${customerId},
         ${input.customer.name}, ${input.customer.phone}, ${input.customer.email ?? null},
@@ -415,7 +429,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         ${effectiveShipping}, ${grandTotal}, ${codAmount}, 'BDT',
         'unpaid',
         ${isCod ? "confirmed" : "pending"},
-        ${input.source}, ${input.note ?? null}
+        ${input.source}, ${input.channel ?? "storefront"}, ${input.marketplaceOrderId ?? null},
+        ${input.note ?? null}
       )
       returning id, order_number
     `;

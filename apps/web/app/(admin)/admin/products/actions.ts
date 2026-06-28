@@ -14,6 +14,7 @@ import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getBlobStore, BlobValidationError } from "@/lib/storage";
 import { slugify } from "@/lib/admin/format";
+import { syncMarketplaceListing } from "@/lib/marketplace/sync";
 
 export interface ActionResult {
   ok: boolean;
@@ -37,7 +38,12 @@ function bustProductTags(tenantId: string, productId?: string): void {
   revalidateTag(`tenant:${tenantId}`);
   revalidateTag(`tenant:${tenantId}:products`);
   revalidateTag(`tenant:${tenantId}:dashboard`);
-  if (productId) revalidateTag(`tenant:${tenantId}:product:${productId}`);
+  if (productId) {
+    revalidateTag(`tenant:${tenantId}:product:${productId}`);
+    // Project the change into the world-readable marketplace catalog. Best-effort
+    // (sync swallows its own errors); the marketplace-sync cron is the safety net.
+    void syncMarketplaceListing(tenantId, productId);
+  }
 }
 
 // Postgres unique-violation code. The slug unique constraint surfaces as 23505.
@@ -74,6 +80,7 @@ const ProductWriteSchema = z.object({
   variants: z.array(VariantSchema).min(1, "অন্তত একটি ভ্যারিয়েন্ট দিন").max(100),
   imageUrls: z.array(z.string().max(500)).max(20).default([]),
   collectionIds: z.array(z.string().uuid()).max(50).default([]),
+  marketplaceHidden: z.boolean().default(false),
 });
 
 // ---- Create ----------------------------------------------------------------
@@ -95,9 +102,9 @@ export async function createProduct(
   try {
     newProductId = await withTenant(auth.tenantId, auth.userId, async (tx) => {
       const rows = await tx<{ id: string }[]>`
-        insert into product (tenant_id, title, slug, description, status, options)
+        insert into product (tenant_id, title, slug, description, status, options, marketplace_hidden)
         values (${auth.tenantId}, ${input.title}, ${slug}, ${input.description},
-                ${input.status}::product_status, ${tx.json(input.options)})
+                ${input.status}::product_status, ${tx.json(input.options)}, ${input.marketplaceHidden})
         returning id
       `;
       const productId = rows[0]!.id;
@@ -141,7 +148,8 @@ export async function updateProduct(
         update product
            set title = ${input.title}, description = ${input.description},
                status = ${input.status}::product_status,
-               options = ${tx.json(input.options)}, updated_at = now()
+               options = ${tx.json(input.options)},
+               marketplace_hidden = ${input.marketplaceHidden}, updated_at = now()
          where id = ${productId.data}
       `;
       // Replace variants: upsert provided, deactivate orphans (don't hard-delete
@@ -304,6 +312,7 @@ function readProductForm(formData: FormData) {
     variants: readJsonArray(formData.get("variants")),
     imageUrls: readJsonArray(formData.get("imageUrls")),
     collectionIds: readJsonArray(formData.get("collectionIds")),
+    marketplaceHidden: formData.get("marketplaceHidden") === "on",
   };
 }
 
