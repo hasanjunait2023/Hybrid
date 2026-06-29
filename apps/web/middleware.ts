@@ -6,7 +6,7 @@ const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN!; // lvh.me (dev) / myhybrid.co
 export const config = {
   // Node.js runtime: resolveTenantByHost uses postgres.js + ioredis (Node-only).
   runtime: "nodejs",
-  matcher: ["/((?!api/|_next/|_static/|[\\w-]+\\.\\w+).*)"],
+  matcher: ["/((?!api/|_next/|_static/|[\w-]+\.\w+).*)"],
 };
 
 // Auth paths must resolve on the admin/app host without the /admin or /platform
@@ -18,6 +18,19 @@ function isAuthPath(pathname: string): boolean {
     pathname === "/login" ||
     pathname.startsWith("/login/")
   );
+}
+
+// Map a subdomain request onto its route-group prefix. The admin/platform shells
+// are served at the SUBDOMAIN ROOT (admin.{ROOT}/orders -> /admin/orders), so a
+// bare or root-relative path gets the prefix prepended. But the in-app nav links
+// are authored WITH the prefix (href="/admin/orders"), so a click lands on
+// admin.{ROOT}/admin/orders — we must NOT prepend a second prefix there (that
+// produced /admin/admin/orders -> 404). Accept both forms: if the path is already
+// under the prefix, pass it through unchanged; otherwise prepend it.
+function withPrefix(pathname: string, prefix: string): string {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ? pathname
+    : `${prefix}${pathname}`;
 }
 
 export default async function middleware(req: NextRequest): Promise<NextResponse> {
@@ -39,12 +52,12 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
   if (sub === "app") {
     // Auth routes pass through untouched; everything else is the platform app.
     if (isAuthPath(url.pathname)) return NextResponse.next();
-    return NextResponse.rewrite(new URL(`/platform${url.pathname}`, req.url));
+    return NextResponse.rewrite(new URL(withPrefix(url.pathname, "/platform"), req.url));
   }
   if (sub === "admin") {
     // Auth routes pass through untouched; everything else is the admin app.
     if (isAuthPath(url.pathname)) return NextResponse.next();
-    return NextResponse.rewrite(new URL(`/admin${url.pathname}`, req.url));
+    return NextResponse.rewrite(new URL(withPrefix(url.pathname, "/admin"), req.url));
   }
 
   const tenant = await resolveTenantByHost(host);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldIcon, TruckIcon, CheckCircleIcon } from "@hybrid/ui";
 import { getDict } from "@/lib/i18n/server";
+import { adminLoginUrl } from "@/lib/auth/urls";
 import { SignupForm } from "./SignupForm";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 // pitch. Bengali-first throughout; the only Latin is the subdomain/email input.
 export default async function SignupPage() {
   const { d } = await getDict();
+  const loginUrl = await adminLoginUrl();
   return (
     <main className="min-h-screen bg-bg lg:grid lg:grid-cols-[1.1fr_1fr]">
       {/* Brand rail — hidden on mobile to keep the form above the fold */}
@@ -77,12 +79,21 @@ export default async function SignupPage() {
                 storeAddressHint: d.auth.signup.storeAddressHint,
                 suggestionsLabel: d.auth.signup.suggestionsLabel,
                 emailLabel: d.auth.signup.emailLabel,
+                passwordLabel: d.auth.signup.passwordLabel,
+                passwordHint: d.auth.signup.passwordHint,
                 submit: d.auth.signup.submit,
                 submitting: d.auth.signup.submitting,
                 trialNote: d.auth.signup.trialNote,
               }}
             />
           </div>
+
+          <p className="bn-body mt-6 text-center text-sm text-ink-muted">
+            {d.auth.signup.haveAccount}{" "}
+            <a href={loginUrl} className="font-semibold text-primary hover:underline">
+              {d.auth.signup.loginCta}
+            </a>
+          </p>
         </div>
       </section>
     </main>

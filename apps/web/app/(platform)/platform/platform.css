@@ -1,0 +1,84 @@
+/* Platform (super-admin) console theme — "Homies Lab" inspired: warm cream
+   canvas, golden-yellow accent, soft black, large rounded white panels. Scoped
+   under .platform-shell so it never leaks into seller-admin / storefront. The
+   rest of the app keeps the Bazaar-Modern indigo system; this operator console
+   is a deliberately distinct, dense-but-calm dashboard skin. */
+
+.platform-shell {
+  --pf-bg: #faf6ec; /* warm cream canvas */
+  --pf-panel: #ffffff; /* white cards */
+  --pf-cream: #fbf6e8; /* secondary cream cards */
+  --pf-border: #efe9da; /* hairline */
+  --pf-ink: #1b1a17; /* near-black text */
+  --pf-muted: #908b7e; /* secondary text */
+  --pf-subtle: #b6b1a4; /* tertiary text */
+  --pf-yellow: #f5c518; /* primary accent */
+  --pf-yellow-deep: #e8b40a;
+  --pf-yellow-soft: #fdf1c4; /* soft accent fill */
+  --pf-black: #211f1b; /* dark cards / active nav */
+  --pf-success: #1f9d6b;
+  --pf-danger: #d9534f;
+
+  background: var(--pf-bg);
+  color: var(--pf-ink);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Thin custom scrollbars inside the console so dense panels stay tidy. */
+.platform-shell *::-webkit-scrollbar { width: 8px; height: 8px; }
+.platform-shell *::-webkit-scrollbar-thumb { background: #e4dece; border-radius: 9999px; }
+.platform-shell *::-webkit-scrollbar-track { background: transparent; }
+
+/* Three-quarter SVG-free gauge: a conic-gradient ring with a punched-out centre.
+   --pf-val is the 0-100 fill; the arc spans 270deg starting bottom-left. */
+.pf-gauge {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background:
+    conic-gradient(
+      from 135deg,
+      var(--pf-yellow) calc(var(--pf-val) * 2.7deg),
+      #efe9da 0 270deg,
+      transparent 270deg 360deg
+    );
+  -webkit-mask: radial-gradient(circle at center, transparent 58%, #000 59%);
+  mask: radial-gradient(circle at center, transparent 58%, #000 59%);
+}
+
+/* Sidebar nav "card" tiles (2-up grid). Default cream-on-white; active is the
+   soft-black tile with light text. */
+.pf-navtile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--pf-border);
+  background: var(--pf-panel);
+  padding: 0.8rem 0.85rem;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.pf-navtile:hover { background: #fcfaf3; }
+.pf-navtile[data-active="true"] {
+  background: var(--pf-black);
+  border-color: var(--pf-black);
+  color: #f6f3ea;
+}
+.pf-navtile[data-active="true"] .pf-navtile-icon { background: rgba(255,255,255,0.12); color: #fff; }
+
+.pf-navtile-icon {
+  display: inline-flex;
+  height: 1.9rem;
+  width: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.6rem;
+  background: var(--pf-yellow-soft);
+  color: var(--pf-ink);
+}
+
+/* Reveal-on-load lift for cards (compositor-friendly). */
+@media (prefers-reduced-motion: no-preference) {
+  .pf-rise { animation: pf-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes pf-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}

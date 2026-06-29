@@ -77,3 +77,13 @@ alter table dbid_submission force row level security;
 -- If a future integration needs an explicit SELECT-to-anon for the public
 -- DBID badge on storefronts (we already render one for shipping zones etc.),
 -- add a public_view policy gated on status='approved'.
+-- GRANT + RLS policy (FIX): this migration (22) runs AFTER 02_policies.sql's
+-- one-time "grant on all tables in schema public to app_runtime", so a table
+-- created here was never covered — every sibling feature file (06,09..15) ships
+-- its own grant+policy. Without these, asPlatformAdmin (app_runtime_login) hits
+-- "permission denied for table dbid_submission" (the table forces RLS). Mirror
+-- the standard tenant-owned-table pattern exactly.
+grant select, insert, update, delete on dbid_submission to app_runtime;
+
+create policy dbid_submission_isolation on dbid_submission
+  for all using ((tenant_id = app.current_tenant_id()) or app.is_platform_admin());

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button, toBnDigits, PhoneIcon } from "@hybrid/ui";
 import { getMarketingLocale } from "../../lib/i18n/locale";
+import { adminLoginUrl } from "../../lib/auth/urls";
 import {
   getMessages,
   type Locale,
@@ -27,11 +28,12 @@ const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "myhybrid.com";
 export default async function MarketingHome() {
   const locale = await getMarketingLocale();
   const t = getMessages(locale);
+  const loginUrl = await adminLoginUrl();
 
   return (
     <div className="min-h-screen bg-bg">
       <div className="brand-topline" aria-hidden="true" />
-      <SiteHeader t={t} locale={locale} />
+      <SiteHeader t={t} locale={locale} loginUrl={loginUrl} />
       <main>
         <Hero t={t} />
         <Partners t={t} />
@@ -72,7 +74,15 @@ function Eyebrow({
 
 /* ---------- Header ---------- */
 
-function SiteHeader({ t, locale }: { t: MarketingMessages; locale: Locale }) {
+function SiteHeader({
+  t,
+  locale,
+  loginUrl,
+}: {
+  t: MarketingMessages;
+  locale: Locale;
+  loginUrl: string;
+}) {
   return (
     <header className="sticky top-0 z-sticky border-b border-border bg-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-marketing items-center justify-between px-4 sm:px-6">
@@ -91,6 +101,12 @@ function SiteHeader({ t, locale }: { t: MarketingMessages; locale: Locale }) {
             toLabel={t.langToggle.toLabel}
             ariaLabel={t.langToggle.ariaLabel}
           />
+          <a
+            href={loginUrl}
+            className="bn-body text-sm font-medium text-ink-muted transition-colors hover:text-primary"
+          >
+            {t.nav.login}
+          </a>
           <Link href="/signup" className="cta-glow">
             <Button variant="primary" size="sm">
               {t.nav.cta}

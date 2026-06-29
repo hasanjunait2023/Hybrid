@@ -61,3 +61,7 @@ graphify-out/
 .obsidian/.DS_Store
 .obsidian/graph-*.json
 public/
+.env.deploy
+*.bak
+Caddyfile.bak.*
+backups/

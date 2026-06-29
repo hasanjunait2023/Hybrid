@@ -1,39 +1,43 @@
+import "./platform.css";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { asPlatformAdmin } from "@hybrid/db";
 import { getPlatformAdmin } from "@/lib/platform/auth";
 import { getDict } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/provider";
-import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
+import { PlatformSidebar } from "./PlatformSidebar";
 
-// Auth-gated shell: must run per request so the session is evaluated at runtime
-// (never statically prerendered into a baked redirect). getPlatformAdmin reads
-// cookies; force-dynamic guarantees the gate is not cached.
+// Auth-gated super-admin shell (blueprint S-PLATFORM). app.{root} -> /platform.
+// Middleware rewrites the host but does NOT gate by role, so this layout enforces
+// authz: only app_user.is_platform_admin reaches any /platform page. force-dynamic
+// so the cookie-based gate is evaluated per request, never prerendered. The
+// "Homies-Lab" console skin lives in platform.css, scoped under .platform-shell.
 export const dynamic = "force-dynamic";
 
-// Super-admin shell (blueprint S-PLATFORM). app.{root} -> /platform. The
-// middleware rewrites the host but does NOT gate by role, so the layout enforces
-// authz: only app_user.is_platform_admin reaches any /platform page. A logged-in
-// non-admin (e.g. a store owner) is bounced to their admin; an anonymous visitor
-// to dev-login. Operator-facing → utilitarian/dense, Latin numerals (DESIGN §2).
+async function resolveAdminName(userId: string): Promise<string> {
+  const rows = await asPlatformAdmin((tx) =>
+    tx<{ full_name: string | null; email: string | null }[]>`
+      select full_name, email from app_user where id = ${userId} limit 1
+    `,
+  );
+  const r = rows[0];
+  return r?.full_name?.trim() || r?.email?.split("@")[0] || "Admin";
+}
+
 export default async function PlatformLayout({ children }: { children: ReactNode }) {
   const admin = await getPlatformAdmin();
   if (!admin) redirect("/dev-login?as=admin");
 
-  const { locale, d } = await getDict();
+  const { locale } = await getDict();
+  const name = await resolveAdminName(admin.userId);
 
   return (
     <LocaleProvider locale={locale}>
-      <div className="min-h-screen bg-bg">
-        <header className="sticky top-0 z-sticky border-b border-border bg-surface">
-          <div className="mx-auto flex h-14 max-w-admin items-center gap-3 px-4">
-            <span className="text-base font-bold text-ink">{d.platform.shell.title}</span>
-            <span className="ml-auto flex items-center gap-3">
-              <span className="font-mono text-2xs text-ink-subtle">{d.platform.shell.superAdmin}</span>
-              <LanguageToggle />
-            </span>
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-admin px-4 py-6">{children}</main>
+      <div className="platform-shell flex min-h-screen">
+        <PlatformSidebar adminName={name} />
+        <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden px-6 py-6 lg:px-8">
+          {children}
+        </main>
       </div>
     </LocaleProvider>
   );

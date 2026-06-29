@@ -70,3 +70,12 @@ cdn.hybrid.ecomex.cloud {
 
 	respond 403
 }
+
+# n8n automation — Cloudflare-proxied host (CF passes ACME HTTP-01 to origin,
+# same as the hybrid apex). Managed LE cert; proxies to the n8n container on
+# the shared hybrid_default network. WS upgrade is automatic.
+n8n.ecomex.cloud {
+    encode zstd gzip
+    import app_headers
+    reverse_proxy n8n:5678
+}

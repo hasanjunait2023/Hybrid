@@ -17,6 +17,8 @@ interface SignupLabels {
   storeAddressHint: string;
   suggestionsLabel: string;
   emailLabel: string;
+  passwordLabel: string;
+  passwordHint: string;
   submit: string;
   submitting: string;
   trialNote: string;
@@ -44,6 +46,7 @@ export function SignupForm({ labels }: { labels: SignupLabels }) {
   const storeNameId = useId();
   const slugId = useId();
   const emailId = useId();
+  const passwordId = useId();
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
@@ -141,6 +144,24 @@ export function SignupForm({ labels }: { labels: SignupLabels }) {
           placeholder="you@example.com"
           className={inputClass(Boolean(state.errors?.email)) + " font-latin"}
           aria-invalid={Boolean(state.errors?.email)}
+        />
+      </Field>
+
+      <Field
+        id={passwordId}
+        label={labels.passwordLabel}
+        hint={labels.passwordHint}
+        error={state.errors?.password}
+      >
+        <input
+          id={passwordId}
+          name="password"
+          type="password"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          className={inputClass(Boolean(state.errors?.password)) + " font-latin"}
+          aria-invalid={Boolean(state.errors?.password)}
         />
       </Field>
 
