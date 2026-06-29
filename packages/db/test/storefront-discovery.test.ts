@@ -39,12 +39,13 @@ describe("Storefront discovery", () => {
     userId = owner.userId;
     tenantId = (await provisionTenant({ userId, storeName: "Disco Store", slug: SLUG })).tenantId;
 
+    const seed: ReadonlyArray<readonly [string, string]> = [
+      ["Red Cotton Shirt", "red-cotton-shirt"],
+      ["Blue Cotton Shirt", "blue-cotton-shirt"],
+      ["Leather Boots", "leather-boots"],
+    ];
     await asPlatformAdmin(async (tx) => {
-      for (const [title, slug] of [
-        ["Red Cotton Shirt", "red-cotton-shirt"],
-        ["Blue Cotton Shirt", "blue-cotton-shirt"],
-        ["Leather Boots", "leather-boots"],
-      ]) {
+      for (const [title, slug] of seed) {
         const rows = await tx<{ id: string }[]>`
           insert into product (tenant_id, title, slug, status, description)
           values (${tenantId}, ${title}, ${slug}, 'active', 'x')
@@ -59,10 +60,10 @@ describe("Storefront discovery", () => {
       `;
       collectionId = col[0]!.id;
       // Link the two shirts to the collection (not the boots).
-      for (const t of ["Red Cotton Shirt", "Blue Cotton Shirt"]) {
+      for (const t of ["Red Cotton Shirt", "Blue Cotton Shirt"] as const) {
         await tx`
           insert into product_collection (tenant_id, product_id, collection_id)
-          values (${tenantId}, ${products[t]}, ${collectionId})
+          values (${tenantId}, ${products[t]!}, ${collectionId})
         `;
       }
     });
