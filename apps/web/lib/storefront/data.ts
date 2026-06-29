@@ -31,6 +31,8 @@ export interface TenantContext {
   store: StoreIdentity;
   /** Full validated customizer settings (colors/typography/content/sections). */
   settings: ThemeSettings;
+  /** True when this tenant has an approved DBID (Bangladesh Digital Business ID). */
+  dbidVerified: boolean;
 }
 
 interface TenantSettings {
@@ -83,6 +85,7 @@ export async function getTenantContextBySlug(
             name: string;
             settings: TenantSettings;
             theme_settings: unknown;
+            dbid_verified: boolean;
           }[]
         >`
           select
@@ -96,7 +99,11 @@ export async function getTenantContextBySlug(
               where s.tenant_id = t.id and s.is_active = true
               order by s.updated_at desc
               limit 1
-            ) as theme_settings
+            ) as theme_settings,
+            exists(
+              select 1 from dbid_submission d
+              where d.tenant_id = t.id and d.status = 'approved'
+            ) as dbid_verified
           from tenant t
           where t.id = ${tenantId}
           limit 1
@@ -125,6 +132,7 @@ export async function getTenantContextBySlug(
           facebookUrl: row.settings?.social?.facebook ?? null,
         },
         settings,
+        dbidVerified: !!row.dbid_verified,
       } satisfies TenantContext;
     },
     [`tenant-ctx:${tenantId}`],

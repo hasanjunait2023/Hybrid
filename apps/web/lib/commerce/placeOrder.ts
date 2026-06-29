@@ -100,6 +100,12 @@ export interface PlaceOrderInput {
    * the credit limit check is enforced before placing the order.
    */
   orderMode?: "storefront" | "wholesale";
+  /**
+   * Validated order-bump total from a landing-page funnel (BDT). Server-authoritative:
+   * the checkout action validates selected bumps against the published LP in DB
+   * before passing this value — never trust the client directly.
+   */
+  bumpTotal?: number;
 }
 
 export interface PlaceOrderResult {
@@ -471,7 +477,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       appliedDiscount = { code: result.row.code, amount: discountTotal };
     }
 
-    const grandTotal = subtotal - discountTotal + effectiveShipping;
+    const grandTotal = subtotal - discountTotal + effectiveShipping + (input.bumpTotal ?? 0);
     const codAmount = isCod ? grandTotal : 0;
 
     // (3c) Credit limit check for wholesale non-COD — re-check with actual total.

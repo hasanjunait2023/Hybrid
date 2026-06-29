@@ -1,21 +1,24 @@
 import { notFound } from "next/navigation";
 import { CheckIcon } from "@hybrid/ui";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
+import { getPublishedLandingPage } from "@/lib/admin/landingPages";
 import { buildLocationTree } from "@/lib/location";
 import { getDict } from "@/lib/i18n/server";
 import { CheckoutForm } from "./CheckoutForm";
 
 interface CheckoutPageProps {
   params: Promise<{ tenant: string }>;
-  searchParams: Promise<{ payment?: string }>;
+  searchParams: Promise<{ payment?: string; lp?: string }>;
 }
 
 // Checkout (blueprint S-CHECKOUT, DESIGN P1). Server shell: resolves the tenant,
 // builds the Bangla location tree once on the server (avoids shipping the ~2MB
 // location package to the client), renders the trust strip + the client form.
+// ?lp=<slug> — when coming from a landing-page funnel, loads that LP's upsells
+// so they appear as order bumps in checkout.
 export default async function CheckoutPage({ params, searchParams }: CheckoutPageProps) {
   const { tenant: slug } = await params;
-  const { payment } = await searchParams;
+  const { payment, lp: lpSlug } = await searchParams;
   const ctx = await getTenantContextBySlug(slug);
   if (!ctx) notFound();
 
@@ -24,6 +27,14 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
     payment === "failed" ? "failed" : payment === "invalid" ? "invalid" : null;
   const { d } = await getDict();
   const t = d.storefront.checkout;
+
+  // If arriving via a landing-page funnel, load the upsells from the published LP.
+  const lpUpsells =
+    lpSlug
+      ? await getPublishedLandingPage(ctx.id, null, lpSlug).then(
+          (lp) => lp?.funnelConfig.upsells ?? [],
+        )
+      : [];
 
   return (
     <div>
@@ -43,6 +54,8 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
         storePhone={ctx.store.phone ?? null}
         locationTree={locationTree}
         paymentNotice={paymentNotice}
+        lpSlug={lpSlug ?? null}
+        upsells={lpUpsells}
       />
     </div>
   );

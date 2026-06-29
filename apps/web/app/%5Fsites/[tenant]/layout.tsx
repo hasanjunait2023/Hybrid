@@ -42,6 +42,18 @@ export default async function StorefrontLayout({
     <LocaleProvider locale={locale}>
       <div style={themeStyle} className="flex min-h-screen flex-col bg-bg">
         <StoreHeader store={ctx.store} lang={locale} toggle={<LanguageToggle />} />
+        {/* DBID verified trust badge — only shown when the seller has an approved DBID. */}
+        {ctx.dbidVerified && (
+          <div className="border-b border-border bg-success-weak">
+            <div className="mx-auto flex max-w-6xl items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-success">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                <path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {locale === "bn" ? "বাংলাদেশ ডিজিটাল বিজনেস আইডি (DBID) যাচাইকৃত" : "Bangladesh Digital Business ID (DBID) Verified"}
+            </div>
+          </div>
+        )}
         <main className="flex-1">{children}</main>
         <StoreFooter
           store={ctx.store}

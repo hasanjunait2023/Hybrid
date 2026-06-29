@@ -21,6 +21,10 @@ interface CheckoutFormProps {
   locationTree: LocationTree;
   /** ?payment=failed/invalid surfaced from a returned Hybrid Pay callback. */
   paymentNotice?: "failed" | "invalid" | null;
+  /** Landing-page slug; non-null when arriving via a funnel (?lp=<slug>). */
+  lpSlug?: string | null;
+  /** Order-bump upsells loaded from the LP's funnel_config. Empty for regular checkout. */
+  upsells?: Array<{ label: string; bump_price: number }>;
 }
 
 // Storefront shows one online option, "Hybrid Pay" (it subsumes bKash/Nagad —
@@ -31,6 +35,8 @@ export function CheckoutForm({
   tenantSlug,
   locationTree,
   paymentNotice,
+  lpSlug,
+  upsells = [],
 }: CheckoutFormProps) {
   const d = useDict();
   const locale = useLocale();
@@ -52,6 +58,11 @@ export function CheckoutForm({
   // Live shipping charge for display (null = not configured / not yet quoted).
   // The authoritative value is re-computed server-side at submit.
   const [shipping, setShipping] = useState<number | null>(null);
+  // Order bumps selected by the buyer (labels of chosen upsells from LP funnel).
+  const [selectedBumps, setSelectedBumps] = useState<Set<string>>(new Set());
+  const bumpTotal = upsells
+    .filter((u) => selectedBumps.has(u.label))
+    .reduce((sum, u) => sum + u.bump_price, 0);
 
   // Quote shipping whenever the destination (division+district) or cart changes.
   const destDivision = division?.bn ?? null;
@@ -113,6 +124,8 @@ export function CheckoutForm({
       note: note.trim() || undefined,
       discountCode: promoCode.trim() || undefined,
       items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+      lpSlug: lpSlug ?? undefined,
+      selectedBumpLabels: selectedBumps.size > 0 ? [...selectedBumps] : undefined,
     });
 
     if (!result.ok) {
@@ -281,6 +294,37 @@ export function CheckoutForm({
           />
         </Field>
 
+        {/* Order bumps / upsells from LP funnel. Shown only when ?lp=<slug>. */}
+        {upsells.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-accent/40 bg-accent/5 p-3">
+            <p className="text-xs font-semibold text-accent">✨ বিশেষ অফার</p>
+            {upsells.map((u) => (
+              <label
+                key={u.label}
+                className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5"
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={selectedBumps.has(u.label)}
+                  onChange={(e) => {
+                    setSelectedBumps((prev) => {
+                      const next = new Set(prev);
+                      if (e.target.checked) next.add(u.label);
+                      else next.delete(u.label);
+                      return next;
+                    });
+                  }}
+                />
+                <span className="min-w-0 flex-1 text-sm text-ink">{u.label}</span>
+                <span className="shrink-0 font-mono text-sm font-semibold text-primary tnum">
+                  +{formatMoney(u.bump_price, locale)}
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+
         {/* Order summary. */}
         <OrderSummary
           lines={cart.lines.map((l) => ({
@@ -292,6 +336,7 @@ export function CheckoutForm({
           }))}
           subtotal={cart.subtotal}
           shipping={shipping}
+          bumpTotal={bumpTotal}
           locale={locale}
           d={d}
         />
@@ -307,7 +352,7 @@ export function CheckoutForm({
           <div className="flex flex-col">
             <span className="text-2xs text-ink-muted">{t.total}</span>
             <span className="text-lg font-bold leading-none text-ink tnum">
-              {formatMoney(cart.subtotal + (shipping ?? 0), locale)}
+              {formatMoney(cart.subtotal + (shipping ?? 0) + bumpTotal, locale)}
             </span>
           </div>
           <Button
@@ -409,17 +454,19 @@ function OrderSummary({
   lines,
   subtotal,
   shipping,
+  bumpTotal = 0,
   locale,
   d,
 }: {
   lines: SummaryLine[];
   subtotal: number;
   shipping: number | null;
+  bumpTotal?: number;
   locale: Locale;
   d: Messages;
 }) {
   const t = d.storefront.checkout;
-  const total = subtotal + (shipping ?? 0);
+  const total = subtotal + (shipping ?? 0) + bumpTotal;
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3">
       <span className="bn-body text-sm font-semibold text-ink">{t.orderSummary}</span>
@@ -451,6 +498,12 @@ function OrderSummary({
           <span className="text-sm font-semibold text-ink tnum">
             {shipping === 0 ? t.freeShipping : formatMoney(shipping, locale)}
           </span>
+        </div>
+      )}
+      {bumpTotal > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="bn-body text-sm text-ink-muted">বিশেষ অফার</span>
+          <span className="text-sm font-semibold text-accent tnum">+{formatMoney(bumpTotal, locale)}</span>
         </div>
       )}
       <div className="flex items-center justify-between">

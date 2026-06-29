@@ -21,6 +21,7 @@ import {
   type DiscountErrorReason,
 } from "@/lib/commerce/placeOrder";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
+import { getPublishedLandingPage } from "@/lib/admin/landingPages";
 import { calculateShipping } from "@/lib/commerce/shipping";
 import { getEnabledBkash } from "@/lib/payments/bkash";
 import { getEnabledHybridpay } from "@/lib/payments/hybridpay";
@@ -49,6 +50,11 @@ const checkoutSchema = z.object({
   // re-validates and computes the amount server-side under a row lock.
   discountCode: z.string().trim().max(40).optional(),
   items: z.array(itemSchema).min(1).max(50),
+  // Landing-page funnel upsells (Phase 3). The client sends the LP slug and the
+  // labels of bumps the buyer selected. The server fetches the LP, validates
+  // each label, and sums the server-authoritative prices — never trusts the client amount.
+  lpSlug: z.string().max(120).optional(),
+  selectedBumpLabels: z.array(z.string().max(200)).max(10).optional(),
   // NOTE: the bKash callbackURL is derived SERVER-SIDE from the tenant's
   // verified primary domain + request scheme — never from a client-supplied
   // origin (open-redirect / phishing aid). Any `origin` the client sends is
@@ -146,6 +152,20 @@ export async function submitCheckout(
     destDistrict: input.district,
   });
 
+  // Validate LP upsell bumps server-side. Fetch the published LP, match selected
+  // labels against the stored upsells, sum server-authoritative prices only.
+  let bumpTotal = 0;
+  if (input.lpSlug && input.selectedBumpLabels?.length) {
+    const lp = await getPublishedLandingPage(ctx.id, null, input.lpSlug);
+    if (lp) {
+      const upsells = lp.funnelConfig.upsells ?? [];
+      for (const label of input.selectedBumpLabels) {
+        const u = upsells.find((x) => x.label === label);
+        if (u && u.bump_price > 0) bumpTotal += u.bump_price;
+      }
+    }
+  }
+
   let placed;
   try {
     placed = await placeOrder({
@@ -166,6 +186,7 @@ export async function submitCheckout(
       source: "storefront",
       discountCode: input.discountCode ?? null,
       shippingTotal: shipQuote.amount ?? 0,
+      bumpTotal: bumpTotal > 0 ? bumpTotal : undefined,
     });
   } catch (error) {
     if (error instanceof InsufficientStockError) {

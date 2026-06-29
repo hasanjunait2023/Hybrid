@@ -176,10 +176,10 @@ export async function archiveLandingPage(
 }
 
 // Public read — for rendering published pages on the storefront.
-// Uses withTenant with the tenant's own context (not asPlatformAdmin).
+// userId may be null on the storefront/checkout path (RLS allows selects on published pages).
 export async function getPublishedLandingPage(
   tenantId: string,
-  userId: string,
+  userId: string | null,
   slug: string,
 ): Promise<LandingPageDetail | null> {
   const rows = await withTenant(tenantId, userId, (tx) =>
