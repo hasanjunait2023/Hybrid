@@ -19,11 +19,13 @@ import { shipping } from "./admin/shipping";
 import { wholesale } from "./admin/wholesale";
 import { tasks } from "./admin/tasks";
 import { leads } from "./admin/leads";
+import { journeys } from "./admin/journeys";
 
 export const admin: typeof EnAdmin = {
   products,
   tasks,
   leads,
+  journeys,
   customers,
   collections,
   discounts,
@@ -54,6 +56,7 @@ export const admin: typeof EnAdmin = {
     customers: "গ্রাহক",
     tasks: "কাজ",
     leads: "লিড",
+    automations: "অটোমেশন",
     more: "আরও",
     wholesale: "পাইকারি",
     purchaseRequests: "পারচেজ রিকোয়েস্ট",

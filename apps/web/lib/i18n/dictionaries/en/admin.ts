@@ -19,11 +19,13 @@ import { shipping } from "./admin/shipping";
 import { wholesale } from "./admin/wholesale";
 import { tasks } from "./admin/tasks";
 import { leads } from "./admin/leads";
+import { journeys } from "./admin/journeys";
 
 export const admin = {
   products,
   tasks,
   leads,
+  journeys,
   customers,
   collections,
   discounts,
@@ -54,6 +56,7 @@ export const admin = {
     customers: "Customers",
     tasks: "Tasks",
     leads: "Leads",
+    automations: "Automations",
     more: "More",
     wholesale: "Wholesale",
     purchaseRequests: "Purchase Requests",
