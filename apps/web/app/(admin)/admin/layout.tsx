@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
+import { getTenantBusinessType } from "@/lib/admin/wholesale";
 import { platformHomeUrl, loginPath } from "@/lib/auth/urls";
 import { HybridLogo } from "@hybrid/ui";
 import { getDict } from "@/lib/i18n/server";
@@ -32,12 +33,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (!tenantId) redirect(await platformHomeUrl());
 
   const { locale, d } = await getDict();
+  const businessType = await getTenantBusinessType(tenantId);
+  const showWholesale = businessType === "wholesale" || businessType === "both";
 
   return (
     <LocaleProvider locale={locale}>
       <div className="min-h-screen bg-bg lg:flex">
         {/* Desktop sidebar (≥ lg) */}
-        <AdminNav variant="sidebar" tenantId={tenantId} />
+        <AdminNav variant="sidebar" tenantId={tenantId} showWholesale={showWholesale} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top bar (all sizes) */}
@@ -66,7 +69,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
 
         {/* Mobile bottom tab bar (base–md) */}
-        <AdminNav variant="tabs" tenantId={tenantId} />
+        <AdminNav variant="tabs" tenantId={tenantId} showWholesale={showWholesale} />
       </div>
       <LiveOrdersBanner />
     </LocaleProvider>

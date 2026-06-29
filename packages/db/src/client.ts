@@ -2,6 +2,7 @@
 // The no-raw-sql ESLint rule forbids importing this module (or 'postgres')
 // anywhere outside packages/db. All tenant traffic goes through withTenant().
 import postgres from "postgres";
+import "dotenv/config";
 
 // Runtime connection — app_runtime_login (non-superuser) -> RLS is FORCED.
 // prepare:false is required under transaction-mode poolers (pgBouncer/Supavisor).

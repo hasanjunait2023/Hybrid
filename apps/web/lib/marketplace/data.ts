@@ -17,6 +17,10 @@ export interface MpListing {
   inStock: boolean;
   ratingAvg: number;
   ratingCount: number;
+  /** Wholesale fields (null for retail-only products) */
+  isWholesale: boolean;
+  wholesaleOnly: boolean;
+  moq: number | null;
 }
 
 export interface MpCategory {
@@ -37,6 +41,9 @@ interface ListingRow {
   in_stock: boolean;
   rating_avg: string;
   rating_count: number;
+  is_wholesale: boolean;
+  wholesale_only: boolean;
+  moq: number | null;
 }
 
 function toListing(r: ListingRow): MpListing {
@@ -52,6 +59,9 @@ function toListing(r: ListingRow): MpListing {
     inStock: r.in_stock,
     ratingAvg: Number(r.rating_avg),
     ratingCount: r.rating_count,
+    isWholesale: r.is_wholesale,
+    wholesaleOnly: r.wholesale_only,
+    moq: r.moq,
   };
 }
 
@@ -69,7 +79,8 @@ export async function listMarketplaceProducts(opts: {
     if (q) {
       return tx<ListingRow[]>`
         select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
-               price_from, image_url, in_stock, rating_avg, rating_count
+               price_from, image_url, in_stock, rating_avg, rating_count,
+               is_wholesale, wholesale_only, moq
           from marketplace_listing
          where status = 'active' and hidden = false
            and search_tsv @@ plainto_tsquery('simple', ${q})
@@ -80,7 +91,8 @@ export async function listMarketplaceProducts(opts: {
     if (cat) {
       return tx<ListingRow[]>`
         select ml.product_id, ml.tenant_id, ml.vendor_slug, ml.slug, ml.title, ml.vendor_name,
-               ml.price_from, ml.image_url, ml.in_stock, ml.rating_avg, ml.rating_count
+               ml.price_from, ml.image_url, ml.in_stock, ml.rating_avg, ml.rating_count,
+               ml.is_wholesale, ml.wholesale_only, ml.moq
           from marketplace_listing ml
           join marketplace_category c on c.id = ml.category_id
          where ml.status = 'active' and ml.hidden = false and c.slug = ${cat}
@@ -90,7 +102,8 @@ export async function listMarketplaceProducts(opts: {
     }
     return tx<ListingRow[]>`
       select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
-             price_from, image_url, in_stock, rating_avg, rating_count
+             price_from, image_url, in_stock, rating_avg, rating_count,
+             is_wholesale, wholesale_only, moq
         from marketplace_listing
        where status = 'active' and hidden = false
        order by rating_avg desc, synced_at desc
@@ -115,6 +128,10 @@ export interface MpVariant {
   title: string | null;
   price: number;
   inStock: boolean;
+  /** Wholesale fields (null for retail-only variants) */
+  wholesalePrice: number | null;
+  tierPrices: Array<{ min_qty: number; unit_price: number }>;
+  moq: number | null;
 }
 
 export interface MpProductDetail extends MpListing {
@@ -130,7 +147,8 @@ export async function getMarketplaceProduct(
   return withPublic(async (tx) => {
     const rows = await tx<(ListingRow & { id: string; description: string | null })[]>`
       select id, product_id, tenant_id, vendor_slug, slug, title, vendor_name,
-             price_from, image_url, in_stock, rating_avg, rating_count, description
+             price_from, image_url, in_stock, rating_avg, rating_count,
+             is_wholesale, wholesale_only, moq, description
         from marketplace_listing
        where vendor_slug = ${vendorSlug} and slug = ${productSlug}
          and status = 'active' and hidden = false
@@ -139,8 +157,8 @@ export async function getMarketplaceProduct(
     const row = rows[0];
     if (!row) return null;
 
-    const variants = await tx<{ id: string; title: string | null; price: string; in_stock: boolean }[]>`
-      select id, title, price, in_stock from marketplace_listing_variant
+    const variants = await tx<{ id: string; title: string | null; price: string; in_stock: boolean; wholesale_price: string | null; tier_prices: string; moq: number | null }[]>`
+      select id, title, price, in_stock, wholesale_price, tier_prices, moq from marketplace_listing_variant
        where listing_id = ${row.id} order by position asc
     `;
     return {
@@ -151,6 +169,9 @@ export async function getMarketplaceProduct(
         title: v.title,
         price: Number(v.price),
         inStock: v.in_stock,
+        wholesalePrice: v.wholesale_price ? Number(v.wholesale_price) : null,
+        tierPrices: typeof v.tier_prices === "string" ? JSON.parse(v.tier_prices) : (v.tier_prices as Array<{ min_qty: number; unit_price: number }>) ?? [],
+        moq: v.moq,
       })),
     };
   });

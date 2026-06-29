@@ -24,6 +24,9 @@ interface VariantSource {
   title: string | null;
   options: Record<string, string>;
   price: string;
+  wholesalePrice: string | null;
+  tierPrices: Array<{ min_qty: number; unit_price: number }>;
+  moq: number | null;
   inventory_quantity: number;
   track_inventory: boolean;
   position: number;
@@ -37,6 +40,9 @@ interface ListingSource {
     description: string | null;
     status: string;
     marketplace_hidden: boolean;
+    is_wholesale: boolean;
+    wholesale_only: boolean;
+    moq: number | null;
   };
   vendorSlug: string;
   vendorName: string;
@@ -55,9 +61,13 @@ async function readSource(tenantId: string, productId: string): Promise<ListingS
         description: string | null;
         status: string;
         marketplace_hidden: boolean;
+        is_wholesale: boolean;
+        wholesale_only: boolean;
+        moq: number | null;
       }[]
     >`
-      select id, title, slug, description, status, marketplace_hidden
+      select id, title, slug, description, status, marketplace_hidden,
+             is_wholesale, wholesale_only, moq
         from product where id = ${productId} and tenant_id = ${tenantId} limit 1
     `;
     const product = products[0];
@@ -70,7 +80,8 @@ async function readSource(tenantId: string, productId: string): Promise<ListingS
     if (!tenant) return null;
 
     const variants = await tx<VariantSource[]>`
-      select id, title, options, price, inventory_quantity, track_inventory, position
+      select id, title, options, price, wholesale_price, tier_prices, moq,
+             inventory_quantity, track_inventory, position
         from product_variant
        where product_id = ${productId} and is_active = true
        order by position asc, created_at asc
@@ -128,24 +139,28 @@ export async function syncMarketplaceListing(tenantId: string, productId: string
       const rows = await tx<{ id: string }[]>`
         insert into marketplace_listing
           (product_id, tenant_id, vendor_slug, vendor_name, title, slug, description,
-           price_from, image_url, in_stock, status, hidden, synced_at)
+           price_from, image_url, in_stock, status, hidden, is_wholesale, wholesale_only, moq, synced_at)
         values
           (${productId}, ${tenantId}, ${src.vendorSlug}, ${src.vendorName},
            ${src.product.title}, ${src.product.slug}, ${src.product.description},
-           ${price}, ${src.imageUrl}, ${inStock}, 'active', false, now())
+           ${price}, ${src.imageUrl}, ${inStock}, 'active', false,
+           ${src.product.is_wholesale}, ${src.product.wholesale_only}, ${src.product.moq}, now())
         on conflict (product_id) do update set
-          tenant_id   = excluded.tenant_id,
-          vendor_slug = excluded.vendor_slug,
-          vendor_name = excluded.vendor_name,
-          title       = excluded.title,
-          slug        = excluded.slug,
-          description = excluded.description,
-          price_from  = excluded.price_from,
-          image_url   = excluded.image_url,
-          in_stock    = excluded.in_stock,
-          status      = 'active',
-          hidden      = false,
-          synced_at   = now()
+          tenant_id      = excluded.tenant_id,
+          vendor_slug    = excluded.vendor_slug,
+          vendor_name    = excluded.vendor_name,
+          title          = excluded.title,
+          slug           = excluded.slug,
+          description    = excluded.description,
+          price_from     = excluded.price_from,
+          image_url      = excluded.image_url,
+          in_stock       = excluded.in_stock,
+          status         = 'active',
+          hidden         = false,
+          is_wholesale   = excluded.is_wholesale,
+          wholesale_only = excluded.wholesale_only,
+          moq            = excluded.moq,
+          synced_at      = now()
         returning id
       `;
       const listingId = rows[0]!.id;
@@ -156,10 +171,12 @@ export async function syncMarketplaceListing(tenantId: string, productId: string
       for (const v of src.variants) {
         await tx`
           insert into marketplace_listing_variant
-            (id, listing_id, product_id, tenant_id, title, options, price, in_stock, position)
+            (id, listing_id, product_id, tenant_id, title, options, price, wholesale_price,
+             tier_prices, moq, in_stock, position)
           values
             (${v.id}, ${listingId}, ${productId}, ${tenantId}, ${v.title},
-             ${tx.json(v.options)}, ${Number(v.price)},
+             ${tx.json(v.options)}, ${Number(v.price)}, ${v.wholesalePrice ? Number(v.wholesalePrice) : null},
+             ${tx.json(v.tierPrices)}, ${v.moq},
              ${!v.track_inventory || v.inventory_quantity > 0}, ${v.position})
         `;
       }

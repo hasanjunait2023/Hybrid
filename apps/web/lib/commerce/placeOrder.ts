@@ -94,6 +94,11 @@ export interface PlaceOrderInput {
    * Null/undefined/blank → no discount.
    */
   discountCode?: string | null;
+  /**
+   * Order mode for wholesale B2B. When 'wholesale' and payment is not COD,
+   * the credit limit check is enforced before placing the order.
+   */
+  orderMode?: "storefront" | "wholesale";
 }
 
 export interface PlaceOrderResult {
@@ -151,6 +156,23 @@ export class InsufficientStockError extends Error {
     super(`INSUFFICIENT_STOCK:${variantId}`);
     this.name = "InsufficientStockError";
     this.variantId = variantId;
+  }
+}
+
+// Thrown (and rolled back) when a wholesale order exceeds the customer's
+// credit limit and payment is not COD.
+export class CreditLimitExceededError extends Error {
+  readonly currentDue: number;
+  readonly orderTotal: number;
+  readonly creditLimit: number;
+  constructor(currentDue: number, orderTotal: number, creditLimit: number) {
+    super(
+      `CREDIT_LIMIT_EXCEEDED: current_due=${currentDue}, order_total=${orderTotal}, credit_limit=${creditLimit}`,
+    );
+    this.name = "CreditLimitExceededError";
+    this.currentDue = currentDue;
+    this.orderTotal = orderTotal;
+    this.creditLimit = creditLimit;
   }
 }
 
@@ -359,6 +381,30 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       email: input.customer.email ?? null,
     });
 
+    // (1b) Credit limit check for wholesale non-COD orders.
+    if (input.orderMode === "wholesale" && !isCod) {
+      const custRows = await tx<
+        { credit_limit: string; current_due: string }[]
+      >`
+        select credit_limit, current_due
+        from customer
+        where id = ${customerId}
+          and tenant_id = ${input.tenantId}
+        limit 1
+      `;
+      const cust = custRows[0];
+      if (cust) {
+        const creditLimit = Number(cust.credit_limit);
+        const currentDue = Number(cust.current_due);
+        // We don't know the final grand total yet, but we can estimate from
+        // the items. The actual check happens after pricing is computed.
+        // Store the customer data for later use.
+        if (creditLimit > 0 && currentDue >= creditLimit) {
+          throw new CreditLimitExceededError(currentDue, 0, creditLimit);
+        }
+      }
+    }
+
     // (2) default shipping address upsert. One default per customer: clear the
     // old default, then write the new one. Kept simple for P1 (no address book).
     await tx`
@@ -420,6 +466,27 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     const grandTotal = subtotal - discountTotal + effectiveShipping;
     const codAmount = isCod ? grandTotal : 0;
+
+    // (3c) Credit limit check for wholesale non-COD — re-check with actual total.
+    if (input.orderMode === "wholesale" && !isCod) {
+      const custRows = await tx<
+        { credit_limit: string; current_due: string }[]
+      >`
+        select credit_limit, current_due
+        from customer
+        where id = ${customerId}
+          and tenant_id = ${input.tenantId}
+        limit 1
+      `;
+      const cust = custRows[0];
+      if (cust) {
+        const creditLimit = Number(cust.credit_limit);
+        const currentDue = Number(cust.current_due);
+        if (creditLimit > 0 && currentDue + grandTotal > creditLimit) {
+          throw new CreditLimitExceededError(currentDue, grandTotal, creditLimit);
+        }
+      }
+    }
 
     // (4) INSERT orders. order_number is assigned by the assign_order_number
     // trigger. COD is confirmed immediately; bKash stays pending until executed.

@@ -38,6 +38,12 @@ const ITEMS: NavItem[] = [
   { href: "/admin/collections", tKey: "more", Icon: MenuIcon, match: "/admin/collections" },
 ];
 
+// Wholesale nav items — shown only when business_type is 'wholesale' or 'both'.
+const WHOLESALE_ITEMS: NavItem[] = [
+  { href: "/admin/wholesale", tKey: "wholesale", Icon: BoxesIcon, match: "/admin/wholesale" },
+  { href: "/admin/wholesale/purchase-requests", tKey: "purchaseRequests", Icon: ReceiptIcon, match: "/admin/wholesale/purchase-requests" },
+];
+
 // Secondary surfaces (Wave-2). The mobile bottom-tab grid stays five items, so
 // these live in the desktop sidebar's "More" group and remain reachable there.
 const MORE_ITEMS: NavItem[] = [
@@ -59,9 +65,11 @@ function isActive(pathname: string, item: NavItem): boolean {
 export function AdminNav({
   variant,
   tenantId,
+  showWholesale = false,
 }: {
   variant: "sidebar" | "tabs";
   tenantId: string;
+  showWholesale?: boolean;
 }) {
   const pathname = usePathname();
   const d = useDict();
@@ -79,6 +87,14 @@ export function AdminNav({
           {ITEMS.map((item) => (
             <SidebarLink key={item.href} item={item} label={d.admin.nav[item.tKey]} active={isActive(pathname, item)} />
           ))}
+          {showWholesale && (
+            <>
+              <div className="my-2 border-t border-border" />
+              {WHOLESALE_ITEMS.map((item) => (
+                <SidebarLink key={item.href} item={item} label={d.admin.nav[item.tKey]} active={isActive(pathname, item)} />
+              ))}
+            </>
+          )}
           <div className="my-2 border-t border-border" />
           {MORE_ITEMS.map((item) => (
             <SidebarLink key={item.href} item={item} label={d.admin.nav[item.tKey]} active={isActive(pathname, item)} />

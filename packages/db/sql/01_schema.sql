@@ -62,6 +62,10 @@ create type subscription_status      as enum ('trialing','active','past_due','ca
 create type invoice_status           as enum ('draft','open','paid','void','overdue');
 create type billing_provider         as enum ('bkash','nagad','manual');
 
+create type tenant_business_type     as enum ('retail','wholesale','both');
+create type customer_type            as enum ('end_consumer','retailer','distributor','wholesaler');
+create type order_mode               as enum ('retail','wholesale');
+
 -- ============================================================================
 -- 3. PLATFORM-LEVEL TABLES (global; not tenant-scoped)
 -- ============================================================================
@@ -103,6 +107,10 @@ create table tenant (
   name          text not null,
   slug          citext not null unique,                    -- used as *.myhybrid.com subdomain
   status        tenant_status not null default 'trial',
+  business_type tenant_business_type not null default 'retail',
+  kyc_status    text not null default 'pending',
+  kyc_documents jsonb not null default '[]'::jsonb,
+  wholesale_approved boolean not null default false,
   owner_user_id uuid references app_user(id) on delete set null,
   plan_id       uuid references plan(id) on delete set null,
   trial_ends_at timestamptz,
@@ -242,6 +250,9 @@ create table product (
   slug         citext not null,
   description  text,
   status       product_status not null default 'draft',
+  is_wholesale boolean not null default false,
+  wholesale_only boolean not null default false,
+  moq          integer,
   vendor       text,
   product_type text,
   tags         text[] not null default '{}',
@@ -253,6 +264,7 @@ create table product (
 );
 create index product_tenant_status_idx on product(tenant_id, status);
 create index product_title_trgm_idx on product using gin (title gin_trgm_ops);
+create index product_wholesale_idx on product(tenant_id, is_wholesale) where is_wholesale = true;
 
 create table product_image (
   id         uuid primary key default gen_random_uuid(),
@@ -272,11 +284,14 @@ create table product_variant (
   title              text,                                  -- e.g. "M / Red"
   sku                text,
   price              numeric(14,2) not null default 0,
+  wholesale_price    numeric(14,2),
+  tier_prices        jsonb not null default '[]'::jsonb,   -- [{min_qty, unit_price}]
   compare_at_price   numeric(14,2),
   cost_price         numeric(14,2),
   options            jsonb not null default '{}'::jsonb,    -- {"Size":"M","Color":"Red"}
   inventory_quantity integer not null default 0,
   track_inventory    boolean not null default true,
+  moq                integer,
   weight_grams       integer,
   barcode            text,
   position           integer not null default 0,
@@ -308,6 +323,13 @@ create table customer (
   phone        text,                                        -- natural key in BD
   email        citext,
   note         text,
+  customer_type customer_type not null default 'end_consumer',
+  business_name text,
+  trade_license_no text,
+  bin_no       text,
+  credit_limit numeric(14,2) not null default 0,
+  current_due  numeric(14,2) not null default 0,
+  is_verified  boolean not null default false,
   tags         text[] not null default '{}',
   orders_count integer not null default 0,
   total_spent  numeric(14,2) not null default 0,
@@ -315,6 +337,7 @@ create table customer (
   updated_at   timestamptz not null default now()
 );
 create unique index customer_phone_uniq on customer(tenant_id, phone) where phone is not null;
+create index customer_b2b_idx on customer (tenant_id, customer_type) where customer_type != 'end_consumer';
 
 create table customer_address (
   id             uuid primary key default gen_random_uuid(),
@@ -376,6 +399,12 @@ create table orders (
   customer_email     citext,
   shipping_address   jsonb not null default '{}'::jsonb,    -- division/district/thana/line/recipient/phone
   billing_address    jsonb not null default '{}'::jsonb,
+  order_mode         order_mode not null default 'retail',
+  is_purchase_order  boolean not null default false,
+  po_reference       text,
+  credit_approved    boolean not null default false,
+  credit_due         numeric(14,2) not null default 0,
+  credit_terms       jsonb not null default '{}'::jsonb,
   subtotal           numeric(14,2) not null default 0,
   discount_total     numeric(14,2) not null default 0,
   shipping_total     numeric(14,2) not null default 0,
@@ -387,6 +416,8 @@ create table orders (
   fulfillment_status order_fulfillment_status not null default 'pending',
   discount_code      text,
   source             order_source not null default 'storefront',
+  channel            text not null default 'storefront',   -- storefront | marketplace
+  marketplace_order_id uuid,
   note               text,
   placed_at          timestamptz not null default now(),
   created_at         timestamptz not null default now(),
@@ -397,6 +428,8 @@ create table orders (
 create index orders_tenant_placed_idx on orders(tenant_id, placed_at desc);
 create index orders_tenant_fulfillment_idx on orders(tenant_id, fulfillment_status);
 create index orders_customer_idx on orders(customer_id);
+create index orders_wholesale_idx on orders(tenant_id, order_mode) where order_mode = 'wholesale';
+create index orders_marketplace_idx on orders (tenant_id, marketplace_order_id) where marketplace_order_id is not null;
 
 create table order_item (
   id            uuid primary key default gen_random_uuid(),

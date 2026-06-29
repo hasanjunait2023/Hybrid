@@ -3,7 +3,13 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-// Marketplace ("Bazar") shell — header with search, cart, account. Bengali-first.
+// Marketplace ("Bazar") shell — header with search, cart, account, and
+// Retail | Wholesale toggle. Bengali-first.
+// Uses separate routes: /market (retail) and /market/wholesale (wholesale).
+// Separate routes are cleaner than ?section= query params because they:
+// 1. Preserve sub-routes (category, search, PDP) without param forwarding
+// 2. Work with App Router's natural route matching
+// 3. Avoid query-param state-loss on navigation
 export default function MarketLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-surface-2 text-ink">
@@ -32,6 +38,21 @@ export default function MarketLayout({ children }: { children: ReactNode }) {
             👤
           </Link>
         </div>
+        {/* Retail | Wholesale toggle — separate routes, no redirect */}
+        <nav className="mx-auto flex max-w-5xl items-center gap-1 px-4 pb-2" aria-label="বাজার মোড">
+          <Link
+            href="/market"
+            className="rounded-md px-3 py-1 text-sm font-medium transition hover:bg-surface-2"
+          >
+            খুচরা
+          </Link>
+          <Link
+            href="/market/wholesale"
+            className="rounded-md px-3 py-1 text-sm font-medium transition hover:bg-surface-2"
+          >
+            পাইকারি
+          </Link>
+        </nav>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-4">{children}</main>
     </div>

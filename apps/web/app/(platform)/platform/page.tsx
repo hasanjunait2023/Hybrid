@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getPlatformStats, type PlatformStats } from "@/lib/platform/analytics";
+import { getPlatformStats, getWholesaleStats, type PlatformStats, type WholesaleStats } from "@/lib/platform/analytics";
 import { listTenants, type TenantDirectoryRow } from "@/lib/platform/data";
-import { BoxesIcon, CheckCircleIcon, ReceiptIcon, UsersIcon } from "@hybrid/ui";
+import { BoxesIcon, CheckCircleIcon, ReceiptIcon, UsersIcon, TruckIcon } from "@hybrid/ui";
 
 // Platform owner dashboard — "Homies-Lab" console skin (operator-facing, Latin
 // numerals, English). Hybrid's business across every tenant: store counts,
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const DHAKA = "Asia/Dhaka";
 
 export default async function PlatformDashboard() {
-  const [s, tenants] = await Promise.all([getPlatformStats(), listTenants()]);
+  const [s, tenants, ws] = await Promise.all([getPlatformStats(), listTenants(), getWholesaleStats()]);
 
   const dateStr = new Intl.DateTimeFormat("en-GB", {
     weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: DHAKA,
@@ -80,6 +80,45 @@ export default async function PlatformDashboard() {
         <div className="lg:col-span-5"><PlanMix rows={s.mrrByPlan} mrr={s.mrr} /></div>
         <div className="lg:col-span-7"><StoresTable rows={tenants.slice(0, 6)} /></div>
       </section>
+
+      {/* Wholesale / B2B section */}
+      <section className="rounded-[18px] border border-[var(--pf-border)] bg-[var(--pf-panel)] p-4 lg:p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TruckIcon className="h-5 w-5 text-[var(--pf-yellow-deep)]" />
+            <h2 className="text-[15px] font-bold text-[var(--pf-ink)]">Wholesale (B2B)</h2>
+          </div>
+          <Link
+            href="/platform/wholesale-kyc"
+            className="text-[13px] font-semibold text-[var(--pf-yellow-deep)] hover:underline"
+          >
+            KYC Queue →
+          </Link>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <WholesaleStat
+            value={fmt(ws.totalWholesalers)}
+            label="Total Wholesalers"
+          />
+          <WholesaleStat
+            value={fmt(ws.pendingKyc)}
+            label="Pending KYC"
+            link="/platform/wholesale-kyc"
+          />
+          <WholesaleStat
+            value={money(ws.wholesaleGmv30d)}
+            label="Wholesale GMV (30d)"
+          />
+          <WholesaleStat
+            value={fmt(ws.wholesaleOrders30d)}
+            label="Wholesale Orders (30d)"
+          />
+          <WholesaleStat
+            value={fmt(ws.wholesaleProductsCount)}
+            label="Wholesale Products"
+          />
+        </div>
+      </section>
     </div>
   );
 }
@@ -115,6 +154,19 @@ function Metric({ value, label, hint, accent = false }: { value: string; label: 
       <p className="mt-0.5 text-[12px] text-[var(--pf-muted)]">{hint}</p>
     </div>
   );
+}
+
+function WholesaleStat({ value, label, link }: { value: string; label: string; link?: string }) {
+  const inner = (
+    <div className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-3.5">
+      <p className="text-[20px] font-bold leading-none text-[var(--pf-ink)]">{value}</p>
+      <p className="mt-1 text-[12px] font-medium text-[var(--pf-muted)]">{label}</p>
+    </div>
+  );
+  if (link) {
+    return <Link href={link}>{inner}</Link>;
+  }
+  return inner;
 }
 
 function Gauge({ value, label }: { value: number; label: string }) {

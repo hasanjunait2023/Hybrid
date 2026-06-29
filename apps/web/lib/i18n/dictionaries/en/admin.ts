@@ -15,6 +15,7 @@ import { settingsGeneral } from "./admin/settingsGeneral";
 import { settingsPayments } from "./admin/settingsPayments";
 import { settingsComms } from "./admin/settingsComms";
 import { shipping } from "./admin/shipping";
+import { wholesale } from "./admin/wholesale";
 
 export const admin = {
   products,
@@ -32,6 +33,7 @@ export const admin = {
   settingsPayments,
   settingsComms,
   shipping,
+  wholesale,
 
   shell: {
     badge: "Admin",
@@ -45,6 +47,8 @@ export const admin = {
     products: "Products",
     customers: "Customers",
     more: "More",
+    wholesale: "Wholesale",
+    purchaseRequests: "Purchase Requests",
     themes: "Theme & design",
     returns: "Returns / RTO",
     cod: "Cash on Delivery",
