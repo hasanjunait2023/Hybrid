@@ -230,6 +230,34 @@ export default async function WholesaleOrderDetailPage(props: {
             </div>
           </section>
 
+          {/* Documents — cash memo / invoice / delivery challan (Phase 5) */}
+          <section className="rounded-lg border border-border bg-surface p-4">
+            <h2 className="mb-3 text-sm font-bold text-ink">ডকুমেন্ট</h2>
+            <div className="flex flex-col gap-2 text-sm">
+              <Link
+                href={`/admin/wholesale/orders/${order.id}/print?doc=cashmemo`}
+                target="_blank"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                ক্যাশ মেমো →
+              </Link>
+              <Link
+                href={`/admin/wholesale/orders/${order.id}/print?doc=invoice`}
+                target="_blank"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                ট্যাক্স ইনভয়েস →
+              </Link>
+              <Link
+                href={`/admin/wholesale/orders/${order.id}/print?doc=challan`}
+                target="_blank"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                ডেলিভারি চালান →
+              </Link>
+            </div>
+          </section>
+
           {/* Credit Ledger Link */}
           <section className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-3 text-sm font-bold text-ink">{dt.creditLedger}</h2>

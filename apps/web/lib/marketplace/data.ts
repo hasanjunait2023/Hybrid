@@ -82,7 +82,7 @@ export async function listMarketplaceProducts(opts: {
                price_from, image_url, in_stock, rating_avg, rating_count,
                is_wholesale, wholesale_only, moq
           from marketplace_listing
-         where status = 'active' and hidden = false
+         where status = 'active' and hidden = false and wholesale_only = false
            and search_tsv @@ plainto_tsquery('simple', ${q})
          order by ts_rank(search_tsv, plainto_tsquery('simple', ${q})) desc, rating_avg desc
          limit ${LIMIT}
@@ -95,7 +95,8 @@ export async function listMarketplaceProducts(opts: {
                ml.is_wholesale, ml.wholesale_only, ml.moq
           from marketplace_listing ml
           join marketplace_category c on c.id = ml.category_id
-         where ml.status = 'active' and ml.hidden = false and c.slug = ${cat}
+         where ml.status = 'active' and ml.hidden = false and ml.wholesale_only = false
+           and c.slug = ${cat}
          order by ml.rating_avg desc, ml.synced_at desc
          limit ${LIMIT}
       `;
@@ -105,7 +106,7 @@ export async function listMarketplaceProducts(opts: {
              price_from, image_url, in_stock, rating_avg, rating_count,
              is_wholesale, wholesale_only, moq
         from marketplace_listing
-       where status = 'active' and hidden = false
+       where status = 'active' and hidden = false and wholesale_only = false
        order by rating_avg desc, synced_at desc
        limit ${LIMIT}
     `;

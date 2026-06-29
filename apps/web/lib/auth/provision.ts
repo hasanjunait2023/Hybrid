@@ -20,6 +20,37 @@ import type { Tx } from "@hybrid/db";
 const TRIAL_DAYS = 14;
 const STARTER_PLAN_CODE = "starter";
 
+// Default policy/info pages seeded on every new store (published). Bengali-first
+// starter copy the seller edits later; the point is the footer links resolve and
+// the store is compliant from day one. Body is plain text (rendered whitespace-
+// preserved on the storefront).
+const DEFAULT_PAGES: { type: string; slug: string; title: string; body: string }[] = [
+  {
+    type: "policy",
+    slug: "returns",
+    title: "রিটার্ন ও রিফান্ড নীতি",
+    body: "পণ্য হাতে পাওয়ার ৭ (সাত) দিনের মধ্যে সমস্যা থাকলে রিটার্ন/পরিবর্তন করা যাবে। পণ্য অব্যবহৃত ও আসল প্যাকেজিংসহ থাকতে হবে।\n\nরিফান্ড অনুমোদনের পর ৭–১০ কর্মদিবসের মধ্যে bKash/Nagad বা ক্যাশে ফেরত দেওয়া হয়। বিস্তারিত জানতে আমাদের হটলাইনে যোগাযোগ করুন।",
+  },
+  {
+    type: "policy",
+    slug: "privacy",
+    title: "প্রাইভেসি পলিসি",
+    body: "আমরা শুধুমাত্র অর্ডার সম্পন্ন ও ডেলিভারির জন্য আপনার নাম, ফোন নম্বর ও ঠিকানা সংগ্রহ করি। আপনার তথ্য কোনো তৃতীয় পক্ষের কাছে বিক্রি করা হয় না।\n\nকুরিয়ার ও পেমেন্ট সেবা প্রদানের প্রয়োজনে শুধু প্রাসঙ্গিক তথ্য শেয়ার করা হয়। আপনার তথ্য মুছে ফেলতে চাইলে আমাদের সাথে যোগাযোগ করুন।",
+  },
+  {
+    type: "policy",
+    slug: "terms",
+    title: "শর্তাবলী",
+    body: "এই স্টোর থেকে অর্ডার করার মাধ্যমে আপনি আমাদের মূল্য, ডেলিভারি ও রিটার্ন নীতিতে সম্মত হচ্ছেন। পণ্যের ছবি ও বর্ণনা যথাসম্ভব নির্ভুল রাখার চেষ্টা করা হয়।\n\nক্যাশ অন ডেলিভারির ক্ষেত্রে পণ্য বুঝে নেওয়ার সময় মূল্য পরিশোধ করতে হবে। যেকোনো প্রশ্নে হটলাইনে যোগাযোগ করুন।",
+  },
+  {
+    type: "about",
+    slug: "about",
+    title: "আমাদের সম্পর্কে",
+    body: "আমরা একটি বিশ্বস্ত অনলাইন স্টোর — সারা বাংলাদেশে দ্রুত ও নিরাপদ ডেলিভারি দিয়ে থাকি। গ্রাহক সন্তুষ্টিই আমাদের প্রথম অগ্রাধিকার।",
+  },
+];
+
 export interface ProvisionTenantInput {
   /** app_user.id of the owner. Must already exist (trigger or createAppUser). */
   userId: string;
@@ -183,6 +214,21 @@ export async function provisionTenant(
           now(), now() + ${`${TRIAL_DAYS} days`}::interval, 'manual'
         )
       `;
+
+      // (5) default policy pages — published so the storefront footer links
+      // (privacy / returns / terms / about) resolve immediately instead of 404.
+      // Sellers edit them from /admin/settings/pages. Required by the BD Digital
+      // Commerce Guidelines (visible return/refund + terms). Plain-text bodies.
+      for (const page of DEFAULT_PAGES) {
+        await tx`
+          insert into store_page (tenant_id, type, slug, title, status, blocks)
+          values (
+            ${tenant.id}, ${page.type}, ${page.slug}, ${page.title}, 'published',
+            ${tx.json([{ type: "richtext", value: page.body }])}
+          )
+          on conflict (tenant_id, slug) do nothing
+        `;
+      }
 
       return { tenantId: tenant.id, slug: tenant.slug };
     });

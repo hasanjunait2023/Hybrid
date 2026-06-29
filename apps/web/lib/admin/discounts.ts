@@ -58,6 +58,42 @@ function toRow(r: DiscountDbRow): AdminDiscountRow {
   };
 }
 
+// Per-code performance: how many orders used each code, the total discount
+// given away, and the gross revenue those orders brought in. Cancelled orders
+// are excluded (no revenue). Codes are the order-time snapshot (orders.discount_code),
+// so a since-deleted code still shows its historical impact.
+export interface DiscountPerformanceRow {
+  code: string;
+  ordersCount: number;
+  totalDiscount: number;
+  revenue: number;
+}
+
+export async function getDiscountPerformance(
+  tenantId: string,
+  userId: string,
+): Promise<DiscountPerformanceRow[]> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ code: string; orders_count: string; total_discount: string; revenue: string }[]>`
+      select discount_code as code,
+             count(*)::bigint as orders_count,
+             coalesce(sum(discount_total), 0) as total_discount,
+             coalesce(sum(grand_total), 0) as revenue
+        from orders
+       where discount_code is not null
+         and fulfillment_status <> 'cancelled'
+       group by discount_code
+       order by sum(grand_total) desc
+    `,
+  );
+  return rows.map((r) => ({
+    code: r.code,
+    ordersCount: Number(r.orders_count),
+    totalDiscount: Number(r.total_discount),
+    revenue: Number(r.revenue),
+  }));
+}
+
 export async function listDiscounts(
   tenantId: string,
   userId: string,

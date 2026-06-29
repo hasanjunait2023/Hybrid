@@ -83,6 +83,30 @@ function groupByVendor(lines: MpCartLine[]): Map<string, MpCartLine[]> {
   return map;
 }
 
+// A vendor sub-order is a WHOLESALE order when every one of its lines is a
+// wholesale product. Tagging order_mode correctly is what lets the vendor's
+// /admin/wholesale orders list and the platform's wholesale GMV analytics
+// (getWholesaleStats) count marketplace wholesale sales — without it every
+// marketplace sub-order defaults to order_mode='retail'. Read via asPlatformAdmin
+// (a known-id, tenant-scoped product lookup — the legitimate platform path).
+async function vendorOrderMode(
+  tenantId: string,
+  variantIds: string[],
+): Promise<"storefront" | "wholesale"> {
+  if (variantIds.length === 0) return "storefront";
+  const rows = await asPlatformAdmin((tx) =>
+    tx<{ total: number; wholesale: number }[]>`
+      select count(*)::int as total,
+             count(*) filter (where p.is_wholesale = true)::int as wholesale
+        from product_variant v
+        join product p on p.id = v.product_id
+       where v.tenant_id = ${tenantId} and v.id in ${tx(variantIds)}
+    `,
+  );
+  const r = rows[0];
+  return r && r.total > 0 && r.total === r.wholesale ? "wholesale" : "storefront";
+}
+
 export async function placeMarketplaceOrder(
   input: PlaceMarketplaceOrderInput,
 ): Promise<PlaceMarketplaceOrderResult> {
@@ -134,6 +158,10 @@ export async function placeMarketplaceOrder(
         destDistrict: input.shipTo.district,
       });
       const shippingTotal = quote.amount ?? 0;
+      const orderMode = await vendorOrderMode(
+        tenantId,
+        vendorLines.map((l) => l.variantId),
+      );
 
       const placed = await placeOrder({
         tenantId,
@@ -153,6 +181,7 @@ export async function placeMarketplaceOrder(
         channel: "marketplace",
         marketplaceOrderId: mpOrderId,
         shippingTotal,
+        orderMode,
       });
 
       successes.push({

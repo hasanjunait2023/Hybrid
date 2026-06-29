@@ -95,10 +95,19 @@ export interface PlaceOrderInput {
    */
   discountCode?: string | null;
   /**
-   * Order mode for wholesale B2B. When 'wholesale' and payment is not COD,
-   * the credit limit check is enforced before placing the order.
+   * Order mode for wholesale B2B. 'wholesale' tags the order_mode column so the
+   * wholesale order lists and platform GMV analytics count it. Defaults to retail.
    */
   orderMode?: "storefront" | "wholesale";
+  /**
+   * B2B credit sale (pay-later). When true the grand total is checked against the
+   * customer's credit limit, recorded as credit_due on the order, and posted to
+   * customer_ledger as a 'sale' entry that raises the customer's current_due.
+   * Independent of paymentMethod — a credit order carries a 'cod' payment row as a
+   * deferred-collection placeholder but sets cod_amount = 0 (collected via ledger,
+   * not on delivery).
+   */
+  creditSale?: boolean;
 }
 
 export interface PlaceOrderResult {
@@ -381,30 +390,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       email: input.customer.email ?? null,
     });
 
-    // (1b) Credit limit check for wholesale non-COD orders.
-    if (input.orderMode === "wholesale" && !isCod) {
-      const custRows = await tx<
-        { credit_limit: string; current_due: string }[]
-      >`
-        select credit_limit, current_due
-        from customer
-        where id = ${customerId}
-          and tenant_id = ${input.tenantId}
-        limit 1
-      `;
-      const cust = custRows[0];
-      if (cust) {
-        const creditLimit = Number(cust.credit_limit);
-        const currentDue = Number(cust.current_due);
-        // We don't know the final grand total yet, but we can estimate from
-        // the items. The actual check happens after pricing is computed.
-        // Store the customer data for later use.
-        if (creditLimit > 0 && currentDue >= creditLimit) {
-          throw new CreditLimitExceededError(currentDue, 0, creditLimit);
-        }
-      }
-    }
-
     // (2) default shipping address upsert. One default per customer: clear the
     // old default, then write the new one. Kept simple for P1 (no address book).
     await tx`
@@ -465,10 +450,16 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     }
 
     const grandTotal = subtotal - discountTotal + effectiveShipping;
-    const codAmount = isCod ? grandTotal : 0;
+    const isCreditSale = input.creditSale === true;
+    // A credit sale is collected later via the ledger, not on delivery — so it
+    // carries no COD amount even though its payment row is a 'cod' placeholder.
+    const codAmount = isCod && !isCreditSale ? grandTotal : 0;
+    const creditDue = isCreditSale ? grandTotal : 0;
+    const orderModeValue = input.orderMode === "wholesale" ? "wholesale" : "retail";
 
-    // (3c) Credit limit check for wholesale non-COD — re-check with actual total.
-    if (input.orderMode === "wholesale" && !isCod) {
+    // (3c) Credit limit check — only genuine pay-later credit sales consume the
+    // customer's credit line (COD and pay-now online orders settle immediately).
+    if (isCreditSale) {
       const custRows = await tx<
         { credit_limit: string; current_due: string }[]
       >`
@@ -497,7 +488,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         shipping_address,
         subtotal, discount_total, discount_code,
         shipping_total, grand_total, cod_amount, currency,
-        payment_status, fulfillment_status, source, channel, marketplace_order_id, note
+        payment_status, fulfillment_status, source, channel, marketplace_order_id,
+        order_mode, credit_due, credit_approved, note
       ) values (
         ${input.tenantId}, ${customerId},
         ${input.customer.name}, ${input.customer.phone}, ${input.customer.email ?? null},
@@ -514,6 +506,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         'unpaid',
         ${isCod ? "confirmed" : "pending"},
         ${input.source}, ${input.channel ?? "storefront"}, ${input.marketplaceOrderId ?? null},
+        ${orderModeValue}, ${creditDue}, ${isCreditSale},
         ${input.note ?? null}
       )
       returning id, order_number
@@ -569,6 +562,34 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         do update set orders_count = usage_counter.orders_count + 1,
                       updated_at = now()
     `;
+
+    // (7b) Credit-sale ledger posting. A B2B credit order raises the buyer's
+    // running due; a customer_ledger 'sale' row records it so the wholesale
+    // ledger view and customer.current_due stay in lockstep with later payments
+    // (recordPayment / issueCreditNote subtract from the same running balance).
+    if (isCreditSale) {
+      const lastEntry = await tx<{ balance: string }[]>`
+        select balance from customer_ledger
+         where customer_id = ${customerId} and tenant_id = ${input.tenantId}
+         order by created_at desc
+         limit 1
+      `;
+      const prevBalance = lastEntry[0] ? Number(lastEntry[0].balance) : 0;
+      const newBalance = prevBalance + grandTotal;
+      await tx`
+        insert into customer_ledger
+          (tenant_id, customer_id, type, amount, balance, reference_type, reference_id, note)
+        values
+          (${input.tenantId}, ${customerId}, 'sale', ${grandTotal}, ${newBalance},
+           'order', ${order.id}, ${`অর্ডার #${order.order_number}`})
+      `;
+      await tx`
+        update customer
+           set current_due = current_due + ${grandTotal},
+               updated_at = now()
+         where id = ${customerId} and tenant_id = ${input.tenantId}
+      `;
+    }
 
     return {
       orderId: order.id,

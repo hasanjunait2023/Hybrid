@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CheckIcon } from "@hybrid/ui";
+import { ProductGrid } from "@hybrid/ui";
 import {
+  getRelatedProducts,
   getStorefrontProductBySlug,
+  getStorefrontProductReviews,
   getTenantContextBySlug,
 } from "@/lib/storefront/data";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
 import { AddToCart } from "./AddToCart";
+import { OrderViaChat } from "./OrderViaChat";
+import { ProductReviews } from "./ProductReviews";
 
 interface ProductDetailPageProps {
   params: Promise<{ tenant: string; slug: string }>;
@@ -56,6 +61,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
   const product = await getStorefrontProductBySlug(ctx.id, productSlug);
   if (!product) notFound();
+
+  const [reviews, related] = await Promise.all([
+    getStorefrontProductReviews(ctx.id, product.id),
+    getRelatedProducts(ctx.id, product.id),
+  ]);
 
   const { locale, d } = await getDict();
   const isDiscounted =
@@ -108,8 +118,40 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           )}
 
           <AddToCart tenantSlug={slug} product={product} />
+
+          {/* Chat-order fallback — BD buyers often prefer to confirm on WhatsApp/
+              Messenger. Only renders when the store has a phone or FB page set. */}
+          <OrderViaChat
+            phone={ctx.store.phone}
+            facebookUrl={ctx.store.facebookUrl}
+            productTitle={product.title}
+            labels={{
+              orderOnWhatsapp: d.storefront.product.orderOnWhatsapp,
+              orderOnMessenger: d.storefront.product.orderOnMessenger,
+              chatOrderPrefix: d.storefront.product.chatOrderPrefix,
+            }}
+          />
         </div>
       </div>
+
+      <ProductReviews
+        data={reviews}
+        tenantSlug={slug}
+        productSlug={product.slug}
+        locale={locale}
+        labels={d.storefront.reviews}
+      />
+
+      {related.length > 0 && (
+        <div className="mt-10 border-t border-border pt-2">
+          <ProductGrid
+            lang={locale}
+            heading={d.storefront.products.related}
+            products={related}
+            priorityCount={0}
+          />
+        </div>
+      )}
     </div>
   );
 }

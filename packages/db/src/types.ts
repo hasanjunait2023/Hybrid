@@ -251,6 +251,16 @@ export interface CustomerLedger {
   type: string;
 }
 
+export interface CustomerSegment {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  minOrders: Generated<number>;
+  minSpent: Generated<Numeric>;
+  name: string;
+  tag: string | null;
+  tenantId: string;
+}
+
 export interface DbidSubmission {
   binSealed: Json | null;
   businessName: string | null;
@@ -379,6 +389,17 @@ export interface MarketplaceCustomer {
   phone: string;
   tradeLicenseNo: string | null;
   updatedAt: Generated<Timestamp>;
+}
+
+export interface MarketplaceFee {
+  amount: Numeric;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  note: string | null;
+  paidAt: Timestamp | null;
+  periodMonth: Timestamp;
+  status: Generated<string>;
+  tenantId: string;
 }
 
 export interface MarketplaceListing {
@@ -884,6 +905,7 @@ export interface Tenant {
   id: Generated<string>;
   kycDocuments: Generated<Json>;
   kycStatus: Generated<string>;
+  marketplaceMonthlyFee: Generated<Numeric>;
   name: string;
   ownerUserId: string | null;
   planId: string | null;
@@ -1013,6 +1035,7 @@ export interface DB {
   customer: Customer;
   customerAddress: CustomerAddress;
   customerLedger: CustomerLedger;
+  customerSegment: CustomerSegment;
   dbidSubmission: DbidSubmission;
   discount: Discount;
   invoice: Invoice;
@@ -1023,6 +1046,7 @@ export interface DB {
   marketplaceCommission: MarketplaceCommission;
   marketplaceConfig: MarketplaceConfig;
   marketplaceCustomer: MarketplaceCustomer;
+  marketplaceFee: MarketplaceFee;
   marketplaceListing: MarketplaceListing;
   marketplaceListingVariant: MarketplaceListingVariant;
   marketplaceOrder: MarketplaceOrder;

@@ -43,7 +43,7 @@ export interface SignupState {
   /** Suggested alternative slugs when the chosen one is taken. */
   suggestions?: string[];
   /** Echo back the submitted values so the form repopulates on error. */
-  values?: { storeName: string; slug: string; email: string };
+  values?: { storeName: string; slug: string; email: string; businessType: "retail" | "wholesale" };
   /** On success the client navigates here (admin on the new tenant host). */
   redirectTo?: string;
 }
@@ -82,8 +82,13 @@ export async function signupAction(
   const emailRaw = String(formData.get("email") ?? "").trim();
   const passwordRaw = String(formData.get("password") ?? "");
   const slug = normalizeSlug(slugRaw);
+  // Store type — seller self-selects at signup. Only retail|wholesale are offered
+  // ('both' is deferred); anything else falls back to retail. A wholesaler signup
+  // provisions as 'wholesale' (KYC-pending until a platform admin approves).
+  const businessType: "retail" | "wholesale" =
+    String(formData.get("businessType") ?? "retail") === "wholesale" ? "wholesale" : "retail";
   // Echo back everything EXCEPT the password (never round-trip a secret).
-  const values = { storeName: storeNameRaw, slug, email: emailRaw };
+  const values = { storeName: storeNameRaw, slug, email: emailRaw, businessType };
 
   // --- Server-side validation (never trust the client gate) ---
   const errors: NonNullable<SignupState["errors"]> = {};
@@ -183,7 +188,7 @@ export async function signupAction(
     // (3) Atomic platform provisioning: tenant(trial) + {slug}.{ROOT} domain +
     // owner membership + trialing subscription (+14d). Contract-owned. Throws
     // SlugTakenError on collision (caught below).
-    await provisionTenant({ userId, storeName: storeNameRaw, slug });
+    await provisionTenant({ userId, storeName: storeNameRaw, slug, businessType });
 
     // (4) Mint the app session, provider-aware EXACTLY like getSession() dispatches.
     // supabase/password → the real opaque hybrid_session (DB-backed, the cookie

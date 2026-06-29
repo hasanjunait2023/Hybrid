@@ -62,13 +62,13 @@ export function StoreHeader({ store, cartCount = 0, lang = "en", toggle }: Store
             {store.name}
           </a>
 
-          <button
-            type="button"
+          <a
+            href="/search"
             aria-label={t.search}
             className="grid h-11 w-11 place-items-center rounded-md text-ink-muted hover:bg-surface-2"
           >
             <SearchIcon />
-          </button>
+          </a>
 
           <a
             href="/cart"

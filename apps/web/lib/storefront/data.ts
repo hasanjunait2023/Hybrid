@@ -406,6 +406,123 @@ export async function getStorefrontProductBySlug(
   )();
 }
 
+// A published static page (privacy / returns / terms / about / custom). Content
+// is stored as a block tree; static pages use one richtext block whose `value`
+// is the plain-text body the storefront renders (whitespace-preserved). Draft
+// pages return null (not publicly visible). Cached + busted by tenant:{id}:page:{slug}.
+export interface StorefrontPage {
+  title: string;
+  body: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
+interface PageBlock {
+  type?: string;
+  value?: string;
+  content?: string;
+  heading?: string;
+}
+
+export async function getStorePage(
+  tenantId: string,
+  slug: string,
+): Promise<StorefrontPage | null> {
+  return unstable_cache(
+    async () => {
+      const row = await withTenant(tenantId, null, async (tx) => {
+        const rows = await tx<
+          { title: string | null; blocks: PageBlock[]; seo: { title?: string; description?: string } }[]
+        >`
+          select title, blocks, seo
+            from store_page
+           where slug = ${slug} and status = 'published'
+           limit 1
+        `;
+        return rows[0] ?? null;
+      });
+      if (!row) return null;
+
+      const blocks = Array.isArray(row.blocks) ? row.blocks : [];
+      const body = blocks
+        .map((b) => b?.value ?? b?.content ?? b?.heading ?? "")
+        .filter((s) => s.trim().length > 0)
+        .join("\n\n");
+
+      return {
+        title: row.title ?? "",
+        body,
+        seoTitle: row.seo?.title ?? null,
+        seoDescription: row.seo?.description ?? null,
+      } satisfies StorefrontPage;
+    },
+    [`page:${tenantId}:${slug}`],
+    {
+      revalidate: 3600,
+      tags: [`tenant:${tenantId}`, `tenant:${tenantId}:page:${slug}`],
+    },
+  )();
+}
+
+// Approved product reviews + rating for the storefront PDP. Public read
+// (userId=null); only 'approved' rows are ever exposed. Cached + busted by
+// tenant:{id}:reviews (the admin moderate action revalidates that tag).
+export interface StorefrontReview {
+  id: string;
+  customerName: string | null;
+  rating: number;
+  body: string | null;
+  createdAt: string;
+}
+
+export interface StorefrontProductReviews {
+  average: number;
+  count: number;
+  reviews: StorefrontReview[];
+}
+
+export async function getStorefrontProductReviews(
+  tenantId: string,
+  productId: string,
+): Promise<StorefrontProductReviews> {
+  return unstable_cache(
+    async () => {
+      return withTenant(tenantId, null, async (tx) => {
+        const agg = await tx<{ avg: string | null; n: number }[]>`
+          select avg(rating)::numeric(3,2) as avg, count(*)::int as n
+            from product_review
+           where product_id = ${productId} and status = 'approved'
+        `;
+        const rows = await tx<
+          { id: string; customer_name: string | null; rating: number; body: string | null; created_at: string }[]
+        >`
+          select id, customer_name, rating, body, created_at
+            from product_review
+           where product_id = ${productId} and status = 'approved'
+           order by created_at desc
+           limit 20
+        `;
+        return {
+          average: Number(agg[0]?.avg ?? 0),
+          count: agg[0]?.n ?? 0,
+          reviews: rows.map((r) => ({
+            id: r.id,
+            customerName: r.customer_name,
+            rating: r.rating,
+            body: r.body,
+            createdAt: r.created_at,
+          })),
+        } satisfies StorefrontProductReviews;
+      });
+    },
+    [`reviews:${tenantId}:${productId}`],
+    {
+      revalidate: 3600,
+      tags: [`tenant:${tenantId}`, `tenant:${tenantId}:reviews`],
+    },
+  )();
+}
+
 // Active products for a tenant. min(variant.price) is the card price.
 export async function getStorefrontProducts(
   tenantId: string,
@@ -465,5 +582,147 @@ export async function getStorefrontProducts(
       revalidate: 3600,
       tags: [`tenant:${tenantId}`, `tenant:${tenantId}:products`],
     },
+  )();
+}
+
+// Shared card mapper for the product-grid shape.
+function mapProductCard(r: {
+  id: string;
+  title: string;
+  slug: string;
+  price: string | null;
+  compare_at_price: string | null;
+  inventory_quantity: number | null;
+}): StorefrontProduct {
+  return {
+    id: r.id,
+    title: r.title,
+    slug: r.slug,
+    price: r.price != null ? Number(r.price) : 0,
+    compareAtPrice: r.compare_at_price != null ? Number(r.compare_at_price) : null,
+    inStock: (r.inventory_quantity ?? 0) > 0,
+    codEnabled: true,
+  };
+}
+
+type ProductCardRow = Parameters<typeof mapProductCard>[0];
+
+// Storefront product search (title match). Dynamic per query → not cached.
+// Trims + caps the term; an empty term returns nothing.
+export async function searchStorefrontProducts(
+  tenantId: string,
+  query: string,
+): Promise<StorefrontProduct[]> {
+  const q = query.trim().slice(0, 80);
+  if (!q) return [];
+  const like = `%${q}%`;
+  const rows = await withTenant(tenantId, null, (tx) =>
+    tx<ProductCardRow[]>`
+      select p.id, p.title, p.slug,
+        (select min(v.price) from product_variant v where v.product_id = p.id and v.is_active = true) as price,
+        (select v.compare_at_price from product_variant v where v.product_id = p.id and v.is_active = true order by v.price asc limit 1) as compare_at_price,
+        (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity
+      from product p
+      where p.status = 'active' and p.title ilike ${like}
+      order by p.created_at desc
+      limit 60
+    `,
+  );
+  return rows.map(mapProductCard);
+}
+
+export interface StorefrontCollectionDetail {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+}
+
+// One collection by slug (storefront collection detail page). Cached + tagged.
+export async function getStorefrontCollectionBySlug(
+  tenantId: string,
+  slug: string,
+): Promise<StorefrontCollectionDetail | null> {
+  return unstable_cache(
+    async () => {
+      const rows = await withTenant(tenantId, null, (tx) =>
+        tx<{ id: string; title: string; slug: string; description: string | null }[]>`
+          select id, title, slug, description from collection where slug = ${slug} limit 1
+        `,
+      );
+      return rows[0] ?? null;
+    },
+    [`collection:${tenantId}:${slug}`],
+    { revalidate: 3600, tags: [`tenant:${tenantId}`, `tenant:${tenantId}:collections`] },
+  )();
+}
+
+// Active products in a collection (storefront collection detail). Cached + tagged.
+export async function getStorefrontProductsByCollection(
+  tenantId: string,
+  collectionId: string,
+): Promise<StorefrontProduct[]> {
+  return unstable_cache(
+    async () => {
+      const rows = await withTenant(tenantId, null, (tx) =>
+        tx<ProductCardRow[]>`
+          select p.id, p.title, p.slug,
+            (select min(v.price) from product_variant v where v.product_id = p.id and v.is_active = true) as price,
+            (select v.compare_at_price from product_variant v where v.product_id = p.id and v.is_active = true order by v.price asc limit 1) as compare_at_price,
+            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity
+          from product p
+          join product_collection pc on pc.product_id = p.id
+          where p.status = 'active' and pc.collection_id = ${collectionId}
+          order by p.created_at desc
+        `,
+      );
+      return rows.map(mapProductCard);
+    },
+    [`collection-products:${tenantId}:${collectionId}`],
+    { revalidate: 3600, tags: [`tenant:${tenantId}`, `tenant:${tenantId}:products`, `tenant:${tenantId}:collections`] },
+  )();
+}
+
+// "You may also like" — products sharing a collection with this one, falling back
+// to the most recent active products when there is no collection overlap.
+export async function getRelatedProducts(
+  tenantId: string,
+  productId: string,
+  limit = 4,
+): Promise<StorefrontProduct[]> {
+  return unstable_cache(
+    async () => {
+      return withTenant(tenantId, null, async (tx) => {
+        const related = await tx<ProductCardRow[]>`
+          select distinct p.id, p.title, p.slug,
+            (select min(v.price) from product_variant v where v.product_id = p.id and v.is_active = true) as price,
+            (select v.compare_at_price from product_variant v where v.product_id = p.id and v.is_active = true order by v.price asc limit 1) as compare_at_price,
+            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity
+          from product p
+          join product_collection pc on pc.product_id = p.id
+          where p.status = 'active' and p.id <> ${productId}
+            and pc.collection_id in (
+              select collection_id from product_collection where product_id = ${productId}
+            )
+          limit ${limit}
+        `;
+        if (related.length > 0) return related.map(mapProductCard);
+
+        // Fallback: recent active products (excluding this one).
+        const recent = await tx<ProductCardRow[]>`
+          select p.id, p.title, p.slug,
+            (select min(v.price) from product_variant v where v.product_id = p.id and v.is_active = true) as price,
+            (select v.compare_at_price from product_variant v where v.product_id = p.id and v.is_active = true order by v.price asc limit 1) as compare_at_price,
+            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity
+          from product p
+          where p.status = 'active' and p.id <> ${productId}
+          order by p.created_at desc
+          limit ${limit}
+        `;
+        return recent.map(mapProductCard);
+      });
+    },
+    [`related:${tenantId}:${productId}`],
+    { revalidate: 3600, tags: [`tenant:${tenantId}`, `tenant:${tenantId}:products`] },
   )();
 }
