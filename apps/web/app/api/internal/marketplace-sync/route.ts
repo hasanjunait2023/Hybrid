@@ -17,6 +17,12 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { asPlatformAdmin } from "@hybrid/db";
 import { syncMarketplaceListingsForTenant } from "@/lib/marketplace/sync";
+import {
+  rollupRatings,
+  backfillMissingSuborders,
+  syncSuborderStatus,
+  recoverStalledOrders,
+} from "@/lib/marketplace/reconcile";
 
 export const dynamic = "force-dynamic";
 
@@ -30,66 +36,6 @@ function authorized(req: Request): boolean {
   const b = Buffer.from(expected, "utf8");
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
-}
-
-// Copy each sub-order's live fulfillment/payment status from the tenant `orders`
-// row into the buyer-visible marketplace_suborder snapshot, so buyer order
-// history never has to read tenant `orders`. Matched by the value-link order_id.
-async function syncSuborderStatus(): Promise<void> {
-  await asPlatformAdmin(async (tx) => {
-    await tx`
-      update marketplace_suborder mso
-         set status = o.fulfillment_status,
-             payment_status = o.payment_status,
-             updated_at = now()
-        from orders o
-       where o.id = mso.order_id
-         and o.tenant_id = mso.tenant_id
-         and (mso.status is distinct from o.fulfillment_status
-              or mso.payment_status is distinct from o.payment_status)
-    `;
-  });
-}
-
-// Saga recovery: finalize parents left 'pending' by a mid-checkout crash (the
-// orchestrator normally finalizes them itself). Older than 15 min, derive the
-// terminal status from how many sub-orders actually committed.
-async function recoverStalledOrders(): Promise<void> {
-  await asPlatformAdmin(async (tx) => {
-    await tx`
-      update marketplace_order mo
-         set status = case
-               when (select count(*) from marketplace_suborder s where s.marketplace_order_id = mo.id) = 0 then 'failed'
-               when (select count(*) from marketplace_suborder s where s.marketplace_order_id = mo.id) < mo.vendor_count then 'partial'
-               else 'confirmed' end,
-             updated_at = now()
-       where mo.status = 'pending'
-         and mo.created_at < now() - interval '15 minutes'
-    `;
-  });
-}
-
-// Recompute rating rollups from approved reviews in one pass.
-async function rollupRatings(): Promise<void> {
-  await asPlatformAdmin(async (tx) => {
-    await tx`
-      update marketplace_listing ml set
-        rating_count = coalesce(sub.cnt, 0),
-        rating_avg   = coalesce(sub.avg, 0)
-      from (
-        select product_id, count(*)::int as cnt, round(avg(rating)::numeric, 2) as avg
-          from marketplace_review where status = 'approved'
-         group by product_id
-      ) sub
-      where ml.product_id = sub.product_id
-    `;
-    // Zero out listings whose last approved review was removed/rejected.
-    await tx`
-      update marketplace_listing set rating_count = 0, rating_avg = 0
-       where rating_count > 0
-         and product_id not in (select product_id from marketplace_review where status = 'approved')
-    `;
-  });
 }
 
 export async function POST(req: Request): Promise<NextResponse> {
@@ -113,8 +59,11 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   // Best-effort maintenance passes (each isolated so one failure never aborts).
+  // Order matters: backfill orphaned sub-orders BEFORE status-sync and saga
+  // recovery, so recovery sees the real sub-order counts.
   for (const [label, fn] of [
     ["ratings rollup", rollupRatings],
+    ["suborder backfill", backfillMissingSuborders],
     ["suborder status sync", syncSuborderStatus],
     ["saga recovery", recoverStalledOrders],
   ] as const) {
