@@ -17,9 +17,11 @@ import { settingsComms } from "./admin/settingsComms";
 import { settingsDbid } from "./admin/settingsDbid";
 import { shipping } from "./admin/shipping";
 import { wholesale } from "./admin/wholesale";
+import { coach } from "./admin/coach";
 
 export const admin: typeof EnAdmin = {
   products,
+  coach,
   customers,
   collections,
   discounts,
@@ -48,6 +50,7 @@ export const admin: typeof EnAdmin = {
     orders: "অর্ডার",
     products: "পণ্য",
     customers: "গ্রাহক",
+    coach: "কোচ",
     more: "আরও",
     wholesale: "পাইকারি",
     purchaseRequests: "পারচেজ রিকোয়েস্ট",

@@ -17,9 +17,11 @@ import { settingsComms } from "./admin/settingsComms";
 import { settingsDbid } from "./admin/settingsDbid";
 import { shipping } from "./admin/shipping";
 import { wholesale } from "./admin/wholesale";
+import { coach } from "./admin/coach";
 
 export const admin = {
   products,
+  coach,
   customers,
   collections,
   discounts,
@@ -48,6 +50,7 @@ export const admin = {
     orders: "Orders",
     products: "Products",
     customers: "Customers",
+    coach: "Coach",
     more: "More",
     wholesale: "Wholesale",
     purchaseRequests: "Purchase Requests",
