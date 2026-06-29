@@ -28,12 +28,20 @@ export default async function DiscountsPage() {
         title={t.title}
         subtitle={`${formatNumber(discounts.length, locale)} ${t.countSuffix}`}
         action={
-          <a
-            href="/admin/discounts/new"
-            className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
-          >
-            <PlusIcon className="h-4 w-4" /> {t.newDiscount}
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href="/admin/discounts/report"
+              className="inline-flex h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink-muted hover:text-primary"
+            >
+              রিপোর্ট
+            </a>
+            <a
+              href="/admin/discounts/new"
+              className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
+            >
+              <PlusIcon className="h-4 w-4" /> {t.newDiscount}
+            </a>
+          </div>
         }
       />
 
