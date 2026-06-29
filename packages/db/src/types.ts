@@ -85,6 +85,11 @@ export type TenantStatus = "active" | "cancelled" | "past_due" | "suspended" | "
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface _Migrations {
+  appliedAt: Generated<Timestamp>;
+  filename: string;
+}
+
 export interface AnalyticsEvent {
   createdAt: Generated<Timestamp>;
   customerId: string | null;
@@ -995,6 +1000,7 @@ export interface WebhookEvent {
 }
 
 export interface DB {
+  _Migrations: _Migrations;
   analyticsEvent: AnalyticsEvent;
   appUser: AppUser;
   auditLog: AuditLog;
