@@ -61,6 +61,7 @@ export const admin = {
     discounts: "Discounts",
     collections: "Collections",
     shipping: "Shipping & delivery",
+    landingPages: "Landing pages",
   },
 
   dashboard: {

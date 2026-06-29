@@ -61,6 +61,7 @@ export const admin: typeof EnAdmin = {
     discounts: "ডিসকাউন্ট",
     collections: "কালেকশন",
     shipping: "শিপিং ও ডেলিভারি",
+    landingPages: "ল্যান্ডিং পেজ",
   },
 
   dashboard: {

@@ -4,10 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatBdtBangla } from "@hybrid/ui";
+import type { BuyerAddress } from "@/lib/marketplace/addresses";
 import { useMpCart } from "../cart/useMpCart";
 import { submitMarketplaceCheckout, type CheckoutResult } from "./actions";
 
-export function CheckoutForm() {
+interface Props {
+  savedAddresses: BuyerAddress[];
+}
+
+export function CheckoutForm({ savedAddresses }: Props) {
   const cart = useMpCart();
   const router = useRouter();
   const [form, setForm] = useState({
@@ -22,15 +27,22 @@ export function CheckoutForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<CheckoutResult | null>(null);
-  // Stable per checkout session (lazy init = once per mount), NOT per click.
-  // A double-tap or post-error retry replays the SAME key so the server-side
-  // buyer_id+idempotency_key dedup fires; regenerating it per submit (the old
-  // bug) let a duplicate submit create a second parent order + double inventory
-  // decrement. A fresh cart/checkout remounts this form → new key.
+  // Stable per checkout session — prevents duplicate orders on double-tap.
   const [idemKey] = useState(() => crypto.randomUUID());
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const applyAddress = (a: BuyerAddress) => {
+    setForm({
+      name: a.recipientName,
+      phone: a.phone,
+      division: a.division,
+      district: a.district,
+      thana: a.thana,
+      line: a.addressLine,
+    });
+  };
 
   const submit = async () => {
     setBusy(true);
@@ -70,7 +82,7 @@ export function CheckoutForm() {
         <p className="text-xl font-bold text-cod">অর্ডার নিশ্চিত হয়েছে! ✓</p>
         <p className="text-sm text-ink-muted">
           {done.result.confirmed.length} টি দোকানে আপনার অর্ডার গেছে
-          {paymentMethod === "cod" ? " (ক্যাশ অন ডেলিভারি)" : " (অনলাইন পেমেন্ট)"}.
+          {paymentMethod === "cod" ? " (ক্যাশ অন ডেলিভারি)" : " (অনলাইন পেমেন্ট)"}।
         </p>
         {done.result.failed.length > 0 ? (
           <p className="text-sm text-danger">
@@ -87,7 +99,10 @@ export function CheckoutForm() {
   if (cart.lines.length === 0) {
     return (
       <p className="py-12 text-center text-ink-muted">
-        কার্ট খালি। <Link href="/" className="text-primary">কেনাকাটা করুন</Link>
+        কার্ট খালি।{" "}
+        <Link href="/" className="text-primary">
+          কেনাকাটা করুন
+        </Link>
       </p>
     );
   }
@@ -103,7 +118,36 @@ export function CheckoutForm() {
 
   return (
     <div className="flex max-w-md flex-col gap-3">
+      {/* Saved address picker */}
+      {savedAddresses.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+          <p className="text-xs font-medium text-ink-muted">সংরক্ষিত ঠিকানা</p>
+          <div className="flex flex-col gap-1">
+            {savedAddresses.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => applyAddress(a)}
+                className="flex min-h-[44px] items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-surface-2"
+              >
+                <span className="shrink-0 text-base">📍</span>
+                <span className="flex-1 truncate">
+                  {a.recipientName} — {a.addressLine}, {a.district}
+                  {a.isDefault ? (
+                    <span className="ml-1 text-xs text-primary">(ডিফল্ট)</span>
+                  ) : null}
+                </span>
+              </button>
+            ))}
+          </div>
+          <Link href="/account/addresses" className="text-xs text-primary hover:underline">
+            ঠিকানা পরিচালনা করুন →
+          </Link>
+        </div>
+      )}
+
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+
       {fields.map(([k, label]) => (
         <input
           key={k}
@@ -114,6 +158,7 @@ export function CheckoutForm() {
           className="rounded-md border border-border bg-surface px-3 py-2"
         />
       ))}
+
       <div className="flex flex-col gap-2 border-t border-border pt-3">
         <p className="text-sm font-medium text-ink">পেমেন্ট পদ্ধতি</p>
         <div className="flex gap-3">

@@ -46,6 +46,12 @@ export default async function AccountPage() {
           আমার অর্ডার
         </Link>
         <Link
+          href="/account/addresses"
+          className="flex min-h-[44px] items-center rounded-lg border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-2"
+        >
+          ঠিকানা বই 📍
+        </Link>
+        <Link
           href="/account/wishlist"
           className="flex min-h-[44px] items-center rounded-lg border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-2"
         >

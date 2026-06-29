@@ -54,6 +54,7 @@ const MORE_ITEMS: NavItem[] = [
   { href: "/admin/marketing", tKey: "marketing", Icon: ChatIcon, match: "/admin/marketing" },
   { href: "/admin/reviews", tKey: "reviews", Icon: CheckCircleIcon, match: "/admin/reviews" },
   { href: "/admin/settings/shipping", tKey: "shipping", Icon: TruckIcon, match: "/admin/settings/shipping" },
+  { href: "/admin/landing-pages", tKey: "landingPages", Icon: MenuIcon, match: "/admin/landing-pages" },
   { href: "/admin/settings", tKey: "settings", Icon: ShieldIcon, match: "/admin/settings" },
 ];
 
