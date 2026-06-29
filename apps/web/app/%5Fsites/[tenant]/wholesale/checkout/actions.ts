@@ -7,6 +7,7 @@ import {
   placeOrder,
   InsufficientStockError,
   DiscountError,
+  CreditLimitExceededError,
   type DiscountErrorReason,
 } from "@/lib/commerce/placeOrder";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
@@ -159,7 +160,11 @@ export async function submitWholesaleCheckout(
         line: input.addressLine,
       },
       items: input.items,
+      // 'credit' is a deferred B2B sale: it carries a 'cod' payment placeholder
+      // but is flagged creditSale so placeOrder posts it to the customer ledger
+      // and enforces the credit limit (instead of treating it as cash-on-delivery).
       paymentMethod: input.paymentMethod === "credit" ? "cod" : input.paymentMethod,
+      creditSale: input.paymentMethod === "credit",
       note: input.note ?? null,
       source: "storefront",
       discountCode: input.discountCode ?? null,
@@ -172,6 +177,12 @@ export async function submitWholesaleCheckout(
     }
     if (error instanceof DiscountError) {
       return { ok: false, error: DISCOUNT_MESSAGES[error.reason] };
+    }
+    if (error instanceof CreditLimitExceededError) {
+      return {
+        ok: false,
+        error: "ক্রেডিট সীমা অতিক্রম করেছে। বকেয়া পরিশোধ করুন অথবা ক্যাশ/অনলাইন পেমেন্ট বেছে নিন।",
+      };
     }
     if (error instanceof Error && error.message === "EMPTY_ORDER") {
       return { ok: false, error: "আপনার কার্ট খালি।" };
