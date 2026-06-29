@@ -1,26 +1,28 @@
 "use server";
 
-// Custom-domain Server Actions (blueprint §2.1, DESIGN §Q5). Add → verify/poll →
-// set primary, all behind VERCEL_DOMAINS_ENABLED. Flag-off path is EXPLICIT
-// PENDING: the row + DNS instructions are written, but the state never advances
-// to verified/issued without a real Vercel signal. Domain ownership is never
-// trusted from the client — the only way verified flips true is a live Vercel
-// verify response (lib/domains/vercel.ts).
+// Custom-domain Server Actions (blueprint §2.1, DESIGN §Q5). Self-hosted Caddy
+// on VPS — verification is DNS-based (lib/domains/caddy.ts), NOT Vercel API.
+//
+// Flow: add → generate token + show DNS records → seller sets A + TXT at
+// registrar → "Check Status" resolves TXT (ownership) then A (routing) →
+// verified=true + ssl_status='issued' → Caddy ask gate returns 200 → Caddy
+// auto-provisions Let's Encrypt cert on first HTTPS connection.
 //
 // Every action: getSession → tenant (membership) → withTenant write (RLS) →
 // invalidateDomainCache when host routing changes so resolve.ts re-resolves.
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { withTenant } from "@hybrid/db";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { invalidateDomainCache } from "@/lib/tenant/resolve";
 import { normalizeDomain } from "@/lib/domains/dns";
-import { addDomain, verifyDomain, getDomainStatus } from "@/lib/domains/vercel";
+import { checkDomainDns } from "@/lib/domains/caddy";
+import { checkPlanLimit } from "@/lib/platform/plans";
 import {
   deriveDomainState,
   afterDnsVerified,
   afterSslIssued,
-  asFailed,
   asRetry,
   routingChanged,
   type DomainRowStatus,
@@ -47,6 +49,7 @@ interface DomainRow {
   domain: string;
   verified: boolean;
   ssl_status: SslStatus;
+  verification_token: string | null;
 }
 
 function rowStatus(row: DomainRow): DomainRowStatus {
@@ -66,17 +69,25 @@ export async function addCustomDomain(
     return { ok: false, error: "সঠিক ডোমেইন দিন (যেমন yourstore.com — http:// ছাড়া)।" };
   }
 
-  // Register with Vercel first (flag-off → pending, no live call). The row is
-  // persisted regardless so the DNS instructions render; verified stays false.
-  const vercel = await addDomain(domain);
-  const initialSsl: SslStatus = vercel.live && vercel.verified ? "pending" : "none";
-  const initialVerified = vercel.live ? Boolean(vercel.verified) : false;
+  // Enforce plan limit before inserting (max_custom_domains per plan).
+  const limit = await checkPlanLimit(auth.tenantId, "domain");
+  if (!limit.allowed) {
+    const cap = limit.limit === 0
+      ? "আপনার প্ল্যানে কাস্টম ডোমেইন সাপোর্ট নেই। আপগ্রেড করুন।"
+      : `আপনার প্ল্যানের সীমা (${limit.limit}টি) পূর্ণ হয়েছে। আপগ্রেড করুন।`;
+    return { ok: false, error: cap };
+  }
+
+  // Generate a unique ownership-proof token stored in verification_token.
+  // The seller must add a TXT record _hybrid-verify.{domain} = token at their
+  // DNS provider before checkDomainStatus can advance the state.
+  const token = randomUUID();
 
   try {
     await withTenant(auth.tenantId, auth.userId, (tx) =>
       tx`
-        insert into tenant_domain (tenant_id, domain, type, verified, ssl_status)
-        values (${auth.tenantId}, ${domain}, 'custom', ${initialVerified}, ${initialSsl}::ssl_status)
+        insert into tenant_domain (tenant_id, domain, type, verified, ssl_status, verification_token)
+        values (${auth.tenantId}, ${domain}, 'custom', false, 'none'::ssl_status, ${token})
         on conflict (domain) do nothing
       `,
     );
@@ -84,7 +95,6 @@ export async function addCustomDomain(
     return { ok: false, error: "ডোমেইন যোগ করা যায়নি। হয়তো এটি ইতিমধ্যে ব্যবহৃত হচ্ছে।" };
   }
 
-  if (initialVerified) await invalidateDomainCache(domain);
   revalidatePath("/admin/settings/domains");
   return { ok: true };
 }
@@ -104,30 +114,31 @@ export async function checkDomainStatus(
   try {
     await withTenant(auth.tenantId, auth.userId, async (tx) => {
       const rows = await tx<DomainRow[]>`
-        select id, domain, verified, ssl_status
+        select id, domain, verified, ssl_status, verification_token
         from tenant_domain
         where id = ${id} and type = 'custom'
         limit 1
       `;
       const row = rows[0];
       if (!row) throw new Error("NOT_FOUND");
+      if (!row.verification_token) throw new Error("NO_TOKEN");
 
       const prev = rowStatus(row);
+      const dnsResult = await checkDomainDns(row.domain, row.verification_token);
 
-      // Drive the live calls (flag-off → live:false → no state change).
-      const verifyRes = await verifyDomain(row.domain);
       let next = prev;
 
-      if (verifyRes.live) {
-        if (verifyRes.verified) {
-          next = afterDnsVerified(prev);
-          // Once DNS is verified, poll cert/config to learn if SSL is issued.
-          const statusRes = await getDomainStatus(row.domain);
-          if (statusRes.live && statusRes.sslIssued) next = afterSslIssued();
-        } else {
-          next = asFailed();
-        }
+      if (dnsResult.sslIssued) {
+        // Both TXT (ownership) and A (routing) verified — domain is fully live.
+        // Caddy's ask gate will return 200; cert auto-provisioned on first hit.
+        next = afterSslIssued();
+      } else if (dnsResult.txtVerified) {
+        // Ownership proven but A record not pointing to us yet (or propagating).
+        // Mark dns_verified so seller knows to wait for A record to propagate.
+        next = afterDnsVerified(prev);
       }
+      // If neither, stay at pending_dns — DNS may still be propagating; don't
+      // mark failed to avoid frustrating sellers during normal propagation delays.
 
       if (next.verified !== prev.verified || next.sslStatus !== prev.sslStatus) {
         if (next.verified) {
@@ -154,6 +165,9 @@ export async function checkDomainStatus(
   } catch (error) {
     if (error instanceof Error && error.message === "NOT_FOUND") {
       return { ok: false, error: "ডোমেইন পাওয়া যায়নি।" };
+    }
+    if (error instanceof Error && error.message === "NO_TOKEN") {
+      return { ok: false, error: "ডোমেইন টোকেন পাওয়া যায়নি — ডোমেইনটি সরিয়ে আবার যোগ করুন।" };
     }
     return { ok: false, error: "স্ট্যাটাস চেক করা যায়নি — আবার চেষ্টা করুন।" };
   }
@@ -202,7 +216,7 @@ export async function setPrimaryDomain(
   try {
     await withTenant(auth.tenantId, auth.userId, async (tx) => {
       const rows = await tx<DomainRow[]>`
-        select id, domain, verified, ssl_status
+        select id, domain, verified, ssl_status, verification_token
         from tenant_domain
         where id = ${id} and type = 'custom'
         limit 1

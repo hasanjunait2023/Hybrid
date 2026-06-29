@@ -5,9 +5,9 @@ import { getDomainsView } from "@/lib/domains/data";
 import { getDict } from "@/lib/i18n/server";
 import { DomainsManager } from "./DomainsManager";
 
-// Custom domain connect (DESIGN §Q5). Add domain → DNS records → status states →
-// set primary. Backed by tenant_domain; live Vercel calls behind
-// VERCEL_DOMAINS_ENABLED (flag off → honest "pending live Vercel").
+// Custom domain connect (DESIGN §Q5). Add domain → DNS records (A + TXT) →
+// DNS-based verification → set primary. Backed by tenant_domain;
+// Caddy on-demand TLS provisions Let's Encrypt certs automatically.
 export default async function DomainsSettingsPage() {
   const session = await getSession();
   if (!session) redirect("/dev-login?as=owner-a");
