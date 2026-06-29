@@ -1,0 +1,28 @@
+name: Sync VPS clone
+
+# Keep the VPS source clone (/opt/hybrid) current with origin on EVERY push to
+# ANY branch — a lightweight `git fetch` + safe ff-only pull (NO rebuild). This
+# runs independently of the full deploy: even when master CI is red (so deploy
+# is skipped), the VPS clone's refs/source still track origin, so agents working
+# on the box stay up to date. The running container only changes via the gated
+# deploy in ci.yml.
+#
+# Security: the SSH key (VPS_SYNC_KEY) is forced-command-locked to
+# /opt/hybrid/sync.sh on the VPS — it cannot open a shell, read files, or
+# trigger a deploy. Least privilege: this broad-trigger job can only fetch.
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync VPS clone (fetch + safe ff-pull)
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: 72.62.228.196
+          username: root
+          key: ${{ secrets.VPS_SYNC_KEY }}
+          script: sync # ignored — VPS forced-command runs /opt/hybrid/sync.sh
