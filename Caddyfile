@@ -49,6 +49,19 @@ hybrid.ecomex.cloud {
 	reverse_proxy web:3000
 }
 
+# Hybrid Pay (self-hosted PipraPay engine) — its own PHP container. More-specific
+# than the *.hybrid wildcard so this block wins routing; uses on_demand TLS to
+# match the wildcard policy (no managed-vs-on-demand conflict). pay.* is
+# allowlisted in the ask gate (PLATFORM_HOSTS). Started by docker-compose.hybridpay.yml.
+pay.hybrid.ecomex.cloud {
+	encode zstd gzip
+	tls {
+		on_demand
+	}
+	import app_headers
+	reverse_proxy hybrid-piprapay:80
+}
+
 # Public CDN for product/media objects only. The MinIO S3 API exposes bucket
 # listing, PUT/DELETE, and admin endpoints on the same port — so we DON'T forward
 # everything. Only GET/HEAD reads under the public media bucket path reach MinIO;

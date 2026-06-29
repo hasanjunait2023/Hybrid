@@ -43,7 +43,15 @@ export default async function StorefrontLayout({
       <div style={themeStyle} className="flex min-h-screen flex-col bg-bg">
         <StoreHeader store={ctx.store} lang={locale} toggle={<LanguageToggle />} />
         <main className="flex-1">{children}</main>
-        <StoreFooter store={ctx.store} lang={locale} />
+        <StoreFooter
+          store={ctx.store}
+          lang={locale}
+          poweredByHref={
+            process.env.NEXT_PUBLIC_ROOT_DOMAIN
+              ? `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+              : undefined
+          }
+        />
       </div>
     </LocaleProvider>
   );

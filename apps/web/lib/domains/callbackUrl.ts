@@ -33,16 +33,19 @@ export async function getCallbackBaseUrl(
 }
 
 /** The IPN/callback path for a given provider (mirrors the Route Handlers). */
-export function callbackPath(provider: "nagad" | "sslcommerz" | "bkash"): string {
+export function callbackPath(
+  provider: "nagad" | "sslcommerz" | "bkash" | "hybridpay",
+): string {
   if (provider === "nagad") return "/api/payments/nagad/callback";
   if (provider === "sslcommerz") return "/api/payments/sslcommerz/ipn";
+  if (provider === "hybridpay") return "/api/hybridpay/webhook";
   return "/api/bkash/callback";
 }
 
 export async function getProviderCallbackUrl(
   tenantId: string,
   userId: string,
-  provider: "nagad" | "sslcommerz" | "bkash",
+  provider: "nagad" | "sslcommerz" | "bkash" | "hybridpay",
 ): Promise<string | null> {
   const base = await getCallbackBaseUrl(tenantId, userId);
   if (!base) return null;

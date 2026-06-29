@@ -92,8 +92,57 @@ services:
     networks:
     - default
     - supabasenet
+  # ---- Hybrid Pay engine (self-hosted PipraPay, AGPL-3.0) --------------------
+  # Opt-in via `docker compose --profile hybridpay up -d`. PipraPay is a PHP app
+  # served from source cloned to ./piprapay (see docs/INFRA_HYBRIDPAY.md). It is
+  # on the same `default` network as Caddy, so the pay.hybrid.ecomex.cloud block
+  # reaches it as hybrid-piprapay:80. Founder = super admin; each tenant is a
+  # "brand" with its own API key (what they paste into Hybrid Pay settings).
+  piprapay:
+    image: php:8.2-apache
+    container_name: hybrid-piprapay
+    profiles:
+    - hybridpay
+    working_dir: /var/www/html
+    command: >
+      bash -c "docker-php-ext-install pdo pdo_mysql mysqli > /dev/null 2>&1;
+      a2enmod rewrite > /dev/null 2>&1; apache2-foreground"
+    volumes:
+    - ./piprapay:/var/www/html
+    depends_on:
+      piprapay-db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+    - default
+  piprapay-db:
+    image: mysql:8
+    container_name: hybrid-piprapay-db
+    profiles:
+    - hybridpay
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PIPRAPAY_DB_ROOT_PASSWORD:-change_me}
+      MYSQL_DATABASE: ${PIPRAPAY_DB_NAME:-piprapay}
+      MYSQL_USER: ${PIPRAPAY_DB_USER:-piprapay}
+      MYSQL_PASSWORD: ${PIPRAPAY_DB_PASSWORD:-change_me}
+    volumes:
+    - hybrid_piprapay_dbdata:/var/lib/mysql
+    healthcheck:
+      test:
+      - CMD
+      - mysqladmin
+      - ping
+      - -h
+      - localhost
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks:
+    - default
 volumes:
   hybrid_pgdata: null
+  hybrid_piprapay_dbdata: null
   caddy_data: null
   caddy_config: null
 networks:
