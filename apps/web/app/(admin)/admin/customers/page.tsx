@@ -46,6 +46,12 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
               {t.export}
             </a>
             <a
+              href="/admin/customers/insights"
+              className="inline-flex h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink hover:bg-surface-2"
+            >
+              {t.insights.link}
+            </a>
+            <a
               href="/admin/customers/segments"
               className="inline-flex h-11 items-center rounded-md border border-border-strong px-4 text-sm font-semibold text-ink hover:bg-surface-2"
             >

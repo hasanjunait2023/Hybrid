@@ -270,6 +270,187 @@ export async function getCustomerDetail(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Customer 360 — the unified CRM view (CRM Phase R1.1).
+//
+// One chronological timeline merging every touchpoint we hold on a customer:
+// orders, payments, ledger (বাকি/due) entries, internal notes and returns — plus
+// the derived CRM signals a seller actually acts on: AOV, last-seen recency, an
+// RFM-lite segment, and outstanding due. Everything reads via withTenant (RLS);
+// payments/notes/returns have no customer_id of their own, so they join through
+// orders.customer_id — the legitimate tenant-scoped path.
+// ---------------------------------------------------------------------------
+
+export type Customer360EventType = "order" | "payment" | "ledger" | "note" | "return";
+
+export interface Customer360Event {
+  type: Customer360EventType;
+  at: string;
+  orderId: string | null;
+  orderNumber: number | null;
+  /** money where applicable (order total, payment amount, ledger amount, refund) */
+  amount: number | null;
+  /** sub-status: fulfillment / payment status, ledger type, return status */
+  kind: string | null;
+  /** free text: note body, ledger note, return reason */
+  text: string | null;
+}
+
+export type RfmSegment = "new" | "champion" | "loyal" | "active" | "at_risk" | "lost";
+
+export interface Customer360 extends CustomerDetail {
+  /** average order value (total_spent / orders_count, 0 when no orders). */
+  aov: number;
+  lastOrderAt: string | null;
+  recencyDays: number | null;
+  rfmSegment: RfmSegment;
+  /** current outstanding due (বাকি) — latest customer_ledger running balance. */
+  ledgerBalance: number;
+  /** loyalty points balance (sum of the loyalty_ledger). */
+  loyaltyPoints: number;
+  timeline: Customer360Event[];
+}
+
+// RFM-lite segmentation. Recency = days since last non-cancelled order,
+// Frequency = lifetime order count, Monetary = lifetime spend. Tuned for BD
+// retail rhythms; a fuller cohort/quintile model lands in R1.5.
+function rfmSegment(
+  frequency: number,
+  monetary: number,
+  recencyDays: number | null,
+): RfmSegment {
+  if (frequency === 0 || recencyDays === null) return "new";
+  if (recencyDays <= 45 && (frequency >= 5 || monetary >= 50000)) return "champion";
+  if (recencyDays <= 60 && frequency >= 2) return "loyal";
+  if (recencyDays > 180) return "lost";
+  if (recencyDays > 120) return "at_risk";
+  return "active";
+}
+
+export async function getCustomer360(
+  tenantId: string,
+  userId: string,
+  customerId: string,
+): Promise<Customer360 | null> {
+  const base = await getCustomerDetail(tenantId, userId, customerId);
+  if (!base) return null;
+
+  const enrich = await withTenant(tenantId, userId, async (tx) => {
+    const agg = await tx<{ last_order_at: string | null; recency_days: number | null }[]>`
+      select max(placed_at) as last_order_at,
+             floor(extract(epoch from (now() - max(placed_at))) / 86400)::int as recency_days
+      from orders
+      where customer_id = ${customerId} and fulfillment_status <> 'cancelled'
+    `;
+
+    const payments = await tx<
+      { amount: string; status: string; at: string; order_id: string; order_number: string }[]
+    >`
+      select p.amount, p.status, coalesce(p.paid_at, p.created_at) as at,
+             o.id as order_id, o.order_number
+      from payment p join orders o on o.id = p.order_id
+      where o.customer_id = ${customerId}
+      order by at desc limit 50
+    `;
+
+    const ledger = await tx<
+      { type: string; amount: string; balance: string; note: string | null; created_at: string }[]
+    >`
+      select type, amount, balance, note, created_at
+      from customer_ledger where customer_id = ${customerId}
+      order by created_at desc limit 50
+    `;
+
+    const notes = await tx<
+      { body: string; created_at: string; order_id: string; order_number: string }[]
+    >`
+      select n.body, n.created_at, o.id as order_id, o.order_number
+      from order_note n join orders o on o.id = n.order_id
+      where o.customer_id = ${customerId}
+      order by n.created_at desc limit 50
+    `;
+
+    const returns = await tx<
+      { status: string; reason: string; refund_amount: string; created_at: string; order_id: string; order_number: string }[]
+    >`
+      select r.status, r.reason, r.refund_amount, r.created_at,
+             o.id as order_id, o.order_number
+      from return_request r join orders o on o.id = r.order_id
+      where o.customer_id = ${customerId}
+      order by r.created_at desc limit 50
+    `;
+
+    const loyalty = await tx<{ balance: number }[]>`
+      select coalesce(sum(points), 0)::int as balance
+        from loyalty_ledger where customer_id = ${customerId}
+    `;
+
+    return { agg: agg[0], payments, ledger, notes, returns, loyalty };
+  });
+
+  const events: Customer360Event[] = [
+    ...base.orders.map<Customer360Event>((o) => ({
+      type: "order",
+      at: o.placedAt,
+      orderId: o.id,
+      orderNumber: o.orderNumber,
+      amount: o.grandTotal,
+      kind: o.fulfillmentStatus,
+      text: null,
+    })),
+    ...enrich.payments.map<Customer360Event>((p) => ({
+      type: "payment",
+      at: p.at,
+      orderId: p.order_id,
+      orderNumber: Number(p.order_number),
+      amount: Number(p.amount),
+      kind: p.status,
+      text: null,
+    })),
+    ...enrich.ledger.map<Customer360Event>((l) => ({
+      type: "ledger",
+      at: l.created_at,
+      orderId: null,
+      orderNumber: null,
+      amount: Number(l.amount),
+      kind: l.type,
+      text: l.note,
+    })),
+    ...enrich.notes.map<Customer360Event>((n) => ({
+      type: "note",
+      at: n.created_at,
+      orderId: n.order_id,
+      orderNumber: Number(n.order_number),
+      amount: null,
+      kind: null,
+      text: n.body,
+    })),
+    ...enrich.returns.map<Customer360Event>((r) => ({
+      type: "return",
+      at: r.created_at,
+      orderId: r.order_id,
+      orderNumber: Number(r.order_number),
+      amount: Number(r.refund_amount),
+      kind: r.status,
+      text: r.reason,
+    })),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+  const recencyDays = enrich.agg?.recency_days ?? null;
+  const aov = base.ordersCount > 0 ? Math.round(base.totalSpent / base.ordersCount) : 0;
+
+  return {
+    ...base,
+    aov,
+    lastOrderAt: enrich.agg?.last_order_at ?? null,
+    recencyDays,
+    rfmSegment: rfmSegment(base.ordersCount, base.totalSpent, recencyDays),
+    ledgerBalance: Number(enrich.ledger[0]?.balance ?? 0),
+    loyaltyPoints: enrich.loyalty[0]?.balance ?? 0,
+    timeline: events.slice(0, 80),
+  };
+}
+
 /** Phone → customer prefill for manual order entry (DESIGN §P3.4 heart). */
 export interface CustomerPrefill {
   id: string;

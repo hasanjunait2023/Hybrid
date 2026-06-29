@@ -1,13 +1,14 @@
 import { notFound, redirect } from "next/navigation";
-import { StatusBadge, PhoneIcon, ChatIcon } from "@hybrid/ui";
+import { PhoneIcon, ChatIcon } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
-import { getCustomerDetail } from "@/lib/admin/customers";
+import { getCustomer360 } from "@/lib/admin/customers";
 import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { CustomerNotes } from "./CustomerNotes";
-import { MonthlySpendChart, CommunicationLog } from "./CustomerTimeline";
+import { MonthlySpendChart, CommunicationLog, Customer360Timeline } from "./CustomerTimeline";
+import { RedeemPoints } from "./RedeemPoints";
 import { Breadcrumbs } from "../../_ui";
 
 // Customer detail (DESIGN §P5). Header with trust signals (orders, spent, COD
@@ -23,7 +24,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 
-  const customer = await getCustomerDetail(tenantId, session.userId, id);
+  const customer = await getCustomer360(tenantId, session.userId, id);
   if (!customer) notFound();
 
   const returnRate =
@@ -51,7 +52,14 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
             {(customer.name ?? "?").slice(0, 1).toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold text-ink">{customer.name ?? "—"}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold text-ink">{customer.name ?? "—"}</h1>
+              <RfmBadge segment={customer.rfmSegment} labels={t.rfm} />
+            </div>
+            <p className="mt-0.5 text-xs text-ink-subtle">
+              {t.lastOrder}:{" "}
+              {customer.lastOrderAt ? timeAgo(customer.lastOrderAt, locale) : t.never}
+            </p>
             {customer.phone && (
               <div className="mt-1 flex items-center gap-3">
                 <a
@@ -75,15 +83,22 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </div>
 
         {/* Trust signals */}
-        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4 text-center">
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 text-center sm:grid-cols-4">
           <Stat label={t.statOrders} value={formatNumber(customer.ordersCount, locale)} />
           <Stat label={t.statSpent} value={formatMoney(customer.totalSpent, locale)} mono />
+          <Stat label={t.statAov} value={formatMoney(customer.aov, locale)} mono />
           <Stat
             label={t.statReturns}
             value={`${formatNumber(customer.returnedCount, locale)}/${formatNumber(customer.deliveredCount + customer.returnedCount, locale)}`}
             tone={riskyReturns ? "danger" : "default"}
           />
         </div>
+        {customer.ledgerBalance > 0 && (
+          <p className="mt-2 flex items-center justify-between rounded-md bg-warning-weak px-3 py-1.5 text-xs font-semibold text-warning">
+            <span>{t.dueLabel}</span>
+            <span className="font-mono tnum">{formatMoney(customer.ledgerBalance, locale)}</span>
+          </p>
+        )}
         {riskyReturns && (
           <p className="mt-2 rounded-md bg-danger-weak px-3 py-1.5 text-xs font-semibold text-danger">
             {t.highReturnWarning}
@@ -92,34 +107,14 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        {/* Order history */}
-        <section className="overflow-hidden rounded-lg border border-border bg-surface">
-          <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">{t.orderHistory}</h2>
-          {customer.orders.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-ink-muted">{t.noOrders}</p>
-          ) : (
-            <ul className="divide-y divide-border">
-              {customer.orders.map((o) => (
-                <li key={o.id}>
-                  <a
-                    href={`/admin/orders/${o.id}`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2"
-                  >
-                    <span className="font-mono text-sm font-semibold text-ink tnum">#{o.orderNumber}</span>
-                    <span className="flex-1 text-xs text-ink-subtle">{timeAgo(o.placedAt, locale)}</span>
-                    <span className="font-mono text-sm font-semibold text-ink tnum">
-                      {formatMoney(o.grandTotal, locale)}
-                    </span>
-                    <StatusBadge kind="fulfillment" value={o.fulfillmentStatus} lang={locale} />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {/* Unified activity timeline (Customer 360) */}
+        <Customer360Timeline events={customer.timeline} locale={locale} labels={t.timeline} />
 
-        {/* Aside: addresses + notes */}
+        {/* Aside: loyalty + addresses + notes */}
         <aside className="space-y-5">
+          {customer.loyaltyPoints > 0 && (
+            <RedeemPoints customerId={customer.id} balance={customer.loyaltyPoints} t={t} />
+          )}
           <section className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-3 text-sm font-bold text-ink">{t.addresses}</h2>
             {customer.addresses.length === 0 ? (
@@ -160,6 +155,32 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </aside>
       </div>
     </div>
+  );
+}
+
+// RFM-lite segment chip — the at-a-glance CRM signal (champion / loyal / at-risk
+// …). Colour follows the health gradient: green good, amber watch, red lapsed.
+function RfmBadge({
+  segment,
+  labels,
+}: {
+  segment: import("@/lib/admin/customers").RfmSegment;
+  labels: Record<string, string>;
+}) {
+  const tone: Record<string, string> = {
+    new: "bg-info-weak text-info",
+    champion: "bg-success-weak text-success",
+    loyal: "bg-success-weak text-success",
+    active: "bg-primary-weak text-primary",
+    at_risk: "bg-warning-weak text-warning",
+    lost: "bg-danger-weak text-danger",
+  };
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${tone[segment] ?? "bg-surface-2 text-ink-muted"}`}
+    >
+      {labels[segment] ?? segment}
+    </span>
   );
 }
 

@@ -18,6 +18,7 @@ import { canTransition, canCancelOrder, restoreInventory } from "@/lib/admin/ord
 import { findCustomerByPhone, type CustomerPrefill } from "@/lib/admin/customers";
 import { placeOrder, InsufficientStockError } from "@/lib/commerce/placeOrder";
 import { recordAudit, type AuditAction } from "@/lib/audit/record";
+import { awardForOrder } from "@/lib/admin/loyalty";
 
 export interface ActionResult {
   ok: boolean;
@@ -121,6 +122,31 @@ export async function updateOrderStatus(
 
   bustOrderTags(auth.tenantId, orderId);
   revalidateTag(`tenant:${auth.tenantId}:products`); // inventory restore may change stock
+
+  // CRM R1.6 — accrue loyalty points on delivery. Idempotent (the earn-once
+  // unique index makes a repeat delivery a no-op) and best-effort: a failure here
+  // never surfaces as an order-management error. No-op when the program is off.
+  if (to === "delivered") {
+    try {
+      const rows = await withTenant(auth.tenantId, auth.userId, (tx) =>
+        tx<{ customer_id: string | null; grand_total: string }[]>`
+          select customer_id, grand_total from orders where id = ${orderId} limit 1`,
+      );
+      const o = rows[0];
+      if (o?.customer_id) {
+        const earned = await awardForOrder(
+          auth.tenantId,
+          auth.userId,
+          o.customer_id,
+          orderId,
+          Number(o.grand_total),
+        );
+        if (earned > 0) revalidateTag(`tenant:${auth.tenantId}:customers`);
+      }
+    } catch (err) {
+      console.error("[updateOrderStatus] loyalty award failed", err);
+    }
+  }
 
   // P1.1 — audit trail. Critical money/inventory action; record who
   // changed the order status, what it changed to, and the order id.

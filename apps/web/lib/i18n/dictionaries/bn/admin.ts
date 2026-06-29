@@ -17,9 +17,15 @@ import { settingsComms } from "./admin/settingsComms";
 import { settingsDbid } from "./admin/settingsDbid";
 import { shipping } from "./admin/shipping";
 import { wholesale } from "./admin/wholesale";
+import { tasks } from "./admin/tasks";
+import { leads } from "./admin/leads";
+import { journeys } from "./admin/journeys";
 
 export const admin: typeof EnAdmin = {
   products,
+  tasks,
+  leads,
+  journeys,
   customers,
   collections,
   discounts,
@@ -48,6 +54,9 @@ export const admin: typeof EnAdmin = {
     orders: "অর্ডার",
     products: "পণ্য",
     customers: "গ্রাহক",
+    tasks: "কাজ",
+    leads: "লিড",
+    automations: "অটোমেশন",
     more: "আরও",
     wholesale: "পাইকারি",
     purchaseRequests: "পারচেজ রিকোয়েস্ট",
