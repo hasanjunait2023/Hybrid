@@ -12,10 +12,12 @@ import type { Locale } from "@/lib/i18n/config";
 import type { Messages } from "@/lib/i18n/dictionaries";
 import { useCart } from "../cart/useCart";
 import { submitCheckout, quoteShipping } from "./actions";
+import { persistCart } from "@/lib/marketing/cartPersist";
 import { LocationSheet } from "./LocationSheet";
 
 interface CheckoutFormProps {
   tenantSlug: string;
+  tenantId: string;
   storeName: string;
   storePhone: string | null;
   locationTree: LocationTree;
@@ -33,6 +35,7 @@ type Method = "cod" | "hybridpay";
 
 export function CheckoutForm({
   tenantSlug,
+  tenantId,
   locationTree,
   paymentNotice,
   lpSlug,
@@ -97,7 +100,29 @@ export function CheckoutForm({
     [district, locationTree],
   );
 
+  // Persist cart to DB once phone has enough digits + cart has items.
+  // Debounced 1.5 s so we don't fire on every keystroke. This enables the
+  // abandoned-cart recovery sweep to find half-completed checkouts.
   const phoneDigits = phone.replace(/[^\d০-৯]/g, "");
+  useEffect(() => {
+    if (phoneDigits.length < 9 || cart.lines.length === 0) return;
+    const timer = setTimeout(() => {
+      void persistCart(
+        tenantId,
+        phoneDigits,
+        cart.lines.map((l) => ({
+          productSlug: l.productSlug,
+          variantId: l.variantId,
+          title: l.title,
+          qty: l.quantity,
+          unitPrice: l.price,
+        })),
+        cart.subtotal,
+      ).catch(() => null);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [tenantId, phoneDigits, itemsKey, cart.lines, cart.subtotal]);
+
   const isComplete =
     phoneDigits.length >= 6 &&
     name.trim().length > 0 &&

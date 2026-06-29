@@ -50,6 +50,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
 
       <CheckoutForm
         tenantSlug={slug}
+        tenantId={ctx.id}
         storeName={ctx.store.name}
         storePhone={ctx.store.phone ?? null}
         locationTree={locationTree}

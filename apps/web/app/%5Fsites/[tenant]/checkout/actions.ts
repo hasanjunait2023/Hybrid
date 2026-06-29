@@ -28,6 +28,7 @@ import { getEnabledHybridpay } from "@/lib/payments/hybridpay";
 import { toJsonRecord } from "@/lib/payments/json";
 import { sendOrderNotifications } from "@/lib/sms/notify";
 import { rateLimit, clientIpFrom } from "@/lib/ratelimit";
+import { markCartRecovered } from "@/lib/marketing/cartPersist";
 
 const itemSchema = z.object({
   variantId: z.string().uuid(),
@@ -211,6 +212,8 @@ export async function submitCheckout(
 
   // COD: order is confirmed at commit. Fire SMS (non-blocking) + redirect.
   if (!placed.onlineRequired) {
+    // Non-blocking: mark the cart recovered (so the sweep skips it) and send SMS.
+    void markCartRecovered(ctx.id, phone).catch(() => null);
     await sendOrderNotifications({
       tenantId: ctx.id,
       storeName: ctx.store.name,

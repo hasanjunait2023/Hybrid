@@ -46,7 +46,7 @@ const FOLLOWUP_REMINDER_TEMPLATE = "cart_recovery_followup";
  */
 export async function processAbandonedCarts(
   tenantId: string,
-  userId: string,
+  userId: string | null,
   config: RecoveryConfig,
 ): Promise<RecoveryResult> {
   // Find carts abandoned between 1h and 23h ago that have NOT yet received the
@@ -205,7 +205,7 @@ function mapRow(row: {
 
 async function dispatch(
   tenantId: string,
-  userId: string,
+  userId: string | null,
   cart: AbandonedCart,
   brandName: string,
   body: string,
