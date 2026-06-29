@@ -251,6 +251,16 @@ export interface CustomerLedger {
   type: string;
 }
 
+export interface CustomerSegment {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  minOrders: Generated<number>;
+  minSpent: Generated<Numeric>;
+  name: string;
+  tag: string | null;
+  tenantId: string;
+}
+
 export interface DbidSubmission {
   binSealed: Json | null;
   businessName: string | null;
@@ -1025,6 +1035,7 @@ export interface DB {
   customer: Customer;
   customerAddress: CustomerAddress;
   customerLedger: CustomerLedger;
+  customerSegment: CustomerSegment;
   dbidSubmission: DbidSubmission;
   discount: Discount;
   invoice: Invoice;
