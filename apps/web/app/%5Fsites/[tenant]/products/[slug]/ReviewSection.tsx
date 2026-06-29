@@ -76,7 +76,7 @@ export function ReviewSection({
   }
 
   return (
-    <section className="mt-8 border-t border-border pt-6">
+    <section id="reviews" className="mt-8 border-t border-border pt-6">
       <div className="mb-4 flex items-center gap-3">
         <h2 className="text-base font-bold text-ink">ক্রেতাদের মতামত</h2>
         {reviewCount > 0 && (

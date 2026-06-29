@@ -229,6 +229,7 @@ export interface StorefrontOrderItem {
   variantTitle: string | null;
   quantity: number;
   lineTotal: number;
+  productSlug: string | null;
 }
 
 export interface StorefrontOrder {
@@ -287,10 +288,13 @@ export async function getStorefrontOrder(
       select provider from payment where order_id = ${order.id} order by created_at desc limit 1
     `;
     const items = await tx<
-      { title: string; variant_title: string | null; quantity: number; line_total: string }[]
+      { title: string; variant_title: string | null; quantity: number; line_total: string; product_slug: string | null }[]
     >`
-      select title, variant_title, quantity, line_total
-        from order_item where order_id = ${order.id}
+      select oi.title, oi.variant_title, oi.quantity, oi.line_total,
+             p.slug as product_slug
+        from order_item oi
+        left join product p on p.id = oi.product_id
+       where oi.order_id = ${order.id}
     `;
 
     return {
@@ -305,6 +309,7 @@ export async function getStorefrontOrder(
         variantTitle: i.variant_title,
         quantity: i.quantity,
         lineTotal: Number(i.line_total),
+        productSlug: i.product_slug,
       })),
     } satisfies StorefrontOrder;
   });

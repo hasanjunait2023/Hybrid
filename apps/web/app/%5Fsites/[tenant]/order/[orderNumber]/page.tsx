@@ -129,6 +129,28 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
           {t.callStore} {locale === "bn" ? formatNumber(ctx.store.phone, locale) : ctx.store.phone}
         </a>
       )}
+
+      {/* Review prompt — shown after delivery. */}
+      {order.fulfillmentStatus === "delivered" && order.items.some((i) => i.productSlug) && (
+        <div className="mt-6 rounded-lg border border-accent/30 bg-accent/5 p-4">
+          <p className="mb-2 text-sm font-semibold text-ink">
+            {locale === "bn" ? "পণ্য পেয়েছেন? রিভিউ দিন ★" : "Got your order? Leave a review ★"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {order.items
+              .filter((i) => i.productSlug)
+              .map((i, idx) => (
+                <a
+                  key={idx}
+                  href={`/products/${i.productSlug}#reviews`}
+                  className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-primary hover:bg-surface-2"
+                >
+                  {i.title}
+                </a>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
