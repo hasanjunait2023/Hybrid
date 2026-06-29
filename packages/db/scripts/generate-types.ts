@@ -26,7 +26,7 @@ const result = spawnSync(
     url,
     "--out-file",
     OUT,
-    "--schema",
+    "--default-schema",
     "public",
     "--camel-case",
   ],
