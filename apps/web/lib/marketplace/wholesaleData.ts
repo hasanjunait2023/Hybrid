@@ -188,6 +188,7 @@ export async function getWholesaleProduct(
       inStock: row.in_stock,
       ratingAvg: Number(row.rating_avg),
       ratingCount: row.rating_count,
+      listingId: row.id,
       isWholesale: true,
       wholesaleOnly: row.wholesale_only,
       moq: row.moq,

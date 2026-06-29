@@ -40,6 +40,8 @@ export interface PlaceMarketplaceOrderInput {
     line: string;
   };
   lines: MpCartLine[];
+  /** Payment method chosen by the buyer; stored for the payment agent. */
+  paymentMethod?: "cod" | "online";
 }
 
 export interface MpVendorOutcome {
@@ -105,15 +107,17 @@ export async function placeMarketplaceOrder(
     }
   }
 
-  // (1) Parent shell (buyer-owned). One COD-only checkout, all vendors share the
-  // ship-to + contact snapshot.
+  const paymentMethod = input.paymentMethod ?? "cod";
+
+  // (1) Parent shell (buyer-owned). One checkout, all vendors share the
+  // ship-to + contact snapshot. payment_method stored for the payment agent.
   const parent = await withBuyer(input.buyerId, (tx) =>
     tx<{ id: string }[]>`
       insert into marketplace_order
-        (buyer_id, status, idempotency_key, vendor_count,
+        (buyer_id, status, idempotency_key, vendor_count, payment_method,
          contact_name, contact_phone, ship_division, ship_district, ship_thana, ship_line)
       values
-        (${input.buyerId}, 'pending', ${idemKey}, ${groups.size},
+        (${input.buyerId}, 'pending', ${idemKey}, ${groups.size}, ${paymentMethod},
          ${input.contact.name}, ${input.contact.phone}, ${input.shipTo.division},
          ${input.shipTo.district}, ${input.shipTo.thana}, ${input.shipTo.line})
       returning id

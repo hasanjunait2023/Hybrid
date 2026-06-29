@@ -31,6 +31,7 @@ const schema = z.object({
     .min(1)
     .max(50),
   idempotencyKey: z.string().min(8).max(64),
+  paymentMethod: z.enum(["cod", "online"]).default("cod"),
 });
 
 export type CheckoutResult =
@@ -52,6 +53,7 @@ export async function submitMarketplaceCheckout(raw: unknown): Promise<CheckoutR
       contact: input.contact,
       shipTo: input.shipTo,
       lines: input.lines,
+      paymentMethod: input.paymentMethod,
     });
     if (result.status === "failed") {
       return { ok: false, error: "কোনো পণ্য অর্ডার করা যায়নি। স্টক শেষ হতে পারে।" };
