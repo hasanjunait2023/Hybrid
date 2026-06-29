@@ -78,6 +78,15 @@ export const ordersDetail: typeof En = {
     courierSuccess: "কুরিয়ার সাকসেস",
     externalDisabled:
       "বাহ্যিক ফ্রড-চেক চালু নেই — শুধু আপনার নিজের অর্ডার ইতিহাস থেকে সংকেত দেখানো হচ্ছে।",
+    level: { low: "কম ঝুঁকি", medium: "মাঝারি ঝুঁকি", high: "উচ্চ ঝুঁকি" },
+    reason: {
+      blocked: "ব্লক করা নম্বর",
+      duplicate: "ডুপ্লিকেট অর্ডার",
+      rto: "উচ্চ RTO ইতিহাস",
+      network: "নেটওয়ার্কে চিহ্নিত",
+      courier: "কম কুরিয়ার সাকসেস",
+    },
+    networkFlagged: "⚠ Hybrid-এর আরও {n}টি দোকান এই নম্বর চিহ্নিত করেছে।",
   },
 
   manualPayment: {

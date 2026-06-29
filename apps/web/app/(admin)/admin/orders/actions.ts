@@ -18,6 +18,7 @@ import { canTransition, canCancelOrder, restoreInventory } from "@/lib/admin/ord
 import { findCustomerByPhone, type CustomerPrefill } from "@/lib/admin/customers";
 import { placeOrder, InsufficientStockError } from "@/lib/commerce/placeOrder";
 import { recordAudit, type AuditAction } from "@/lib/audit/record";
+import { recordCodRiskSignal } from "@/lib/admin/fraud";
 
 export interface ActionResult {
   ok: boolean;
@@ -121,6 +122,28 @@ export async function updateOrderStatus(
 
   bustOrderTags(auth.tenantId, orderId);
   revalidateTag(`tenant:${auth.tenantId}:products`); // inventory restore may change stock
+
+  // R2.2 — feed the cross-tenant fraud network on a bad outcome. A cancel or an
+  // RTO (returned) is the exact signal other shops benefit from. Best-effort and
+  // idempotent (one signal per order/kind); never surfaces to the merchant UI.
+  if (to === "cancelled" || to === "returned") {
+    try {
+      const rows = await withTenant(auth.tenantId, auth.userId, (tx) =>
+        tx<{ customer_phone: string | null }[]>`
+          select customer_phone from orders where id = ${orderId} limit 1`,
+      );
+      const phone = rows[0]?.customer_phone;
+      if (phone) {
+        await recordCodRiskSignal(auth.tenantId, auth.userId, {
+          phone,
+          kind: to === "cancelled" ? "cancel" : "rto",
+          orderId,
+        });
+      }
+    } catch (err) {
+      console.error("[updateOrderStatus] cod risk signal failed", err);
+    }
+  }
 
   // P1.1 — audit trail. Critical money/inventory action; record who
   // changed the order status, what it changed to, and the order id.

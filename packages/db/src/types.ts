@@ -179,6 +179,15 @@ export interface CodRemittance {
   unmatchedCount: Generated<number>;
 }
 
+export interface CodRiskSignal {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string;
+  orderId: string | null;
+  phone: string;
+  tenantId: string;
+}
+
 export interface Collection {
   createdAt: Generated<Timestamp>;
   description: string | null;
@@ -1030,6 +1039,7 @@ export interface DB {
   cart: Cart;
   cartReminder: CartReminder;
   codRemittance: CodRemittance;
+  codRiskSignal: CodRiskSignal;
   collection: Collection;
   courierAccount: CourierAccount;
   customer: Customer;

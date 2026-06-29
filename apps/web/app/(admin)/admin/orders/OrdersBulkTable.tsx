@@ -149,6 +149,13 @@ export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
                   <td className="px-3 py-2.5">
                     <div className="text-ink">{o.customerName ?? "—"}</div>
                     <div className="font-mono text-xs text-ink-muted tnum">{o.customerPhone}</div>
+                    {o.riskLevel !== "low" && (
+                      <span
+                        className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-semibold ${o.riskLevel === "high" ? "bg-danger-weak text-danger" : "bg-warning-weak text-warning"}`}
+                      >
+                        {o.riskLevel === "high" ? "🛑" : "⚠"} {locale === "bn" ? "COD ঝুঁকি" : "COD risk"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono font-semibold text-ink tnum">
                     {formatMoney(o.grandTotal, locale)}
