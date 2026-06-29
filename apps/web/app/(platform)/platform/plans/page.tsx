@@ -60,7 +60,7 @@ export default async function PlansPage() {
                   <td className="py-3 text-right font-mono text-[var(--pf-muted)]">{formatNumber(p.maxStaff, locale)}</td>
                   <td className="py-3 text-right font-mono text-[var(--pf-muted)]">{formatNumber(p.maxCustomDomains, locale)}</td>
                   <td className="py-3">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.isActive ? "bg-[#e6f6ee] text-[var(--pf-success)]" : "bg-[#f0ede4] text-[var(--pf-muted)]"}`}>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.isActive ? "bg-[var(--pf-success-weak)] text-[var(--pf-success)]" : "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]"}`}>
                       {p.isActive ? tx.active : tx.inactive}
                     </span>
                   </td>

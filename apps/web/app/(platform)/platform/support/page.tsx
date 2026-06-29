@@ -22,7 +22,7 @@ export default async function PlatformSupport() {
         <p className="mt-1 text-[13px] text-[var(--pf-muted)]">Reach any seller directly. In-app ticketing is coming next.</p>
       </div>
 
-      <div className="rounded-2xl border border-dashed border-[var(--pf-border)] bg-[#fbf9f2] p-4 text-[12.5px] text-[var(--pf-muted)]">
+      <div className="rounded-2xl border border-dashed border-[var(--pf-border)] bg-[var(--pf-hover)] p-4 text-[12.5px] text-[var(--pf-muted)]">
         <span className="font-semibold text-[var(--pf-ink)]">Inbox coming soon.</span> Until then, use the seller contact book below to email store owners about billing, onboarding or issues.
       </div>
 
@@ -63,7 +63,7 @@ export default async function PlatformSupport() {
                     <td className="py-3 font-mono text-[12px] text-[var(--pf-ink)]">{t.ownerEmail}</td>
                     <td className="py-3 capitalize text-[var(--pf-muted)]">{t.status.replace("_", " ")}</td>
                     <td className="py-3 text-right">
-                      <a href={`mailto:${t.ownerEmail}`} className="rounded-lg border border-[var(--pf-border)] px-2.5 py-1 text-[12px] font-semibold text-[var(--pf-ink)] hover:bg-[#fbf9f2]">
+                      <a href={`mailto:${t.ownerEmail}`} className="rounded-lg border border-[var(--pf-border)] px-2.5 py-1 text-[12px] font-semibold text-[var(--pf-ink)] hover:bg-[var(--pf-hover)]">
                         Email
                       </a>
                     </td>

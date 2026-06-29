@@ -116,14 +116,14 @@ function Avatar({ name }: { name: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    active: "bg-[#e6f6ee] text-[var(--pf-success)]",
+    active: "bg-[var(--pf-success-weak)] text-[var(--pf-success)]",
     trial: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
     past_due: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
-    suspended: "bg-[#fde9e8] text-[var(--pf-danger)]",
-    cancelled: "bg-[#f0ede4] text-[var(--pf-muted)]",
+    suspended: "bg-[var(--pf-danger-weak)] text-[var(--pf-danger)]",
+    cancelled: "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]",
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${map[status] ?? "bg-[#f0ede4] text-[var(--pf-muted)]"}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${map[status] ?? "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]"}`}>
       {status.replace("_", " ")}
     </span>
   );

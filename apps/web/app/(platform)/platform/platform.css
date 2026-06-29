@@ -19,6 +19,21 @@
   --pf-success: #1f9d6b;
   --pf-danger: #d9534f;
 
+  /* Derived surface/state shades — were inlined as raw hex across the console
+     pages; centralised here so the whole surface stays on one palette. */
+  --pf-hover: #fbf9f2; /* row / button hover fill */
+  --pf-on-black: #f6f3ea; /* light text on dark (--pf-black) cards */
+  --pf-success-weak: #e6f6ee; /* active / success chip bg */
+  --pf-danger-weak: #fde9e8; /* suspended / danger chip bg */
+  --pf-muted-weak: #f0ede4; /* neutral / cancelled chip bg */
+  --pf-track: #f0ece1; /* progress-bar track */
+  --pf-bar-mute: #d8d2c2; /* inactive bar fill */
+  --pf-grad-warm-1: #fdf8ec; /* hero panel gradient */
+  --pf-grad-warm-2: #fbf3dc;
+  --pf-grad-gold-1: #fdf4d4; /* accent card gradient */
+  --pf-grad-gold-2: #fbe6a8;
+  --pf-gauge-track: #efe3c4; /* SVG gauge unfilled arc */
+
   background: var(--pf-bg);
   color: var(--pf-ink);
   font-feature-settings: "tnum" 1;

@@ -67,7 +67,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
       </Link>
 
       {/* Search */}
-      <label className="flex items-center gap-2 rounded-xl border border-[var(--pf-border)] bg-[#fbf9f2] px-3 py-2 text-[var(--pf-muted)] focus-within:border-[var(--pf-yellow)]">
+      <label className="flex items-center gap-2 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-hover)] px-3 py-2 text-[var(--pf-muted)] focus-within:border-[var(--pf-yellow)]">
         <SearchIcon className="h-3.5 w-3.5" />
         <input
           type="search"
@@ -101,7 +101,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
             <li key={s.label}>
               <Link
                 href={s.href}
-                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[#fbf9f2] hover:text-[var(--pf-ink)]"
+                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-ink)]"
               >
                 <span className="h-2.5 w-2.5 rounded-[3px] bg-[var(--pf-yellow)]" aria-hidden="true" />
                 {s.label}
@@ -120,7 +120,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
           {ROADMAP.map((m) => {
             const inner = (
               <>
-                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--pf-border)] bg-[#fbf9f2]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--pf-border)] bg-[var(--pf-hover)]">
                   <m.Icon className="h-3.5 w-3.5" />
                 </span>
                 {m.label}
@@ -135,7 +135,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
               <li key={m.label}>
                 <Link
                   href={m.href}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[#fbf9f2] hover:text-[var(--pf-ink)]"
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-ink)]"
                 >
                   {inner}
                 </Link>
@@ -153,7 +153,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
       </div>
 
       {/* User card */}
-      <div className="mt-auto flex items-center gap-2.5 rounded-xl bg-[var(--pf-black)] px-3 py-2.5 text-[#f6f3ea]">
+      <div className="mt-auto flex items-center gap-2.5 rounded-xl bg-[var(--pf-black)] px-3 py-2.5 text-[var(--pf-on-black)]">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
           {adminName.slice(0, 1).toUpperCase()}
         </span>

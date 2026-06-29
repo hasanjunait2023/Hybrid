@@ -35,7 +35,7 @@ export default async function PlatformMarketing() {
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {stats.map((st) => (
-          <div key={st.label} className={`rounded-2xl border p-4 ${st.accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[#fdf4d4] to-[#fbe6a8]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}>
+          <div key={st.label} className={`rounded-2xl border p-4 ${st.accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[var(--pf-grad-gold-1)] to-[var(--pf-grad-gold-2)]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}>
             <p className="text-[26px] font-bold leading-none text-[var(--pf-ink)]">{st.value}</p>
             <p className="mt-1.5 text-[12.5px] font-semibold text-[var(--pf-ink)]">{st.label}</p>
             <p className="mt-0.5 text-[11px] text-[var(--pf-muted)]">{st.hint}</p>
@@ -48,7 +48,7 @@ export default async function PlatformMarketing() {
         <p className="mt-0.5 text-[12px] text-[var(--pf-muted)]">Per-channel attribution lands in the next phase — tracking is being wired up.</p>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {channels.map((c) => (
-            <div key={c.name} className="rounded-2xl border border-[var(--pf-border)] bg-[#fbf9f2] p-4">
+            <div key={c.name} className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-hover)] p-4">
               <div className="flex items-center justify-between">
                 <span className="text-[14px] font-bold text-[var(--pf-ink)]">{c.name}</span>
                 {c.soon && (

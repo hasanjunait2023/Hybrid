@@ -34,7 +34,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
       </p>
 
       {/* Header card */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[var(--pf-border)] bg-gradient-to-br from-[#fdf8ec] to-[#fbf3dc] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[var(--pf-border)] bg-gradient-to-br from-[var(--pf-grad-warm-1)] to-[var(--pf-grad-warm-2)] p-5">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--pf-yellow-soft)] text-[18px] font-bold text-[var(--pf-yellow-deep)]">
             {t.name.slice(0, 1).toUpperCase()}
@@ -115,7 +115,7 @@ function UsageBar({ label, used, limit, locale }: { label: string; used: number;
         </span>
       </div>
       {!unlimited && (
-        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[#f0ece1]">
+        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[var(--pf-track)]">
           <div className={`h-full rounded-full ${over ? "bg-[var(--pf-danger)]" : "bg-[var(--pf-yellow)]"}`} style={{ width: `${pct}%` }} />
         </div>
       )}
@@ -125,14 +125,14 @@ function UsageBar({ label, used, limit, locale }: { label: string; used: number;
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    active: "bg-[#e6f6ee] text-[var(--pf-success)]",
+    active: "bg-[var(--pf-success-weak)] text-[var(--pf-success)]",
     trial: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
     past_due: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
-    suspended: "bg-[#fde9e8] text-[var(--pf-danger)]",
-    cancelled: "bg-[#f0ede4] text-[var(--pf-muted)]",
+    suspended: "bg-[var(--pf-danger-weak)] text-[var(--pf-danger)]",
+    cancelled: "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]",
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${map[status] ?? "bg-[#f0ede4] text-[var(--pf-muted)]"}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${map[status] ?? "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]"}`}>
       {status.replace("_", " ")}
     </span>
   );
