@@ -64,6 +64,12 @@ export default async function AdminProductsPage({ searchParams }: ProductsPagePr
               {d.common.action.import}
             </a>
             <a
+              href="/admin/products/bulk"
+              className="hidden h-11 items-center rounded-md border border-border-strong px-3 text-sm font-semibold text-ink hover:bg-surface-2 sm:inline-flex"
+            >
+              বাল্ক এডিট
+            </a>
+            <a
               href="/admin/products/new"
               className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-ink-on-primary shadow-xs hover:bg-primary-hover active:translate-y-px"
             >

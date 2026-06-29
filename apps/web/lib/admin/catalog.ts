@@ -81,6 +81,54 @@ export interface ProductStats {
   outOfStock: number;
 }
 
+// ---------------------------------------------------------------------------
+// Bulk operations (admin bulk editor). All scoped by tenant_id under withTenant.
+// ---------------------------------------------------------------------------
+
+export type BulkProductStatus = "active" | "draft" | "archived";
+
+// Set the status of many products at once. Returns the ids actually changed.
+export async function bulkSetProductStatus(
+  tenantId: string,
+  userId: string,
+  productIds: string[],
+  status: BulkProductStatus,
+): Promise<string[]> {
+  if (productIds.length === 0) return [];
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ id: string }[]>`
+      update product
+         set status = ${status}::product_status, updated_at = now()
+       where id in ${tx(productIds)} and tenant_id = ${tenantId}
+      returning id
+    `,
+  );
+  return rows.map((r) => r.id);
+}
+
+// Adjust the price of every ACTIVE variant of the selected products by a
+// percentage (e.g. +10 raises 10%, -15 cuts 15%). Prices never go below 0.
+// Returns the distinct product ids touched (so callers can re-sync the
+// marketplace projection). The percent is clamped to a sane band by the action.
+export async function bulkAdjustVariantPrices(
+  tenantId: string,
+  userId: string,
+  productIds: string[],
+  percent: number,
+): Promise<string[]> {
+  if (productIds.length === 0) return [];
+  const factor = Math.max(0, 1 + percent / 100);
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ product_id: string }[]>`
+      update product_variant
+         set price = round(price * ${factor}, 2), updated_at = now()
+       where product_id in ${tx(productIds)} and tenant_id = ${tenantId} and is_active = true
+      returning product_id
+    `,
+  );
+  return [...new Set(rows.map((r) => r.product_id))];
+}
+
 // Store-wide product counts for the list-page summary strip (independent of the
 // active filter). Low/out-of-stock count only active products whose total
 // tracked inventory is at/under the threshold (same rule as the dashboard).
