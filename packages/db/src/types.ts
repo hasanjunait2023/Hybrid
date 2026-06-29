@@ -13,6 +13,8 @@ export type CodStatus = "collected" | "discrepancy" | "pending" | "reconciled" |
 
 export type CourierProvider = "manual" | "paperfly" | "pathao" | "redx" | "steadfast";
 
+export type CustomerType = "distributor" | "end_consumer" | "retailer" | "wholesaler";
+
 export type DiscountStatus = "active" | "disabled" | "expired" | "scheduled";
 
 export type DiscountType = "fixed_amount" | "free_shipping" | "percentage";
@@ -47,13 +49,15 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type OrderFulfillmentStatus = "cancelled" | "confirmed" | "delivered" | "in_transit" | "packed" | "pending" | "returned" | "shipped";
 
+export type OrderMode = "retail" | "wholesale";
+
 export type OrderPaymentStatus = "paid" | "partially_paid" | "partially_refunded" | "refunded" | "unpaid";
 
 export type OrderSource = "api" | "landing_page" | "manual" | "messenger" | "storefront";
 
 export type PageStatus = "draft" | "published";
 
-export type PaymentProvider = "bkash" | "cod" | "manual" | "nagad" | "sslcommerz";
+export type PaymentProvider = "bkash" | "cod" | "hybridpay" | "manual" | "nagad" | "sslcommerz";
 
 export type PaymentStatus = "cancelled" | "failed" | "pending" | "refunded" | "success";
 
@@ -75,14 +79,11 @@ export type SslStatus = "failed" | "issued" | "none" | "pending";
 
 export type SubscriptionStatus = "active" | "cancelled" | "expired" | "past_due" | "trialing";
 
+export type TenantBusinessType = "both" | "retail" | "wholesale";
+
 export type TenantStatus = "active" | "cancelled" | "past_due" | "suspended" | "trial";
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
-
-export interface _Migrations {
-  appliedAt: Generated<Timestamp>;
-  filename: string;
-}
 
 export interface AnalyticsEvent {
   createdAt: Generated<Timestamp>;
@@ -197,9 +198,15 @@ export interface CourierAccount {
 }
 
 export interface Customer {
+  binNo: string | null;
+  businessName: string | null;
   createdAt: Generated<Timestamp>;
+  creditLimit: Generated<Numeric>;
+  currentDue: Generated<Numeric>;
+  customerType: Generated<CustomerType>;
   email: string | null;
   id: Generated<string>;
+  isVerified: Generated<boolean>;
   name: string | null;
   note: string | null;
   ordersCount: Generated<number>;
@@ -207,6 +214,7 @@ export interface Customer {
   tags: Generated<string[]>;
   tenantId: string;
   totalSpent: Generated<Numeric>;
+  tradeLicenseNo: string | null;
   updatedAt: Generated<Timestamp>;
 }
 
@@ -223,6 +231,19 @@ export interface CustomerAddress {
   tenantId: string;
   thana: string | null;
   updatedAt: Generated<Timestamp>;
+}
+
+export interface CustomerLedger {
+  amount: Numeric;
+  balance: Numeric;
+  createdAt: Generated<Timestamp>;
+  customerId: string;
+  id: Generated<string>;
+  note: string | null;
+  referenceId: string | null;
+  referenceType: string | null;
+  tenantId: string;
+  type: string;
 }
 
 export interface DbidSubmission {
@@ -313,6 +334,148 @@ export interface LoyaltyProgram {
   updatedAt: Generated<Timestamp>;
 }
 
+export interface MarketplaceCategory {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  isActive: Generated<boolean>;
+  nameBn: string;
+  nameEn: string;
+  slug: string;
+  sortOrder: Generated<number>;
+}
+
+export interface MarketplaceCommission {
+  commissionAmount: Numeric;
+  createdAt: Generated<Timestamp>;
+  gross: Numeric;
+  id: Generated<string>;
+  marketplaceOrderId: string | null;
+  rate: Numeric;
+  suborderId: string | null;
+  tenantId: string;
+}
+
+export interface MarketplaceConfig {
+  commissionRate: Generated<Numeric>;
+  id: Generated<boolean>;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface MarketplaceCustomer {
+  binNo: string | null;
+  businessName: string | null;
+  createdAt: Generated<Timestamp>;
+  customerType: Generated<string>;
+  email: string | null;
+  id: Generated<string>;
+  isVerified: Generated<boolean>;
+  name: string | null;
+  passwordHash: string | null;
+  phone: string;
+  tradeLicenseNo: string | null;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface MarketplaceListing {
+  categoryId: string | null;
+  description: string | null;
+  hidden: Generated<boolean>;
+  id: Generated<string>;
+  imageUrl: string | null;
+  inStock: Generated<boolean>;
+  isWholesale: Generated<boolean>;
+  moq: number | null;
+  priceFrom: Generated<Numeric>;
+  productId: string;
+  ratingAvg: Generated<Numeric>;
+  ratingCount: Generated<number>;
+  searchTsv: Generated<string | null>;
+  slug: string;
+  status: Generated<string>;
+  syncedAt: Generated<Timestamp>;
+  tenantId: string;
+  title: string;
+  vendorName: string;
+  vendorSlug: string;
+  wholesaleOnly: Generated<boolean>;
+}
+
+export interface MarketplaceListingVariant {
+  id: string;
+  inStock: Generated<boolean>;
+  listingId: string;
+  moq: number | null;
+  options: Generated<Json>;
+  position: Generated<number>;
+  price: Generated<Numeric>;
+  productId: string;
+  tenantId: string;
+  tierPrices: Generated<Json>;
+  title: string | null;
+  wholesalePrice: Numeric | null;
+}
+
+export interface MarketplaceOrder {
+  buyerId: string;
+  contactName: string;
+  contactPhone: string;
+  createdAt: Generated<Timestamp>;
+  grandTotal: Generated<Numeric>;
+  id: Generated<string>;
+  idempotencyKey: string | null;
+  itemsTotal: Generated<Numeric>;
+  shipDistrict: string;
+  shipDivision: string;
+  shipLine: string;
+  shippingTotal: Generated<Numeric>;
+  shipThana: string;
+  status: Generated<string>;
+  updatedAt: Generated<Timestamp>;
+  vendorCount: Generated<number>;
+}
+
+export interface MarketplaceReview {
+  body: string | null;
+  buyerId: string;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  moderatedAt: Timestamp | null;
+  productId: string;
+  rating: number;
+  status: Generated<string>;
+  tenantId: string;
+  verifiedPurchase: Generated<boolean>;
+}
+
+export interface MarketplaceSession {
+  buyerId: string;
+  createdAt: Generated<Timestamp>;
+  expiresAt: Timestamp;
+  id: Generated<string>;
+  ip: string | null;
+  revokedAt: Timestamp | null;
+  tokenHash: string;
+  userAgent: string | null;
+}
+
+export interface MarketplaceSuborder {
+  buyerId: string;
+  codAmount: Generated<Numeric>;
+  createdAt: Generated<Timestamp>;
+  grandTotal: Generated<Numeric>;
+  id: Generated<string>;
+  itemsSubtotal: Generated<Numeric>;
+  marketplaceOrderId: string;
+  orderId: string | null;
+  orderNumber: Int8 | null;
+  paymentStatus: Generated<string>;
+  shippingTotal: Generated<Numeric>;
+  status: Generated<string>;
+  tenantId: string;
+  updatedAt: Generated<Timestamp>;
+  vendorName: string;
+}
+
 export interface NavigationMenu {
   createdAt: Generated<Timestamp>;
   handle: string;
@@ -356,8 +519,12 @@ export interface Orders {
   assigneeId: string | null;
   billingAddress: Generated<Json>;
   cancelledAt: Timestamp | null;
+  channel: Generated<string>;
   codAmount: Generated<Numeric>;
   createdAt: Generated<Timestamp>;
+  creditApproved: Generated<boolean>;
+  creditDue: Generated<Numeric>;
+  creditTerms: Generated<Json>;
   currency: Generated<string>;
   customerEmail: string | null;
   customerId: string | null;
@@ -368,10 +535,14 @@ export interface Orders {
   fulfillmentStatus: Generated<OrderFulfillmentStatus>;
   grandTotal: Generated<Numeric>;
   id: Generated<string>;
+  isPurchaseOrder: Generated<boolean>;
+  marketplaceOrderId: string | null;
   note: string | null;
+  orderMode: Generated<OrderMode>;
   orderNumber: Int8 | null;
   paymentStatus: Generated<OrderPaymentStatus>;
   placedAt: Generated<Timestamp>;
+  poReference: string | null;
   shippingAddress: Generated<Json>;
   shippingTotal: Generated<Numeric>;
   source: Generated<OrderSource>;
@@ -517,6 +688,9 @@ export interface Product {
   createdAt: Generated<Timestamp>;
   description: string | null;
   id: Generated<string>;
+  isWholesale: Generated<boolean>;
+  marketplaceHidden: Generated<boolean>;
+  moq: number | null;
   options: Generated<Json>;
   productType: string | null;
   seo: Generated<Json>;
@@ -527,6 +701,7 @@ export interface Product {
   title: string;
   updatedAt: Generated<Timestamp>;
   vendor: string | null;
+  wholesaleOnly: Generated<boolean>;
 }
 
 export interface ProductCollection {
@@ -568,16 +743,33 @@ export interface ProductVariant {
   id: Generated<string>;
   inventoryQuantity: Generated<number>;
   isActive: Generated<boolean>;
+  moq: number | null;
   options: Generated<Json>;
   position: Generated<number>;
   price: Generated<Numeric>;
   productId: string;
   sku: string | null;
   tenantId: string;
+  tierPrices: Generated<Json>;
   title: string | null;
   trackInventory: Generated<boolean>;
   updatedAt: Generated<Timestamp>;
   weightGrams: number | null;
+  wholesalePrice: Numeric | null;
+}
+
+export interface PurchaseRequest {
+  buyerCustomerId: string;
+  convertedOrderId: string | null;
+  createdAt: Generated<Timestamp>;
+  expiresAt: Timestamp | null;
+  id: Generated<string>;
+  items: Generated<Json>;
+  quotedSubtotal: Numeric | null;
+  quotedTotal: Numeric | null;
+  status: Generated<string>;
+  tenantId: string;
+  updatedAt: Generated<Timestamp>;
 }
 
 export interface ReturnItem {
@@ -680,10 +872,13 @@ export interface Subscription {
 }
 
 export interface Tenant {
+  businessType: Generated<TenantBusinessType>;
   createdAt: Generated<Timestamp>;
   currency: Generated<string>;
   defaultLocale: Generated<string>;
   id: Generated<string>;
+  kycDocuments: Generated<Json>;
+  kycStatus: Generated<string>;
   name: string;
   ownerUserId: string | null;
   planId: string | null;
@@ -694,6 +889,7 @@ export interface Tenant {
   timezone: Generated<string>;
   trialEndsAt: Timestamp | null;
   updatedAt: Generated<Timestamp>;
+  wholesaleApproved: Generated<boolean>;
 }
 
 export interface TenantAssignment {
@@ -799,7 +995,6 @@ export interface WebhookEvent {
 }
 
 export interface DB {
-  _Migrations: _Migrations;
   analyticsEvent: AnalyticsEvent;
   appUser: AppUser;
   auditLog: AuditLog;
@@ -811,12 +1006,23 @@ export interface DB {
   courierAccount: CourierAccount;
   customer: Customer;
   customerAddress: CustomerAddress;
+  customerLedger: CustomerLedger;
   dbidSubmission: DbidSubmission;
   discount: Discount;
   invoice: Invoice;
   landingPage: LandingPage;
   loyaltyLedger: LoyaltyLedger;
   loyaltyProgram: LoyaltyProgram;
+  marketplaceCategory: MarketplaceCategory;
+  marketplaceCommission: MarketplaceCommission;
+  marketplaceConfig: MarketplaceConfig;
+  marketplaceCustomer: MarketplaceCustomer;
+  marketplaceListing: MarketplaceListing;
+  marketplaceListingVariant: MarketplaceListingVariant;
+  marketplaceOrder: MarketplaceOrder;
+  marketplaceReview: MarketplaceReview;
+  marketplaceSession: MarketplaceSession;
+  marketplaceSuborder: MarketplaceSuborder;
   navigationMenu: NavigationMenu;
   orderCounter: OrderCounter;
   orderItem: OrderItem;
@@ -836,6 +1042,7 @@ export interface DB {
   productImage: ProductImage;
   productReview: ProductReview;
   productVariant: ProductVariant;
+  purchaseRequest: PurchaseRequest;
   returnItem: ReturnItem;
   returnRequest: ReturnRequest;
   shipment: Shipment;
