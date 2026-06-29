@@ -8,6 +8,7 @@ import { useDict, useLocale } from "@/lib/i18n/provider";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { useCart } from "../../cart/useCart";
 import type { StorefrontProductDetail } from "@/lib/storefront/data";
+import { trackCartAddedAction } from "./analyticsActions";
 
 interface AddToCartProps {
   tenantSlug: string;
@@ -40,6 +41,15 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
       price: selected.price,
       imageUrl: product.imageUrl,
     });
+    // Non-blocking first-party cart.added analytics event.
+    void trackCartAddedAction(tenantSlug, {
+      productId: product.id,
+      productSlug: product.slug,
+      variantId: selected.id,
+      title: product.title,
+      price: selected.price,
+      qty: 1,
+    }).catch(() => null);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1800);
   }

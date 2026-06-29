@@ -8,6 +8,7 @@ import {
 import { getApprovedProductReviews, getProductRating } from "@/lib/admin/reviews";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
+import { writeProductViewed } from "@/lib/analytics/internal";
 import { AddToCart } from "./AddToCart";
 import { ReviewSection } from "./ReviewSection";
 
@@ -63,6 +64,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     getApprovedProductReviews(ctx.id, product.id),
     getProductRating(ctx.id, null, product.id),
   ]);
+
+  // Fire non-blocking product.viewed internal event (first-party analytics).
+  void writeProductViewed(ctx.id, { productId: product.id, productSlug: product.slug, title: product.title });
 
   const { locale, d } = await getDict();
   const isDiscounted =

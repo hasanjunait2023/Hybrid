@@ -46,6 +46,36 @@ export async function recordInternalEvent(
   await withTenant(tenantId, userId, (tx) => insertEvent(tx, tenantId, input));
 }
 
+// NON-BLOCKING product.viewed record — fire from PDP server component.
+export async function writeProductViewed(
+  tenantId: string,
+  args: { productId: string; productSlug: string; title: string },
+): Promise<void> {
+  try {
+    await recordInternalEvent(tenantId, null, {
+      type: "product.viewed",
+      payload: args,
+    });
+  } catch {
+    // Never block the page render on analytics failure.
+  }
+}
+
+// NON-BLOCKING cart.added record — fire from the cart-add server action.
+export async function writeCartAdded(
+  tenantId: string,
+  args: { productId: string; productSlug: string; variantId: string; title: string; price: number; qty: number },
+): Promise<void> {
+  try {
+    await recordInternalEvent(tenantId, null, {
+      type: "cart.added",
+      payload: args,
+    });
+  } catch {
+    // Never block the cart action on analytics failure.
+  }
+}
+
 // Post-commit order.placed record. NON-BLOCKING: always resolves, never throws.
 export async function writeOrderPlaced(
   tenantId: string,
