@@ -51,7 +51,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
             <a
               key={p.r}
               href={`/platform/finance?r=${p.r}`}
-              className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${preset === p.r ? "bg-[var(--pf-black)] text-[#f6f3ea]" : "border border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-muted)] hover:bg-[#fbf9f2]"}`}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${preset === p.r ? "bg-[var(--pf-black)] text-[var(--pf-on-black)]" : "border border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-muted)] hover:bg-[var(--pf-hover)]"}`}
             >
               {p.label}
             </a>
@@ -77,7 +77,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
               <ul className="divide-y divide-[var(--pf-border)]">
                 {expenses.map((e) => (
                   <li key={e.id} className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="rounded-full bg-[#fbf9f2] px-2 py-0.5 text-[11px] font-semibold text-[var(--pf-muted)]">{e.category}</span>
+                    <span className="rounded-full bg-[var(--pf-hover)] px-2 py-0.5 text-[11px] font-semibold text-[var(--pf-muted)]">{e.category}</span>
                     <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--pf-ink)]">{e.vendor ?? e.note ?? "—"}</span>
                     <span className="font-mono text-[12px] text-[var(--pf-subtle)]">{e.incurredOn}</span>
                     <span className="font-mono text-[13px] font-semibold text-[var(--pf-danger)]">{formatMoney(e.amount, locale)}</span>
@@ -115,7 +115,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 function Stat({ label, value, sub, tone, accent = false }: { label: string; value: string; sub?: string; tone?: "success" | "danger"; accent?: boolean }) {
   const c = tone === "success" ? "text-[var(--pf-success)]" : tone === "danger" ? "text-[var(--pf-danger)]" : "text-[var(--pf-ink)]";
   return (
-    <div className={`rounded-2xl border p-4 ${accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[#fdf4d4] to-[#fbe6a8]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}>
+    <div className={`rounded-2xl border p-4 ${accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[var(--pf-grad-gold-1)] to-[var(--pf-grad-gold-2)]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}>
       <p className="text-[12px] text-[var(--pf-muted)]">{label}</p>
       <p className={`mt-1.5 text-[22px] font-bold leading-none ${accent ? "text-[var(--pf-ink)]" : c}`}>{value}</p>
       {sub && <p className="mt-1.5 text-[11px] text-[var(--pf-subtle)]">{sub}</p>}

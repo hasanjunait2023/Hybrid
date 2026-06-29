@@ -27,6 +27,7 @@ create index if not exists cart_abandoned_idx
 
 -- RLS
 alter table cart enable row level security;
+alter table cart force row level security;
 create policy cart_tenant_all on cart
   for all using (tenant_id = app.current_tenant_id())
   with check (tenant_id = app.current_tenant_id());
@@ -46,5 +47,6 @@ create index if not exists cart_reminder_lookup_idx
   on cart_reminder (cart_id, channel, template_key);
 
 alter table cart_reminder enable row level security;
+alter table cart_reminder force row level security;
 create policy cart_reminder_tenant_select on cart_reminder
   for select using (tenant_id = app.current_tenant_id());

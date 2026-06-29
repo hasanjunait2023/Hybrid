@@ -58,7 +58,7 @@ export function CartIsland({ tenantSlug }: CartIslandProps) {
                 type="button"
                 aria-label={t.decrease}
                 onClick={() => cart.setQuantity(line.variantId, line.quantity - 1)}
-                className="grid h-9 w-9 place-items-center rounded-md border border-border-strong text-ink hover:bg-surface-2"
+                className="grid h-11 w-11 place-items-center rounded-md border border-border-strong text-ink hover:bg-surface-2"
               >
                 −
               </button>
@@ -69,7 +69,7 @@ export function CartIsland({ tenantSlug }: CartIslandProps) {
                 type="button"
                 aria-label={t.increase}
                 onClick={() => cart.setQuantity(line.variantId, line.quantity + 1)}
-                className="grid h-9 w-9 place-items-center rounded-md border border-border-strong text-ink hover:bg-surface-2"
+                className="grid h-11 w-11 place-items-center rounded-md border border-border-strong text-ink hover:bg-surface-2"
               >
                 +
               </button>
@@ -77,7 +77,7 @@ export function CartIsland({ tenantSlug }: CartIslandProps) {
                 type="button"
                 aria-label={t.remove}
                 onClick={() => cart.remove(line.variantId)}
-                className="grid h-9 w-9 place-items-center rounded-md text-danger hover:bg-danger-weak"
+                className="grid h-11 w-11 place-items-center rounded-md text-danger hover:bg-danger-weak"
               >
                 <TrashIcon width={16} height={16} />
               </button>

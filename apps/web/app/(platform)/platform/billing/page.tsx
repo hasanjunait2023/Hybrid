@@ -71,10 +71,10 @@ export default async function BillingPage() {
                     <td className="px-4 py-3 text-[var(--pf-muted)]">{s.plan ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${
-                        s.status === "active" ? "bg-[#e6f6ee] text-[var(--pf-success)]"
+                        s.status === "active" ? "bg-[var(--pf-success-weak)] text-[var(--pf-success)]"
                           : s.status === "past_due" ? "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]"
                           : s.status === "trialing" ? "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]"
-                          : "bg-[#f0ede4] text-[var(--pf-muted)]"}`}>
+                          : "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]"}`}>
                         {s.status}{s.cancelAtPeriodEnd ? " ⊘" : ""}
                       </span>
                     </td>
@@ -114,7 +114,7 @@ export default async function BillingPage() {
 function Stat({ label, value, accent = false, tone }: { label: string; value: string; accent?: boolean; tone?: "warning" | "danger" }) {
   const v = tone === "danger" ? "text-[var(--pf-danger)]" : tone === "warning" ? "text-[var(--pf-yellow-deep)]" : "text-[var(--pf-ink)]";
   return (
-    <div className={`rounded-2xl border p-4 ${accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[#fdf4d4] to-[#fbe6a8]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}>
+    <div className={`rounded-2xl border p-4 ${accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[var(--pf-grad-gold-1)] to-[var(--pf-grad-gold-2)]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}>
       <p className="text-[12px] text-[var(--pf-muted)]">{label}</p>
       <p className={`mt-1.5 text-[22px] font-bold leading-none ${accent ? "text-[var(--pf-ink)]" : v}`}>{value}</p>
     </div>

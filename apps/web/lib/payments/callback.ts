@@ -24,8 +24,6 @@ import type { Tx } from "@hybrid/db";
 import type { PaymentProvider, ProviderCreds, PaymentState } from "@hybrid/payments";
 import { toJsonRecord } from "./json";
 
-const PROVIDER = "bkash";
-
 // Decimal-safe money equality. BDT is priced to 2dp; compare in minor units
 // (paisa) via rounding so float drift (e.g. 0.1 + 0.2) can never make a mismatch
 // look equal or vice-versa. A missing/unparseable charged amount is NOT equal —
@@ -43,7 +41,9 @@ function amountsEqual(charged: string | undefined, expected: number): boolean {
 
 export type CallbackOutcome = "paid" | "failed" | "cancelled" | "replayed" | "unknown";
 
-export interface ProcessBkashCallbackInput {
+export interface ProcessGatewayCallbackInput {
+  /** payment_provider value to match the payment row by (e.g. 'bkash','hybridpay'). */
+  provider: string;
   paymentId: string;
   /** Browser-supplied status hint (success|failure|cancel). Advisory only. */
   status?: string | null;
@@ -52,6 +52,9 @@ export interface ProcessBkashCallbackInput {
   /** Fired post-commit on success (SMS). Non-blocking; caught by the caller. */
   onPaid?: (ctx: PaidContext) => Promise<void>;
 }
+
+/** bKash-specific input (provider is fixed to 'bkash' by the wrapper below). */
+export type ProcessBkashCallbackInput = Omit<ProcessGatewayCallbackInput, "provider">;
 
 export interface PaidContext {
   tenantId: string;
@@ -62,12 +65,15 @@ export interface PaidContext {
   customerPhone: string;
 }
 
-export interface ProcessBkashCallbackResult {
+export interface ProcessGatewayCallbackResult {
   outcome: CallbackOutcome;
   /** The tenant slug for the success/failure redirect, when resolvable. */
   tenantSlug: string | null;
   orderNumber: number | null;
 }
+
+/** @deprecated alias kept for the bKash callers/tests. */
+export type ProcessBkashCallbackResult = ProcessGatewayCallbackResult;
 
 interface PaymentLookup {
   paymentId: string;
@@ -87,6 +93,7 @@ interface PaymentLookup {
 // at create time (see checkout/actions.ts). Falls back to nothing when unknown.
 async function lookupPaymentByExternalId(
   paymentId: string,
+  provider: string,
 ): Promise<PaymentLookup | null> {
   const rows = await asPlatformAdmin((tx) =>
     tx<
@@ -117,7 +124,7 @@ async function lookupPaymentByExternalId(
       from payment p
       join orders o on o.id = p.order_id
       join tenant t on t.id = p.tenant_id
-      where p.provider = 'bkash' and p.provider_ref = ${paymentId}
+      where p.provider = ${provider} and p.provider_ref = ${paymentId}
       limit 2
     `,
   );
@@ -126,7 +133,7 @@ async function lookupPaymentByExternalId(
   // a data-integrity violation we must NOT paper over by silently picking the
   // first (it could pay the wrong order). Fail loudly so the callback aborts.
   if (rows.length > 1) {
-    throw new Error(`ambiguous bKash paymentID ${paymentId}: ${rows.length} payment rows`);
+    throw new Error(`ambiguous ${provider} paymentID ${paymentId}: ${rows.length} payment rows`);
   }
 
   const row = rows[0];
@@ -150,12 +157,13 @@ async function lookupPaymentByExternalId(
 async function claimWebhookEvent(
   tx: Tx,
   tenantId: string,
+  provider: string,
   paymentId: string,
   payload: Record<string, unknown>,
 ): Promise<boolean> {
   const inserted = await tx<{ id: string }[]>`
     insert into webhook_event (tenant_id, provider, event_type, external_id, payload)
-    values (${tenantId}, ${PROVIDER}, 'payment.callback', ${paymentId}, ${tx.json(toJsonRecord(payload as Record<string, unknown>))})
+    values (${tenantId}, ${provider}, 'payment.callback', ${paymentId}, ${tx.json(toJsonRecord(payload as Record<string, unknown>))})
     on conflict (provider, external_id) do nothing
     returning id
   `;
@@ -164,28 +172,28 @@ async function claimWebhookEvent(
 
 // Mark the claimed webhook_event processed within the same txn (atomic with the
 // status flip — either both commit or neither does).
-async function markProcessed(tx: Tx, paymentId: string): Promise<void> {
+async function markProcessed(tx: Tx, provider: string, paymentId: string): Promise<void> {
   await tx`
     update webhook_event
        set processed = true, processed_at = now()
-     where provider = ${PROVIDER} and external_id = ${paymentId}
+     where provider = ${provider} and external_id = ${paymentId}
   `;
 }
 
 // The full idempotent transition. Resolves the payment/tenant, claims the
 // webhook_event (replay guard), executes (with a query safety net), and flips
 // payment + order statuses — all inside one withTenant transaction.
-export async function processBkashCallback(
-  input: ProcessBkashCallbackInput,
-): Promise<ProcessBkashCallbackResult> {
-  const lookup = await lookupPaymentByExternalId(input.paymentId);
+export async function processGatewayCallback(
+  input: ProcessGatewayCallbackInput,
+): Promise<ProcessGatewayCallbackResult> {
+  const lookup = await lookupPaymentByExternalId(input.paymentId, input.provider);
   if (!lookup) {
     return { outcome: "unknown", tenantSlug: null, orderNumber: null };
   }
 
   const enabled = await input.getProvider(lookup.tenantId);
   if (!enabled) {
-    // bKash disabled/misconfigured after create — cannot verify. Leave pending.
+    // Gateway disabled/misconfigured after create — cannot verify. Leave pending.
     return { outcome: "unknown", tenantSlug: lookup.tenantSlug, orderNumber: lookup.orderNumber };
   }
 
@@ -246,6 +254,7 @@ export async function processBkashCallback(
     const won = await claimWebhookEvent(
       tx,
       lookup.tenantId,
+      input.provider,
       input.paymentId,
       { paymentId: input.paymentId, status: input.status ?? null, state, trxId, raw },
     );
@@ -273,7 +282,7 @@ export async function processBkashCallback(
            set payment_status = 'paid', updated_at = now()
          where id = ${lookup.orderId}
       `;
-      await markProcessed(tx, input.paymentId);
+      await markProcessed(tx, input.provider, input.paymentId);
       return {
         outcome: "paid",
         paidContext: {
@@ -315,7 +324,7 @@ export async function processBkashCallback(
     // the order stays 'unpaid' — which is the correct money state: the cash did
     // not reconcile, so nothing is collectable. The discrepancy is captured on
     // the payment row's status + payload for the seller to chase.
-    await markProcessed(tx, input.paymentId);
+    await markProcessed(tx, input.provider, input.paymentId);
     return { outcome: failState === "cancelled" ? "cancelled" : "failed", paidContext: null };
   });
 
@@ -327,4 +336,13 @@ export async function processBkashCallback(
   }
 
   return { outcome, tenantSlug: lookup.tenantSlug, orderNumber: lookup.orderNumber };
+}
+
+// Backward-compatible bKash entrypoint — the callback core is provider-agnostic
+// (Hybrid Pay reuses processGatewayCallback with provider:'hybridpay'); this
+// fixes the provider to 'bkash' so the existing route + tests are unchanged.
+export function processBkashCallback(
+  input: ProcessBkashCallbackInput,
+): Promise<ProcessGatewayCallbackResult> {
+  return processGatewayCallback({ ...input, provider: "bkash" });
 }

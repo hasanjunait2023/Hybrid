@@ -10,6 +10,7 @@ import {
   CheckCircleIcon,
   UsersIcon,
   ChatIcon,
+  HybridLogo,
 } from "@hybrid/ui";
 
 // Super-admin console sidebar (Homies-Lab skin). Primary destinations render as
@@ -28,6 +29,7 @@ interface NavItem {
 const TILES: NavItem[] = [
   { href: "/platform", label: "Dashboard", Icon: HomeIcon },
   { href: "/platform/tenants", label: "Stores", Icon: BoxesIcon },
+  { href: "/platform/wholesale-kyc", label: "Wholesale KYC", Icon: ShieldIcon },
   { href: "/platform/finance", label: "Finance", Icon: ReceiptIcon },
   { href: "/platform/plans", label: "Plans", Icon: ShieldIcon },
   { href: "/platform/billing", label: "Billing", Icon: CheckCircleIcon },
@@ -56,20 +58,17 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-[244px] shrink-0 flex-col gap-5 border-r border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-5">
+    <aside className="hidden w-[244px] shrink-0 flex-col gap-5 border-r border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-5 lg:flex">
       {/* Brand */}
       <Link href="/platform" className="flex items-center gap-2 px-1">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--pf-black)] text-[13px] font-bold text-[var(--pf-yellow)]">
-          H
-        </span>
-        <span className="text-[15px] font-bold tracking-tight text-[var(--pf-ink)]">Hybrid</span>
-        <span className="ml-1 rounded-full bg-[var(--pf-yellow-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--pf-yellow-deep)]">
+        <HybridLogo size="sm" />
+        <span className="rounded-full bg-[var(--pf-yellow-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--pf-yellow-deep)]">
           Admin
         </span>
       </Link>
 
       {/* Search */}
-      <label className="flex items-center gap-2 rounded-xl border border-[var(--pf-border)] bg-[#fbf9f2] px-3 py-2 text-[var(--pf-muted)] focus-within:border-[var(--pf-yellow)]">
+      <label className="flex items-center gap-2 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-hover)] px-3 py-2 text-[var(--pf-muted)] focus-within:border-[var(--pf-yellow)]">
         <SearchIcon className="h-3.5 w-3.5" />
         <input
           type="search"
@@ -103,7 +102,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
             <li key={s.label}>
               <Link
                 href={s.href}
-                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[#fbf9f2] hover:text-[var(--pf-ink)]"
+                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-ink)]"
               >
                 <span className="h-2.5 w-2.5 rounded-[3px] bg-[var(--pf-yellow)]" aria-hidden="true" />
                 {s.label}
@@ -122,7 +121,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
           {ROADMAP.map((m) => {
             const inner = (
               <>
-                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--pf-border)] bg-[#fbf9f2]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--pf-border)] bg-[var(--pf-hover)]">
                   <m.Icon className="h-3.5 w-3.5" />
                 </span>
                 {m.label}
@@ -137,7 +136,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
               <li key={m.label}>
                 <Link
                   href={m.href}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[#fbf9f2] hover:text-[var(--pf-ink)]"
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-ink)]"
                 >
                   {inner}
                 </Link>
@@ -155,7 +154,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
       </div>
 
       {/* User card */}
-      <div className="mt-auto flex items-center gap-2.5 rounded-xl bg-[var(--pf-black)] px-3 py-2.5 text-[#f6f3ea]">
+      <div className="mt-auto flex items-center gap-2.5 rounded-xl bg-[var(--pf-black)] px-3 py-2.5 text-[var(--pf-on-black)]">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
           {adminName.slice(0, 1).toUpperCase()}
         </span>

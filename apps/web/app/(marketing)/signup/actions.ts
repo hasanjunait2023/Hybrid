@@ -134,6 +134,12 @@ export async function signupAction(
   // means someone already owns this account, so we REFUSE rather than hand the
   // caller a session for it (account-takeover guard).
   let userId: string;
+  // GoTrue auth.users id when AUTH_PROVIDER=supabase. Hoisted to function scope so
+  // the provisioning-failure rollback below can also drop the GoTrue credential —
+  // otherwise a failed provision (e.g. a slug collision on the first attempt)
+  // leaves an orphan auth.users row and the email is permanently refused as
+  // "already used" on every retry, with no app_user/tenant to log into.
+  let supaUserId: string | null = null;
   try {
     const passwordHash = await hashPassword(passwordRaw);
     const created = await createAppUser({
@@ -151,11 +157,12 @@ export async function signupAction(
     // immediately. On failure, roll back the orphan app_user so a retry isn't
     // refused as "already used".
     if (process.env.AUTH_PROVIDER === "supabase") {
-      const { error: supaErr } = await supabaseAdminClient().auth.admin.createUser({
-        email: emailRaw,
-        password: passwordRaw,
-        email_confirm: true,
-      });
+      const { data: supaData, error: supaErr } =
+        await supabaseAdminClient().auth.admin.createUser({
+          email: emailRaw,
+          password: passwordRaw,
+          email_confirm: true,
+        });
       if (supaErr) {
         await deleteOwnerlessUser(userId).catch((cleanupErr) =>
           console.error("[signup] orphan user cleanup failed", cleanupErr),
@@ -165,6 +172,7 @@ export async function signupAction(
           ? { ok: false, errors: { email: EMAIL_TAKEN_BN }, values }
           : { ok: false, errors: { form: GENERIC_ERROR_BN }, values };
       }
+      supaUserId = supaData.user?.id ?? null;
     }
   } catch (err: unknown) {
     console.error("[signup] user creation failed", err);
@@ -207,6 +215,17 @@ export async function signupAction(
     await deleteOwnerlessUser(userId).catch((cleanupErr) =>
       console.error("[signup] orphan user cleanup failed", cleanupErr),
     );
+    // …and the matching GoTrue credential, if we created one. Without this a
+    // slug collision (the common first-attempt retry) leaves the email locked:
+    // app_user is gone but auth.users survives, so the retry's GoTrue createUser
+    // returns "already registered" and the seller can never complete signup.
+    if (supaUserId) {
+      await supabaseAdminClient()
+        .auth.admin.deleteUser(supaUserId)
+        .catch((cleanupErr) =>
+          console.error("[signup] orphan GoTrue cleanup failed", cleanupErr),
+        );
+    }
 
     if (err instanceof SlugTakenError) {
       return {

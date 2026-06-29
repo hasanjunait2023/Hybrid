@@ -9,9 +9,9 @@
   --pf-panel: #ffffff; /* white cards */
   --pf-cream: #fbf6e8; /* secondary cream cards */
   --pf-border: #efe9da; /* hairline */
-  --pf-ink: #1b1a17; /* near-black text */
-  --pf-muted: #908b7e; /* secondary text */
-  --pf-subtle: #b6b1a4; /* tertiary text */
+  --pf-ink: #18120c; /* near-black text — higher contrast */
+  --pf-muted: #6b6458; /* secondary text — darkened for readability */
+  --pf-subtle: #938c7c; /* tertiary text — darkened for readability */
   --pf-yellow: #f5c518; /* primary accent */
   --pf-yellow-deep: #e8b40a;
   --pf-yellow-soft: #fdf1c4; /* soft accent fill */
@@ -19,9 +19,39 @@
   --pf-success: #1f9d6b;
   --pf-danger: #d9534f;
 
+  /* Derived surface/state shades — were inlined as raw hex across the console
+     pages; centralised here so the whole surface stays on one palette. */
+  --pf-hover: #fbf9f2; /* row / button hover fill */
+  --pf-on-black: #f6f3ea; /* light text on dark (--pf-black) cards */
+  --pf-success-weak: #e6f6ee; /* active / success chip bg */
+  --pf-danger-weak: #fde9e8; /* suspended / danger chip bg */
+  --pf-muted-weak: #f0ede4; /* neutral / cancelled chip bg */
+  --pf-track: #f0ece1; /* progress-bar track */
+  --pf-bar-mute: #d8d2c2; /* inactive bar fill */
+  --pf-grad-warm-1: #fdf8ec; /* hero panel gradient */
+  --pf-grad-warm-2: #fbf3dc;
+  --pf-grad-gold-1: #fdf4d4; /* accent card gradient */
+  --pf-grad-gold-2: #fbe6a8;
+  --pf-gauge-track: #efe3c4; /* SVG gauge unfilled arc */
+
   background: var(--pf-bg);
   color: var(--pf-ink);
   font-feature-settings: "tnum" 1;
+
+  /* Remap the app's indigo design tokens to the console palette so shared
+     @hybrid/ui controls (Button, badges, links) inherited by the kept client
+     controls — ExpenseForm, PlanEditor, BillingControls, TeamManager,
+     TenantActions — match the theme WITHOUT editing the shared components.
+     Primary becomes soft-black (the reference's dark pills); accent is the
+     golden yellow; danger keeps its red for destructive actions. */
+  --color-primary: var(--pf-black);
+  --color-primary-hover: #2e2b25;
+  --color-primary-active: #15130f;
+  --color-primary-weak: var(--pf-yellow-soft);
+  --color-text-on-primary: #f6f3ea;
+  --color-accent: var(--pf-yellow);
+  --color-accent-hover: var(--pf-yellow-deep);
+  --color-accent-weak: var(--pf-yellow-soft);
 }
 
 /* Thin custom scrollbars inside the console so dense panels stay tidy. */

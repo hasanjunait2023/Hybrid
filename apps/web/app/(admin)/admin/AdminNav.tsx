@@ -16,7 +16,7 @@ import {
   ChatIcon,
   CheckCircleIcon,
 } from "@hybrid/ui";
-import { cn } from "@hybrid/ui";
+import { cn, HybridLogo } from "@hybrid/ui";
 import { useDict } from "@/lib/i18n/provider";
 import type { Messages } from "@/lib/i18n/dictionaries";
 
@@ -36,6 +36,12 @@ const ITEMS: NavItem[] = [
   { href: "/admin/products", tKey: "products", Icon: BoxesIcon, match: "/admin/products" },
   { href: "/admin/customers", tKey: "customers", Icon: UsersIcon, match: "/admin/customers" },
   { href: "/admin/collections", tKey: "more", Icon: MenuIcon, match: "/admin/collections" },
+];
+
+// Wholesale nav items — shown only when business_type is 'wholesale' or 'both'.
+const WHOLESALE_ITEMS: NavItem[] = [
+  { href: "/admin/wholesale", tKey: "wholesale", Icon: BoxesIcon, match: "/admin/wholesale" },
+  { href: "/admin/wholesale/purchase-requests", tKey: "purchaseRequests", Icon: ReceiptIcon, match: "/admin/wholesale/purchase-requests" },
 ];
 
 // Secondary surfaces (Wave-2). The mobile bottom-tab grid stays five items, so
@@ -59,9 +65,11 @@ function isActive(pathname: string, item: NavItem): boolean {
 export function AdminNav({
   variant,
   tenantId,
+  showWholesale = false,
 }: {
   variant: "sidebar" | "tabs";
   tenantId: string;
+  showWholesale?: boolean;
 }) {
   const pathname = usePathname();
   const d = useDict();
@@ -70,7 +78,7 @@ export function AdminNav({
     return (
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
         <div className="flex h-14 items-center gap-2 border-b border-border px-5">
-          <span className="text-lg font-bold text-ink">{d.common.brand}</span>
+          <HybridLogo size="sm" />
           <span className="rounded-full bg-primary-weak px-2 py-0.5 text-2xs font-semibold text-primary">
             {d.admin.shell.badge}
           </span>
@@ -79,6 +87,14 @@ export function AdminNav({
           {ITEMS.map((item) => (
             <SidebarLink key={item.href} item={item} label={d.admin.nav[item.tKey]} active={isActive(pathname, item)} />
           ))}
+          {showWholesale && (
+            <>
+              <div className="my-2 border-t border-border" />
+              {WHOLESALE_ITEMS.map((item) => (
+                <SidebarLink key={item.href} item={item} label={d.admin.nav[item.tKey]} active={isActive(pathname, item)} />
+              ))}
+            </>
+          )}
           <div className="my-2 border-t border-border" />
           {MORE_ITEMS.map((item) => (
             <SidebarLink key={item.href} item={item} label={d.admin.nav[item.tKey]} active={isActive(pathname, item)} />

@@ -263,6 +263,79 @@ export async function saveSslcommerz(
   return { ok: true };
 }
 
+// ---- Hybrid Pay ------------------------------------------------------------
+// Hybrid's single white-labeled online gateway (PipraPay engine). Per-tenant
+// isolation = a per-tenant brand API key on the shared Hybrid Pay instance.
+// The tenant pastes only their apiKey; baseUrl defaults to the platform instance
+// (HYBRIDPAY_BASE_URL) but can be overridden for a self-hosted brand instance.
+// Both are sealed AES-256-GCM and never echoed back.
+const HybridpayInput = z.object({
+  enabled: z.coerce.boolean().default(false),
+  apiKey: z.string().trim().max(300).optional().default(""),
+  baseUrl: z.string().trim().max(300).optional().default(""),
+  // The tenant's MFS number that receives payments (bKash/Nagad). Stored for
+  // display + support; the actual routing lives in their Hybrid Pay brand. Not
+  // a secret, but kept in the sealed map so the credentials shape stays uniform.
+  mobileNumber: z.string().trim().max(20).optional().default(""),
+});
+
+// Platform default Hybrid Pay instance. Server-only env (no NEXT_PUBLIC_ — it is
+// not a secret, but tenants don't need it client-side). Empty string when unset.
+const HYBRIDPAY_DEFAULT_BASE_URL = process.env.HYBRIDPAY_BASE_URL ?? "";
+
+export async function saveHybridpay(
+  _prev: SettingsResult | null,
+  formData: FormData,
+): Promise<SettingsResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return auth;
+
+  const parsed = HybridpayInput.safeParse({
+    enabled: formData.get("enabled") === "on" || formData.get("enabled") === "true",
+    apiKey: formData.get("apiKey") ?? "",
+    baseUrl: formData.get("baseUrl") ?? "",
+    mobileNumber: formData.get("mobileNumber") ?? "",
+  });
+  if (!parsed.success) return { ok: false, error: "ইনপুট ভুল।" };
+  const input = parsed.data;
+
+  try {
+    await withTenant(auth.tenantId, auth.userId, async (tx) => {
+      const existing = await tx<{ credentials: unknown }[]>`
+        select credentials from payment_account where provider = 'hybridpay' limit 1
+      `;
+      const prev = readSealed(existing[0]?.credentials);
+      const merged = {
+        // apiKey blank = unchanged. baseUrl falls back to prior, then platform default.
+        apiKey: input.apiKey || prev.apiKey || "",
+        baseUrl: input.baseUrl || prev.baseUrl || HYBRIDPAY_DEFAULT_BASE_URL || "",
+        mobileNumber: input.mobileNumber || prev.mobileNumber || "",
+      };
+      if (input.enabled && (!merged.apiKey || !merged.baseUrl)) {
+        throw new Error("INCOMPLETE_HYBRIDPAY");
+      }
+      const sealed = sealCredentials(merged);
+      await tx`
+        insert into payment_account (tenant_id, provider, is_enabled, credentials)
+        values (${auth.tenantId}, 'hybridpay', ${input.enabled}, ${tx.json(sealed as unknown as Jsonb)})
+        on conflict (tenant_id, provider) do update
+          set is_enabled = ${input.enabled},
+              credentials = ${tx.json(sealed as unknown as Jsonb)},
+              updated_at = now()
+      `;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INCOMPLETE_HYBRIDPAY") {
+      return { ok: false, error: "Hybrid Pay চালু করতে আপনার API key দিন।" };
+    }
+    console.error("[saveHybridpay] failed", error);
+    return { ok: false, error: "সেভ ব্যর্থ হয়েছে।" };
+  }
+
+  bustSettings(auth.tenantId);
+  return { ok: true };
+}
+
 // ---- COD -------------------------------------------------------------------
 const CodInput = z.object({ enabled: z.coerce.boolean() });
 

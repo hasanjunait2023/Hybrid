@@ -6,6 +6,33 @@ Versions track phases rather than semver until the first public release.
 
 ---
 
+## [Hybrid Pay — unified white-label gateway] — 2026-06-29
+
+Added **Hybrid Pay**, Hybrid's single white-labeled online payment gateway, powered
+under the hood by a self-hosted [PipraPay](https://github.com/PipraPay/PipraPay)
+instance (AGPL-3.0). It **subsumes the individual MFS gateways** — buyers no longer
+pick "bKash"/"Nagad" as separate Hybrid options; they pick **Hybrid Pay** and choose
+the method on its hosted page. Runbook: `docs/INFRA_HYBRIDPAY.md`.
+
+- **Pure provider** `@hybrid/payments` → `HybridpayProvider` (`hybridpay/`): `create-charge`
+  → hosted `pp_url`, `verify-payment` by `pp_id`, status mapping. Header `mhs-piprapay-api-key`.
+  7 unit tests (create/verify/amount-coercion/failure/missing-creds).
+- **Per-tenant isolation:** each tenant = a PipraPay "brand" with its own API key, stored
+  sealed (AES-256-GCM) in `payment_account` (provider `hybridpay`). New enum value via
+  `23_hybridpay.sql`. Money routes to the tenant's own number.
+- **Money path:** `lib/payments/hybridpay.ts` factory; checkout create-charge + redirect;
+  `/api/hybridpay/webhook` (GET browser-return + POST webhook) re-verifies by `pp_id`,
+  paisa-exact amount match, `webhook_event` replay guard, order flip. `callback.ts`
+  generalized to `processGatewayCallback(provider)` (bKash kept via a thin wrapper — existing
+  bKash suite green, no regression).
+- **Checkout:** storefront now shows one online option (**Hybrid Pay**, indigo) + COD; bKash
+  card removed from the storefront. `placeOrder` gains `hybridpay` + an `onlineRequired` flag.
+- **Tenant self-serve onboarding** (`HybridPayForm`): companion-app install guide, MFS number,
+  API key, and the webhook URL to whitelist — all in `Settings → Payments`. Legacy direct
+  gateways (bKash/Nagad/SSLCommerz) moved under an "advanced" disclosure, still functional.
+- **Infra:** `pay.hybrid.ecomex.cloud` Caddy block + TLS allowlist; `docker compose --profile
+  hybridpay` PHP+MySQL services; `HYBRIDPAY_BASE_URL` env.
+
 ## [Infra: self-hosted Supabase migration] — 2026-06-25
 
 Migrated the **entire backend onto a self-hosted Supabase stack** on the VPS

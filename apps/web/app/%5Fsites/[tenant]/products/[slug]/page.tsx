@@ -102,7 +102,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </span>
 
           {product.description && (
-            <p className="bn-body whitespace-pre-line text-sm text-ink-muted">
+            <p className="bn-body whitespace-pre-line text-base text-ink-muted">
               {product.description}
             </p>
           )}

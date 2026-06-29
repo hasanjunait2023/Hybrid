@@ -20,6 +20,7 @@ export interface TenantDirectoryRow {
   createdAt: string;
   trialEndsAt: string | null;
   subscriptionStatus: string | null;
+  businessType: string;
 }
 
 // Every tenant, newest first. Joins owner (app_user), plan, and the live
@@ -38,6 +39,7 @@ export async function listTenants(): Promise<TenantDirectoryRow[]> {
         created_at: Date;
         trial_ends_at: Date | null;
         subscription_status: string | null;
+        business_type: string;
       }[]
     >`
       select
@@ -50,7 +52,8 @@ export async function listTenants(): Promise<TenantDirectoryRow[]> {
         u.full_name             as owner_name,
         t.created_at,
         t.trial_ends_at,
-        s.status                as subscription_status
+        s.status                as subscription_status,
+        t.business_type::text   as business_type
       from tenant t
       left join app_user u on u.id = t.owner_user_id
       left join plan p on p.id = t.plan_id
@@ -76,6 +79,7 @@ export async function listTenants(): Promise<TenantDirectoryRow[]> {
     createdAt: r.created_at.toISOString(),
     trialEndsAt: r.trial_ends_at ? r.trial_ends_at.toISOString() : null,
     subscriptionStatus: r.subscription_status,
+    businessType: r.business_type,
   }));
 }
 

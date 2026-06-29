@@ -43,6 +43,13 @@ export interface ProviderCreds {
   // SSLCommerz creds.
   storeId?: string;
   storePassword?: string;
+  // Hybrid Pay creds (white-label of the self-hosted PipraPay engine). Each tenant
+  // points at their own brand on the shared Hybrid Pay instance (baseUrl, no
+  // trailing slash) and authenticates with their per-brand apiKey (sent as the
+  // `mhs-piprapay-api-key` header). No sandbox/live split — the URL IS the
+  // environment. `mode` is ignored by this provider.
+  apiKey?: string;
+  baseUrl?: string;
 }
 
 // --- create -----------------------------------------------------------------
@@ -115,7 +122,7 @@ export interface RefundPaymentResult {
 // The provider contract every gateway implements. createPayment/executePayment/
 // queryPayment are mandatory; refund is optional (bKash has it, COD does not).
 export interface PaymentProvider {
-  provider: "bkash" | "cod" | "nagad" | "sslcommerz";
+  provider: "bkash" | "cod" | "nagad" | "sslcommerz" | "hybridpay";
   createPayment(input: CreatePaymentInput, creds: ProviderCreds): Promise<CreatePaymentResult>;
   executePayment(input: ExecutePaymentInput, creds: ProviderCreds): Promise<ExecutePaymentResult>;
   queryPayment(input: QueryPaymentInput, creds: ProviderCreds): Promise<QueryPaymentResult>;

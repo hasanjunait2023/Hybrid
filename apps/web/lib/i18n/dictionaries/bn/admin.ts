@@ -16,6 +16,7 @@ import { settingsPayments } from "./admin/settingsPayments";
 import { settingsComms } from "./admin/settingsComms";
 import { settingsDbid } from "./admin/settingsDbid";
 import { shipping } from "./admin/shipping";
+import { wholesale } from "./admin/wholesale";
 
 export const admin: typeof EnAdmin = {
   products,
@@ -34,6 +35,7 @@ export const admin: typeof EnAdmin = {
   settingsComms,
   settingsDbid,
   shipping,
+  wholesale,
 
   shell: {
     badge: "অ্যাডমিন",
@@ -47,6 +49,8 @@ export const admin: typeof EnAdmin = {
     products: "পণ্য",
     customers: "গ্রাহক",
     more: "আরও",
+    wholesale: "পাইকারি",
+    purchaseRequests: "পারচেজ রিকোয়েস্ট",
     themes: "থিম ও ডিজাইন",
     returns: "রিটার্ন / RTO",
     cod: "ক্যাশ অন ডেলিভারি",

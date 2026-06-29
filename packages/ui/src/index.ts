@@ -10,6 +10,7 @@ export { toBnDigits, formatBdtBangla, formatBdtLatin } from "./lib/format";
 
 // Primitives
 export { Button } from "./components/Button";
+export { HybridLogo } from "./components/HybridLogo";
 export { Badge } from "./components/Badge";
 export { ProviderCard, CredentialField } from "./components/ProviderCard";
 export { CopyField } from "./components/CopyField";

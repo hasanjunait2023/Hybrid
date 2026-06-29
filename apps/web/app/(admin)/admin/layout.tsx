@@ -1,7 +1,10 @@
-import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
+import { getTenantBusinessType } from "@/lib/admin/wholesale";
+import { platformHomeUrl, loginPath } from "@/lib/auth/urls";
+import { HybridLogo } from "@hybrid/ui";
 import { getDict } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/provider";
 import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
@@ -19,28 +22,31 @@ export const dynamic = "force-dynamic";
 // (one-thumb reality); a fixed left sidebar appears ≥ lg.
 //
 // /admin is owner/staff-only (tenant-scoped). A session user with no tenant
-// membership (e.g. ?as=admin platform super-admin) is sent to /platform, NOT
-// back to /dev-login (which would loop the membership-less cookie forever).
+// membership (e.g. a platform super-admin who logged in via the admin host) is
+// sent to the PLATFORM HOST — an absolute app.{ROOT}/ URL, NOT a relative
+// "/platform" (which on the admin host rewrites to /admin/platform -> 404).
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  if (!session) redirect(loginPath("owner-a"));
 
   const tenantId = await getActiveTenantId(session.userId);
-  if (!tenantId) redirect("/platform");
+  if (!tenantId) redirect(await platformHomeUrl());
 
   const { locale, d } = await getDict();
+  const businessType = await getTenantBusinessType(tenantId);
+  const showWholesale = businessType === "wholesale" || businessType === "both";
 
   return (
     <LocaleProvider locale={locale}>
       <div className="min-h-screen bg-bg lg:flex">
         {/* Desktop sidebar (≥ lg) */}
-        <AdminNav variant="sidebar" tenantId={tenantId} />
+        <AdminNav variant="sidebar" tenantId={tenantId} showWholesale={showWholesale} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top bar (all sizes) */}
           <header className="sticky top-0 z-sticky border-b border-border bg-surface">
             <div className="mx-auto flex h-14 max-w-admin items-center gap-3 px-4">
-              <span className="text-base font-bold text-ink lg:hidden">{d.common.brand}</span>
+              <HybridLogo size="sm" className="lg:hidden" />
               <span className="ml-auto flex items-center gap-2">
                 <span className="hidden font-mono text-xs text-ink-subtle sm:inline">
                   {tenantId.slice(0, 8)}
@@ -63,7 +69,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
 
         {/* Mobile bottom tab bar (base–md) */}
-        <AdminNav variant="tabs" tenantId={tenantId} />
+        <AdminNav variant="tabs" tenantId={tenantId} showWholesale={showWholesale} />
       </div>
       <LiveOrdersBanner />
     </LocaleProvider>

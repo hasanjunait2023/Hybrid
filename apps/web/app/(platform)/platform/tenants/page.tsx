@@ -4,13 +4,24 @@ import { TenantActions } from "../TenantActions";
 
 // Super-admin store directory ("Homies-Lab" console skin). Lists every tenant
 // with owner, plan, lifecycle status, trial end; suspend/reactivate/impersonate
-// per row (TenantActions, server-action backed). Authz via the platform layout.
+// per row (TenantActions, server-action backed). Supports business_type filter
+// via searchParams. Authz via the platform layout.
 export const dynamic = "force-dynamic";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "myhybrid.com";
 
-export default async function PlatformStores() {
-  const tenants = await listTenants();
+export default async function PlatformStores({
+  searchParams,
+}: {
+  searchParams: Promise<{ business_type?: string }>;
+}) {
+  const sp = await searchParams;
+  const filterType = sp.business_type ?? "";
+  const all = await listTenants();
+
+  const tenants = filterType
+    ? all.filter((t) => t.businessType === filterType)
+    : all;
   const count = (s: string) => tenants.filter((t) => t.status === s).length;
   const chips = [
     { label: "Total", value: tenants.length },
@@ -46,6 +57,37 @@ export default async function PlatformStores() {
             <p className="mt-1 text-[11px] text-[var(--pf-muted)]">{c.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Business type filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-[12px] font-medium text-[var(--pf-muted)]">Business type:</span>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { label: "All", value: "" },
+            { label: "Retail", value: "retail" },
+            { label: "Wholesale", value: "wholesale" },
+            { label: "Both", value: "both" },
+          ].map((opt) => {
+            const href = opt.value
+              ? `/platform/tenants?business_type=${opt.value}`
+              : "/platform/tenants";
+            const active = filterType === opt.value;
+            return (
+              <Link
+                key={opt.label}
+                href={href}
+                className={`rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${
+                  active
+                    ? "bg-[var(--pf-black)] text-[#f6f3ea]"
+                    : "bg-[#fbf9f2] text-[var(--pf-muted)] hover:bg-[#f0ece1]"
+                }`}
+              >
+                {opt.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       {/* Directory table */}
@@ -116,14 +158,14 @@ function Avatar({ name }: { name: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    active: "bg-[#e6f6ee] text-[var(--pf-success)]",
+    active: "bg-[var(--pf-success-weak)] text-[var(--pf-success)]",
     trial: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
     past_due: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
-    suspended: "bg-[#fde9e8] text-[var(--pf-danger)]",
-    cancelled: "bg-[#f0ede4] text-[var(--pf-muted)]",
+    suspended: "bg-[var(--pf-danger-weak)] text-[var(--pf-danger)]",
+    cancelled: "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]",
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${map[status] ?? "bg-[#f0ede4] text-[var(--pf-muted)]"}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${map[status] ?? "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]"}`}>
       {status.replace("_", " ")}
     </span>
   );

@@ -145,6 +145,34 @@ export async function getSslcommerzSettings(
   };
 }
 
+export interface HybridpaySettings {
+  enabled: boolean;
+  /** true once an apiKey + baseUrl are sealed. */
+  configured: boolean;
+  apiKeyHint: string | null;
+  /** The configured instance base URL (not a secret), for display. */
+  baseUrl: string | null;
+}
+
+export async function getHybridpaySettings(
+  tenantId: string,
+  userId: string,
+): Promise<HybridpaySettings> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ is_enabled: boolean; credentials: unknown }[]>`
+      select is_enabled, credentials from payment_account where provider = 'hybridpay' limit 1
+    `,
+  );
+  const row = rows[0];
+  const creds = openIfSealed(row?.credentials);
+  return {
+    enabled: row?.is_enabled ?? false,
+    configured: Boolean(creds.apiKey) && Boolean(creds.baseUrl),
+    apiKeyHint: maskTail(creds.apiKey),
+    baseUrl: creds.baseUrl || null,
+  };
+}
+
 // ---- Courier (Steadfast) ---------------------------------------------------
 export interface CourierSettings {
   enabled: boolean;

@@ -48,6 +48,22 @@ const RUNTIME_PASS = "app_runtime_local_pw";
 
 let pg: EmbeddedPostgres | null = null;
 
+// ── CI integrity: stop async-exit-hook from masking test failures ───────────
+// embedded-postgres (imported above) registers `async-exit-hook`, whose
+// `beforeExit` handler force-calls process.exit(0) once the event loop drains.
+// Vitest reports a failed run via `process.exitCode = 1` WITHOUT calling
+// process.exit(), so that hook clobbers the code back to 0 — every failing test
+// then exits 0, turning a red suite green. On CI (which auto-deploys on green)
+// that ships broken code undetected. teardown() already stops the cluster, so
+// the hook's cleanup is redundant here. Win the race: on `beforeExit`, exit
+// synchronously with vitest's real code before the hook's queued exit(0) fires.
+let exitGuarded = false;
+process.on("beforeExit", () => {
+  if (exitGuarded) return;
+  exitGuarded = true;
+  process.exit(process.exitCode ?? 0);
+});
+
 async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = createServer();

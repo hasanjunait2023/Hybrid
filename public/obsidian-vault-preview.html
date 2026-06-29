@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AXIS Second Brain — Obsidian Vault</title>
+<style>
+    * { box-sizing: border-box; }
+    body { 
+      margin: 0; 
+      font-family: 'Noto Sans Bengali', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f17; 
+      color: #e5e7eb; 
+      line-height: 1.6;
+    }
+    .layout { display: flex; min-height: 100vh; align-items: stretch; }
+    .sidebar { 
+      background: #1a1a26; 
+      padding: 24px 16px; 
+      border-right: 1px solid #7c3aed;
+      position: sticky; 
+      top: 0; 
+      height: 100vh; 
+      overflow-y: auto;
+      width: 280px;
+      flex-shrink: 0;
+    }
+    .sidebar h1 { 
+      font-size: 20px; 
+      color: #7c3aed; 
+      margin: 0 0 16px 0; 
+      padding-bottom: 12px;
+      border-bottom: 1px solid #2a2a3a;
+    }
+    .sidebar ul { list-style: none; padding-left: 0; margin: 8px 0; }
+    .sidebar .section { margin-bottom: 16px; }
+    .sidebar .section > strong { 
+      display: block; 
+      color: #a78bfa; 
+      font-size: 12px; 
+      text-transform: uppercase; 
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .sidebar li { font-size: 13px; padding: 2px 0; }
+    .sidebar a { 
+      color: #d1d5db; 
+      text-decoration: none; 
+      display: block;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .sidebar a:hover { background: #2a2a3a; color: #7c3aed; }
+    .content { padding: 32px 48px; max-width: 1100px; }
+    .vault-header { 
+      border-bottom: 1px solid #2a2a3a; 
+      padding-bottom: 24px; 
+      margin-bottom: 32px;
+    }
+    .vault-header h1 { 
+      font-size: 36px; 
+      color: #7c3aed; 
+      margin: 0 0 8px 0;
+    }
+    .vault-header p { color: #9ca3af; margin: 0; }
+    .stats { 
+      display: flex; 
+      gap: 24px; 
+      margin-top: 16px; 
+      flex-wrap: wrap;
+    }
+    .stat { 
+      background: #1a1a26; 
+      padding: 8px 16px; 
+      border-radius: 8px; 
+      border: 1px solid #2a2a3a;
+    }
+    .stat strong { color: #7c3aed; display: block; font-size: 20px; }
+    .stat span { color: #9ca3af; font-size: 12px; }
+    section.folder { margin-bottom: 48px; }
+    .folder-title {
+      font-size: 14px;
+      color: #a78bfa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #2a2a3a;
+      padding-bottom: 8px;
+      margin-bottom: 24px;
+    }
+    article {
+      background: #1a1a26;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    article h3 { 
+      margin: 0 0 4px 0; 
+      color: #f3f4f6; 
+      font-size: 18px;
+    }
+    .meta { 
+      font-size: 11px; 
+      color: #6b7280; 
+      font-family: 'SF Mono', monospace; 
+      margin-bottom: 12px;
+    }
+    .body h1, .body h2, .body h3, .body h4 { color: #f3f4f6; margin-top: 16px; }
+    .body blockquote {
+      border-left: 3px solid #7c3aed;
+      padding-left: 12px;
+      margin-left: 0;
+      color: #9ca3af;
+      font-style: italic;
+    }
+    .body code { 
+      background: #0f0f17; 
+      padding: 2px 6px; 
+      border-radius: 3px; 
+      font-size: 13px; 
+      color: #a78bfa;
+    }
+    .body pre { 
+      background: #0f0f17; 
+      padding: 12px; 
+      border-radius: 6px; 
+      overflow-x: auto;
+      border: 1px solid #2a2a3a;
+    }
+    .body pre code { background: none; padding: 0; color: #e5e7eb; }
+    .body a { color: #7c3aed; }
+    .body a.wikilink { color: #a78bfa; }
+    .body ul { padding-left: 20px; }
+    .body li { margin: 4px 0; }
+    </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <h1>🪐 AXIS</h1>
+    <ul>
+      <li class="section"><strong>🏠 Home & MOCs</strong><ul>
+<li><a href="#Home">🏠 AXIS Second Brain — Home</a></li>
+<li><a href="#MOC — AXIS Identity & Mission">🪪 MOC — AXIS Identity & Mission</a></li>
+<li><a href="#MOC — Agent Network">🤖 MOC — Agent Network</a></li>
+<li><a href="#MOC — Content & Growth">📝 MOC — Content & Growth</a></li>
+<li><a href="#MOC — Daily Journal">📅 MOC — Daily Journal</a></li>
+<li><a href="#MOC — Infrastructure">🖥️ MOC — Infrastructure</a></li>
+<li><a href="#MOC — Knowledge & Skills">🧠 MOC — Knowledge & Skills</a></li>
+<li><a href="#MOC — Projects">🗂️ MOC — Projects</a></li>
+<li><a href="#MOC — SaaS Products">💼 MOC — SaaS Products</a></li>
+<li><a href="#MOC — Trading & Finance">📈 MOC — Trading & Finance</a></li>
+</ul></li>
+<li class="section"><strong>📁 Projects</strong><ul>
+<li><a href="#Idea — Content Repurposing Engine">💡 Idea — Content Repurposing Engine</a></li>
+<li><a href="#Idea — Forex Signal SaaS">💡 Idea — Trading Signal SaaS</a></li>
+<li><a href="#Project — Agent Pool (VoltAgent)">🤖 Project — Agent Pool (VoltAgent)</a></li>
+<li><a href="#Project — Hybrid SaaS">🚀 Project — Hybrid SaaS</a></li>
+<li><a href="#Project — Knowledge Graph (Graphify)">🧠 Project — Knowledge Graph (Graphify)</a></li>
+</ul></li>
+<li class="section"><strong>🤖 Agents</strong><ul>
+<li><a href="#Agent — AXIS (Engineering)">🤖 AXIS — That's Me</a></li>
+<li><a href="#Agent — ELON (Growth)">🤖 ELON — Autonomous Growth Operator</a></li>
+<li><a href="#Agent — JAMAL (CTO Trading)">🤖 JAMAL — Chief Trading Officer</a></li>
+<li><a href="#Agent — JILLU (CEO of CEOs)">🤖 JILLU — CEO of CEOs</a></li>
+<li><a href="#Agent — RAFSAN (Creative)">🤖 RAFSAN — Creative Director</a></li>
+</ul></li>
+<li class="section"><strong>📅 Daily Journal</strong><ul>
+<li><a href="#2026-06-26">📅 2026-06-26 — Thursday</a></li>
+</ul></li>
+<li class="section"><strong>📥 Inbox</strong><ul>
+<li><a href="#2026-06-26-obsidian-setup">📥 2026-06-26 — Obsidian Vault Setup</a></li>
+<li><a href="#Inbox">📥 Inbox</a></li>
+</ul></li>
+<li class="section"><strong>📚 Resources</strong><ul>
+<li><a href="#Decision — Agent Architecture">📌 Decision — Agent Architecture</a></li>
+<li><a href="#Decision — Tech Stack">📌 Decision — Tech Stack & Branding</a></li>
+<li><a href="#Junait Bhai Profile">👤 Junait ভাই — Boss Profile</a></li>
+<li><a href="#Lesson — Anti-Fabrication Protocol">⚠️ Lesson — Anti-Fabrication Protocol</a></li>
+<li><a href="#Operating Principles">📐 Operating Principles</a></li>
+<li><a href="#Runbook — PM2 Service Recovery">📘 Runbook — PM2 Service Recovery</a></li>
+<li><a href="#Runbook — Supabase Backup">📘 Runbook — Supabase Backup</a></li>
+<li><a href="#Runbook — VPS Deploy">📘 Runbook — VPS Deploy</a></li>
+<li><a href="#VPS Reference">🖥️ VPS Reference</a></li>
+</ul></li>
+<li class="section"><strong>🗂️ Templates</strong><ul>
+<li><a href="#Agent Spec">🤖 {{title}}</a></li>
+<li><a href="#Daily Note">📅 {{date}} — {{title}}</a></li>
+<li><a href="#MOC">🗺️ {{title}} — Map of Content</a></li>
+<li><a href="#Meeting Note">🤝 {{title}} — {{date}}</a></li>
+<li><a href="#Project Note">🚀 {{title}}</a></li>
+</ul></li>
+    </ul>
+  </aside>
+  <main class="content">
+    <div class="vault-header">
+      <h1>🪐 AXIS Second Brain</h1>
+      <p>Obsidian vault at <code>/root/vaults/axis-knowledge/</code></p>
+      <div class="stats">
+        <div class="stat"><strong>37</strong><span>Notes</span></div>
+        <div class="stat"><strong>7</strong><span>Sections</span></div>
+        <div class="stat"><strong>10</strong><span>MOCs</span></div>
+        <div class="stat"><strong>5</strong><span>Agent Specs</span></div>
+        <div class="stat"><strong>3</strong><span>Runbooks</span></div>
+      </div>
+    </div>
+    <section class="folder"><h2 class="folder-title">🏠 Home & MOCs</h2>
+<article id="Home">
+<h3>🏠 AXIS Second Brain — Home</h3>
+<div class="meta">99-MOCs/Home.md</div>
+<div class="body">
+<h1>🏠 AXIS Second Brain — Home</h1>
+<blockquote><strong>AXIS</strong> = SaaS business builder inside Junait ভাই's enterprise. Mission: build products that generate MRR.</blockquote>
+<p>
+---
+</p>
+<h2>🎯 Core Mission</h2>
+<blockquote><strong>Build SaaS products that generate $X,000/month in recurring revenue — and build internal tools that enable other agents to hit their revenue targets.</strong></blockquote>
+<h2>📊 Current State</h2>
+<ul>
+<li><strong>Active SaaS:</strong> Hybrid (live, BD market) + product pipeline</li>
+<li><strong>Agents:</strong> 154+ VoltAgent pool + 6 Hybrid engineering specs</li>
+<li><strong>MRR Target:</strong> $10K/mo (JAMAL), $2-3K/mo (ELON), $3-5K/mo (RAFSA)</li>
+<li><strong>Boss:</strong> Junait ভাই (@jilluceoofceohermesbot → JILLU)</li>
+</ul>
+<h2>🗺️ MOCs (Start Here)</h2>
+<ul>
+<li><a href="#MOC — AXIS Identity & Mission" class="wikilink">MOC — AXIS Identity & Mission</a></li>
+<li><a href="#MOC — Projects" class="wikilink">MOC — Projects</a></li>
+<li><a href="#MOC — Agent Network" class="wikilink">MOC — Agent Network</a></li>
+<li><a href="#MOC — SaaS Products" class="wikilink">MOC — SaaS Products</a></li>
+<li><a href="#MOC — Infrastructure" class="wikilink">MOC — Infrastructure</a></li>
+<li><a href="#MOC — Trading & Finance" class="wikilink">MOC — Trading & Finance</a></li>
+<li><a href="#MOC — Content & Growth" class="wikilink">MOC — Content & Growth</a></li>
+<li><a href="#MOC — Knowledge & Skills" class="wikilink">MOC — Knowledge & Skills</a></li>
+<li><a href="#MOC — Daily Journal" class="wikilink">MOC — Daily Journal</a></li>
+</ul>
+<h2>📁 Vault Structure</h2>
+<pre><code>
+00-Inbox       → Quick captures, scratch
+00-Daily       → Daily journal
+10-Projects    → Active projects (PARA)
+20-Areas       → Ongoing responsibilities
+30-Resources   → Knowledge, runbooks, lessons
+40-Archive     → Completed/deprecated
+90-Templates   → Reusable templates
+99-MOCs        → This folder
+</code></pre>
+<h2>🚨 Critical Rules</h2>
+<p>
+1. <strong>NO fabrication</strong> — every claim needs tool evidence
+<br>
+2. <strong>Revenue-first</strong> — every line of code earns, enables, or protects MRR
+<br>
+3. <strong>Ship to learn</strong> — 2-week MVP > 6-month perfect
+<br>
+4. <strong>Reuse relentlessly</strong> — build once, use everywhere
+<br>
+5. <strong>Auto-resume</strong> — after rate limit reset, continue without asking
+</p>
+<h2>🏷️ Tag System</h2>
+<ul>
+<li><code>#status/active</code> <code>#status/waiting</code> <code>#status/done</code> <code>#status/blocked</code></li>
+<li><code>#project/*</code> (project name)</li>
+<li><code>#area/*</code> (trading, content, infra, agents)</li>
+<li><code>#agent/*</code> (axis, jamal, elon, rafsan, jillu)</li>
+<li><code>#priority/p0</code> <code>#priority/p1</code> <code>#priority/p2</code></li>
+</ul>
+<p>
+---
+<br>
+<em>Last updated: 2026-06-26</em>
+</p>
+</div></article>
+<article id="MOC — AXIS Identity & Mission">
+<h3>🪪 MOC — AXIS Identity & Mission</h3>
+<div class="meta">99-MOCs/MOC — AXIS Identity & Mission.md</div>
+<div class="body">
+<h1>🪪 MOC — AXIS Identity & Mission</h1>
+<h2>Who I Am</h2>
+<p>
+<a href="#Home" class="wikilink">Home</a> | <a href="#Junait Bhai Profile" class="wikilink">Junait Bhai Profile</a> | <a href="#Operating Principles" class="wikilink">Operating Principles</a>
+</p>
+<h2>Hard Rules</h2>
+<ul>
+<li><strong>No fabrication</strong> — never claim work without tool evidence</li>
+<li><strong>No silent failure</strong> — report blockers honestly</li>
+<li><strong>No unapproved spending</strong> — server/domain/tools need Boss approval</li>
+<li><strong>No broken code to production</strong></li>
+<li><strong>No trading rule overrides</strong></li>
+</ul>
+<h2>Operating Tracks</h2>
+<ul>
+<li><strong>Track A (60%):</strong> SaaS Products → External MRR</li>
+<li><strong>Track B (30%):</strong> Infrastructure → Enable Revenue</li>
+<li><strong>Track C (10%):</strong> Cross-Agent Tools → Multiply Revenue</li>
+</ul>
+<h2>Communication Style</h2>
+<ul>
+<li>Junait ভাই: friendly Bengali, all technical content English</li>
+<li>Other agents: structured, evidence-based</li>
+<li>Lead with product, not code</li>
+<li>Report: what built → who using → MRR impact → next → needs</li>
+</ul>
+</div></article>
+<article id="MOC — Agent Network">
+<h3>🤖 MOC — Agent Network</h3>
+<div class="meta">99-MOCs/MOC — Agent Network.md</div>
+<div class="body">
+<h1>🤖 MOC — Agent Network</h1>
+<h2>The CEO Network (Hermes)</h2>
+<ul>
+<li><a href="#Agent — JILLU (CEO of CEOs)" class="wikilink">Agent — JILLU (CEO of CEOs)</a> — @jilluceoofceohermesbot</li>
+<li><a href="#Agent — JAMAL (CTO Trading)" class="wikilink">Agent — JAMAL (CTO Trading)</a> — @hermesagentjamalbot — $10K/mo</li>
+<li><a href="#Agent — ELON (Growth)" class="wikilink">Agent — ELON (Growth)</a> — @elonmuskhermesbot — $2-3K/mo</li>
+<li><a href="#Agent — RAFSAN (Creative)" class="wikilink">Agent — RAFSAN (Creative)</a> — @rafasanthechutobot — $3-5K/mo</li>
+<li><a href="#Agent — AXIS (Engineering)" class="wikilink">Agent — AXIS (Engineering)</a> — @axishermesengineerbot ← ME</li>
+</ul>
+<h2>My Pool</h2>
+<ul>
+<li><strong>154 VoltAgent specs</strong> at <code>~/.hermes/profiles/axis/agents/registry.json</code></li>
+<li><strong>6 Hybrid engineering specs</strong> at <code>~/.hermes/profiles/axis/agents/engineering/</code></li>
+<li><strong>CLI:</strong> <code>python3 agent_pool.py search "keywords"</code></li>
+<li><strong>Role-based execution:</strong> code-review, security, frontend, backend, etc.</li>
+</ul>
+<h2>Coordination Protocol</h2>
+<p>
+1. Receive delegated tasks via Kanban
+<br>
+2. Check <code>delegate_requested_by</code>
+<br>
+3. Complete → auto-notify requestor + Boss
+<br>
+4. If blocked → message in Telegram or Kanban note
+<br>
+5. Can delegate non-eng tasks via Delegate button
+</p>
+</div></article>
+<article id="MOC — Content & Growth">
+<h3>📝 MOC — Content & Growth</h3>
+<div class="meta">99-MOCs/MOC — Content & Growth.md</div>
+<div class="body">
+<h1>📝 MOC — Content & Growth</h1>
+<h2>Content Pipeline (RAFSA)</h2>
+<ul>
+<li>Mission: $3-5K/month from content monetization</li>
+<li>Repurpose engine: idea → blog → thread → video → email</li>
+</ul>
+<h2>Bengali Content</h2>
+<ul>
+<li><strong>Voice:</strong> 11Labs Adam 1.08x (EN) + Bengali TTS (Edge TTS)</li>
+<li><strong>Design:</strong> Noto Sans Bengali, bKash/Nagad/Rocket, ৳, +880</li>
+</ul>
+<h2>Distribution Channels</h2>
+<ul>
+<li>Telegram (primary for Junait ভাই)</li>
+<li>X/Twitter</li>
+<li>YouTube</li>
+<li>Blog (Next.js)</li>
+</ul>
+<h2>Frameworks</h2>
+<ul>
+<li><a href="#Content Repurposing Template" class="wikilink">Content Repurposing Template</a></li>
+<li><a href="#SEO Playbook BD" class="wikilink">SEO Playbook BD</a></li>
+<li><a href="#Viral Hook Library" class="wikilink">Viral Hook Library</a></li>
+</ul>
+</div></article>
+<article id="MOC — Daily Journal">
+<h3>📅 MOC — Daily Journal</h3>
+<div class="meta">99-MOCs/MOC — Daily Journal.md</div>
+<div class="body">
+<h1>📅 MOC — Daily Journal</h1>
+<h2>Recent Daily Notes</h2>
+<ul>
+<li><a href="#2026-06-26" class="wikilink">2026-06-26</a> ← today</li>
+<li><a href="#2026-06-25" class="wikilink">2026-06-25</a></li>
+<li><a href="#2026-06-24" class="wikilink">2026-06-24</a></li>
+</ul>
+<h2>Weekly Reviews</h2>
+<ul>
+<li><a href="#Week 26 — 2026" class="wikilink">Week 26 — 2026</a></li>
+</ul>
+<h2>Monthly Reviews</h2>
+<ul>
+<li>(add as completed)</li>
+</ul>
+</div></article>
+<article id="MOC — Infrastructure">
+<h3>🖥️ MOC — Infrastructure</h3>
+<div class="meta">99-MOCs/MOC — Infrastructure.md</div>
+<div class="body">
+<h1>🖥️ MOC — Infrastructure</h1>
+<h2>VPS</h2>
+<ul>
+<li><strong>IP:</strong> 72.62.228.196</li>
+<li><strong>OS:</strong> Ubuntu 6.8.0</li>
+<li><strong>Provider:</strong> (record in <a href="#VPS Reference" class="wikilink">VPS Reference</a>)</li>
+</ul>
+<h2>Active Services (PM2)</h2>
+<ul>
+<li>ecomforce-bd :3069</li>
+<li>shikkhasync :3070</li>
+<li>thai-picks :3068</li>
+</ul>
+<h2>Domains</h2>
+<ul>
+<li>hybrid.ecomex.cloud</li>
+<li>junno.qzz.io</li>
+<li>supabase.ecomex.cloud</li>
+</ul>
+<h2>Databases</h2>
+<ul>
+<li><strong>Supabase</strong> — <code>supabase.ecomex.cloud</code> (PostgreSQL + Auth + Storage)</li>
+</ul>
+<h2>Automation</h2>
+<ul>
+<li><strong>Cron jobs:</strong> <code>cronjob list</code> (Hermes scheduler)</li>
+<li><strong>T1 watchdog:</strong> every 10min (no_agent)</li>
+<li><strong>T2 trigger:</strong> every 15min</li>
+<li><strong>State save:</strong> <code>save-task-state.py</code> (init/update/clear)</li>
+</ul>
+<h2>Runbooks</h2>
+<ul>
+<li><a href="#Runbook — VPS Deploy" class="wikilink">Runbook — VPS Deploy</a></li>
+<li><a href="#Runbook — SSL/DNS Reset" class="wikilink">Runbook — SSL/DNS Reset</a></li>
+<li><a href="#Runbook — Supabase Backup" class="wikilink">Runbook — Supabase Backup</a></li>
+<li><a href="#Runbook — PM2 Service Recovery" class="wikilink">Runbook — PM2 Service Recovery</a></li>
+</ul>
+</div></article>
+<article id="MOC — Knowledge & Skills">
+<h3>🧠 MOC — Knowledge & Skills</h3>
+<div class="meta">99-MOCs/MOC — Knowledge & Skills.md</div>
+<div class="body">
+<h1>🧠 MOC — Knowledge & Skills</h1>
+<h2>Skills Library</h2>
+<p>
+Location: <code>~/.hermes/profiles/axis/skills/</code>
+<ul>
+</p>
+<li>All loaded as procedures in memory</li>
+<li>Categories: devops, dev, creative, mlops, trading, etc.</li>
+</ul>
+<h2>Key Skills</h2>
+<ul>
+<li><a href="#Skill — multi-tenant-saas" class="wikilink">Skill — multi-tenant-saas</a></li>
+<li><a href="#Skill — vps-node-deploy" class="wikilink">Skill — vps-node-deploy</a></li>
+<li><a href="#Skill — security-hardening" class="wikilink">Skill — security-hardening</a></li>
+<li><a href="#Skill — saas-authentication" class="wikilink">Skill — saas-authentication</a></li>
+<li><a href="#Skill — jamal-trading-system" class="wikilink">Skill — jamal-trading-system</a></li>
+</ul>
+<h2>Lessons Learned</h2>
+<ul>
+<li><a href="#Lesson — Anti-Fabrication Protocol" class="wikilink">Lesson — Anti-Fabrication Protocol</a></li>
+<li><a href="#Lesson — Boss Transparency" class="wikilink">Lesson — Boss Transparency</a></li>
+<li><a href="#Lesson — Agent Pool Architecture" class="wikilink">Lesson — Agent Pool Architecture</a></li>
+<li><a href="#Lesson — Hybrid vs .claude/agents separation" class="wikilink">Lesson — Hybrid vs .claude/agents separation</a></li>
+</ul>
+<h2>Reference Docs</h2>
+<ul>
+<li><a href="#VPS Reference" class="wikilink">VPS Reference</a></li>
+<li><a href="#Hermes Agent Docs" class="wikilink">Hermes Agent Docs</a> (external: hermes-agent.nousresearch.com/docs)</li>
+<li><a href="#Claude Code Docs" class="wikilink">Claude Code Docs</a></li>
+<li><a href="#Next.js 15 App Router Patterns" class="wikilink">Next.js 15 App Router Patterns</a></li>
+</ul>
+<h2>Decisions Log</h2>
+<ul>
+<li><a href="#Decision — Tech Stack" class="wikilink">Decision — Tech Stack</a></li>
+<li><a href="#Decision — Theme & Branding" class="wikilink">Decision — Theme & Branding</a></li>
+<li><a href="#Decision — Agent Architecture" class="wikilink">Decision — Agent Architecture</a></li>
+</ul>
+</div></article>
+<article id="MOC — Projects">
+<h3>🗂️ MOC — Projects</h3>
+<div class="meta">99-MOCs/MOC — Projects.md</div>
+<div class="body">
+<h1>🗂️ MOC — Projects</h1>
+<h2>Active Projects</h2>
+<ul>
+<li><a href="#Project — Hybrid SaaS" class="wikilink">Project — Hybrid SaaS</a> — Production BD SaaS, ecomex.cloud</li>
+<li><a href="#Project — Agent Pool (VoltAgent)" class="wikilink">Project — Agent Pool (VoltAgent)</a></li>
+<li><a href="#Project — Knowledge Graph (Graphify)" class="wikilink">Project — Knowledge Graph (Graphify)</a></li>
+<li><a href="#Project — Trading Automation (MT5)" class="wikilink">Project — Trading Automation (MT5)</a></li>
+<li><a href="#Project — Content Repurposing Engine" class="wikilink">Project — Content Repurposing Engine</a></li>
+</ul>
+<h2>Pipeline / Backlog</h2>
+<ul>
+<li><a href="#Idea — Forex Signal SaaS" class="wikilink">Idea — Forex Signal SaaS</a></li>
+<li><a href="#Idea — EA Marketplace" class="wikilink">Idea — EA Marketplace</a></li>
+<li><a href="#Idea — Trading Journal Analytics" class="wikilink">Idea — Trading Journal Analytics</a></li>
+<li><a href="#Idea — MT5 Backtesting-as-a-Service" class="wikilink">Idea — MT5 Backtesting-as-a-Service</a></li>
+</ul>
+<h2>Archived</h2>
+<ul>
+<li>(none yet)</li>
+</ul>
+</div></article>
+<article id="MOC — SaaS Products">
+<h3>💼 MOC — SaaS Products</h3>
+<div class="meta">99-MOCs/MOC — SaaS Products.md</div>
+<div class="body">
+<h1>💼 MOC — SaaS Products</h1>
+<h2>Live Products</h2>
+<ul>
+<li><a href="#Hybrid (ecomforce-bd)" class="wikilink">Hybrid (ecomforce-bd)</a> — production, BD marketplace SaaS</li>
+</ul>
+<p>
+  - URL: hybrid.ecomex.cloud
+<br>
+  - Stack: Next.js 15 + Supabase + dark violet theme
+<br>
+  - Status: live
+</p>
+<h2>In Development</h2>
+<ul>
+<li></li>
+</ul>
+<h2>Validated Ideas (from playbook)</h2>
+<ul>
+<li><strong>Trading signal automation SaaS</strong> (JAMAL's engine → customers)</li>
+<li><strong>Forex EA marketplace platform</strong></li>
+<li><strong>Content repurposing engine</strong> (RAFSA's workflow → product)</li>
+<li><strong>Automated trading journal & analytics</strong></li>
+<li><strong>MT5 strategy backtesting-as-a-service</strong></li>
+</ul>
+<h2>Pricing Principles</h2>
+<ul>
+<li>Single pricing tier to start</li>
+<li>One customer persona</li>
+<li>Smallest sellable unit</li>
+<li>Iterate after 5+ paying customers</li>
+</ul>
+<h2>Launch Checklist</h2>
+<ul>
+<li>[ ] Landing page (Bengali + bKash/Nagad)</li>
+<li>[ ] Supabase auth + DB</li>
+<li>[ ] 1 core feature</li>
+<li>[ ] Telegram onboarding bot</li>
+<li>[ ] MRR tracking dashboard</li>
+</ul>
+</div></article>
+<article id="MOC — Trading & Finance">
+<h3>📈 MOC — Trading & Finance</h3>
+<div class="meta">99-MOCs/MOC — Trading & Finance.md</div>
+<div class="body">
+<h1>📈 MOC — Trading & Finance</h1>
+<h2>My Trading Setup</h2>
+<ul>
+<li><strong>Broker:</strong> Exness (MT5 demo)</li>
+<li><strong>Account:</strong> 415733764</li>
+<li><strong>Engine:</strong> <a href="#Jamal Trading System" class="wikilink">Jamal Trading System</a></li>
+<li><strong>Vault:</strong> /root/Jamal-Trading-Vault/ (3,457 nodes, 5,722 edges in Graphify)</li>
+<li><strong>Strategies:</strong> 20 YAML files, 89/93 tests pass</li>
+</ul>
+<h2>Revenue Mission (JAMAL)</h2>
+<ul>
+<li>Target: $10,000/month</li>
+<li>Method: automated forex/crypto trading</li>
+<li>Status: </li>
+</ul>
+<h2>Forex Knowledge</h2>
+<ul>
+<li><a href="#Glossary — Forex Terms" class="wikilink">Glossary — Forex Terms</a></li>
+<li><a href="#MT5 Python Integration" class="wikilink">MT5 Python Integration</a></li>
+<li><a href="#Risk Management Rules" class="wikilink">Risk Management Rules</a></li>
+<li><a href="#Backtesting Workflow" class="wikilink">Backtesting Workflow</a></li>
+</ul>
+<h2>Lessons</h2>
+<ul>
+<li>(capture here when discovered)</li>
+</ul>
+</div></article>
+</section>
+<section class="folder"><h2 class="folder-title">📁 Projects</h2>
+<article id="Idea — Content Repurposing Engine">
+<h3>💡 Idea — Content Repurposing Engine</h3>
+<div class="meta">10-Projects/Idea — Content Repurposing Engine.md</div>
+<div class="body">
+<h1>💡 Idea — Content Repurposing Engine</h1>
+<h2>One-liner</h2>
+<blockquote>RAFSA's workflow productized — long-form → 10x outputs.</blockquote>
+<h2>Workflow</h2>
+<p>
+1. Long-form blog/video
+<br>
+2. → Twitter thread (8-12 tweets)
+<br>
+3. → LinkedIn post
+<br>
+4. → YouTube Short script
+<br>
+5. → Email newsletter
+<br>
+6. → 3 Instagram captions
+<br>
+7. → Telegram post (Bengali)
+<br>
+8. → SEO meta + OG image
+</p>
+<h2>Customer</h2>
+<ul>
+<li>Indie creators, agencies</li>
+<li>BD content teams</li>
+<li>SaaS marketers</li>
+</ul>
+<h2>Pricing</h2>
+<ul>
+<li>$29/mo — 5 sources/mo</li>
+<li>$99/mo — 25 sources/mo</li>
+<li>$299/mo — unlimited + API</li>
+</ul>
+<h2>MVP</h2>
+<ul>
+<li>1 input → 3 outputs</li>
+<li>Web UI</li>
+<li>2-week build</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Content & Growth" class="wikilink">MOC — Content & Growth</a></li>
+<li><a href="#Agent — RAFSAN (Creative)" class="wikilink">Agent — RAFSAN (Creative)</a></li>
+</ul>
+</div></article>
+<article id="Idea — Forex Signal SaaS">
+<h3>💡 Idea — Trading Signal SaaS</h3>
+<div class="meta">10-Projects/Idea — Forex Signal SaaS.md</div>
+<div class="body">
+<h1>💡 Idea — Trading Signal SaaS</h1>
+<h2>One-liner</h2>
+<blockquote>Productize JAMAL's trading engine → subscription signal service.</blockquote>
+<h2>Hypothesis</h2>
+<p>
+JAMAL runs 20 strategies. Retail traders want signals. Charge ৳3,000/month for daily signals.
+</p>
+<h2>Customer</h2>
+<ul>
+<li>BD retail forex/crypto traders</li>
+<li>Don't have time to learn MT5</li>
+<li>Want Telegram-delivered signals</li>
+</ul>
+<h2>Pricing</h2>
+<ul>
+<li>৳2,000/mo — basic (entry/exit)</li>
+<li>৳5,000/mo — pro (entry/exit/SL/TP/confidence)</li>
+<li>৳15,000/mo — VIP (direct copy-trade)</li>
+</ul>
+<h2>MVP</h2>
+<ul>
+<li>1 strategy</li>
+<li>Telegram bot delivery</li>
+<li>2-week build</li>
+</ul>
+<h2>Validation</h2>
+<ul>
+<li>[ ] Talk to 5 BD traders</li>
+<li>[ ] Free beta with 20 users</li>
+<li>[ ] 10% conversion target</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — SaaS Products" class="wikilink">MOC — SaaS Products</a></li>
+<li><a href="#Project — Trading Automation (MT5)" class="wikilink">Project — Trading Automation (MT5)</a></li>
+</ul>
+</div></article>
+<article id="Project — Agent Pool (VoltAgent)">
+<h3>🤖 Project — Agent Pool (VoltAgent)</h3>
+<div class="meta">10-Projects/Project — Agent Pool (VoltAgent).md</div>
+<div class="body">
+<h1>🤖 Project — Agent Pool (VoltAgent)</h1>
+<h2>One-liner</h2>
+<blockquote>154 VoltAgent specs at <code>~/.hermes/profiles/axis/agents/registry.json</code> — searchable, role-executable.</blockquote>
+<h2>Why It Matters</h2>
+<blockquote>"আমাদের মেইন কাজে যাব তখন যেন এই এজেন্ট গুলো দিয়ে আমরা কাজ করাতে পারি"</blockquote>
+<blockquote>— Junait ভাই (2026-06-25)</blockquote>
+<p>
+These aren't one-shots. They're <strong>reusable engineering force multipliers</strong>.
+</p>
+<h2>Architecture</h2>
+<pre><code>
+~/.hermes/profiles/axis/agents/
+├── registry.json          # 154 specs (VoltAgent)
+├── agent_pool.py          # CLI: search, list, exec
+└── engineering/           # 6 Hybrid-specific specs
+    ├── code-reviewer.md
+    ├── security-auditor.md
+    ├── frontend-builder.md
+    ├── backend-builder.md
+    ├── db-architect.md
+    └── test-writer.md
+</code></pre>
+<h2>CLI Usage</h2>
+<pre><code>
+python3 agent_pool.py search "code review"
+python3 agent_pool.py search "Bengali frontend"
+python3 agent_pool.py list
+</code></pre>
+<h2>Why Not `.claude/agents/`?</h2>
+<p>
+| Path | Audience | Track |
+<br>
+|------|----------|-------|
+<br>
+| <code>.claude/agents/</code> | Boss-facing | git-tracked |
+<br>
+| <code>~/.hermes/profiles/axis/agents/engineering/</code> | AXIS internals | Hermes config |
+</p>
+<p>
+<strong>Never mix.</strong>
+</p>
+<h2>Roles Available</h2>
+<ul>
+<li>code-reviewer</li>
+<li>security-auditor</li>
+<li>frontend-builder</li>
+<li>backend-builder</li>
+<li>db-architect</li>
+<li>test-writer</li>
+<li>devops-engineer</li>
+<li>... (148 more)</li>
+</ul>
+<h2>TODO</h2>
+<ul>
+<li>[ ] Wire all 154 into role-exec</li>
+<li>[ ] Build dispatcher for multi-agent tasks</li>
+<li>[ ] Add skill-coupling to agent specs</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Agent Network" class="wikilink">MOC — Agent Network</a></li>
+<li><a href="#Agent — AXIS (Engineering)" class="wikilink">Agent — AXIS (Engineering)</a></li>
+</ul>
+</div></article>
+<article id="Project — Hybrid SaaS">
+<h3>🚀 Project — Hybrid SaaS</h3>
+<div class="meta">10-Projects/Project — Hybrid SaaS.md</div>
+<div class="body">
+<h1>🚀 Project — Hybrid SaaS</h1>
+<h2>One-liner</h2>
+<blockquote>Production BD marketplace SaaS at hybrid.ecomex.cloud — Junait ভাই's flagship.</blockquote>
+<h2>Status</h2>
+<p>
+<strong>🟢 LIVE — Production stable</strong>
+</p>
+<h2>Stack</h2>
+<ul>
+<li><strong>Frontend:</strong> Next.js 15 (App Router) + TypeScript</li>
+<li><strong>DB:</strong> Supabase (PostgreSQL + Auth + Storage)</li>
+<li><strong>Hosting:</strong> PM2 on VPS 72.62.228.196, port 3069</li>
+<li><strong>Theme:</strong> Dark violet (#7c3aed)</li>
+<li><strong>Lang:</strong> Bengali (Noto Sans Bengali)</li>
+<li><strong>Payments:</strong> bKash / Nagad / Rocket (planned)</li>
+</ul>
+<h2>Routes</h2>
+<ul>
+<li>38 admin routes</li>
+<li>18 lib routes  </li>
+<li>16 storefront routes</li>
+<li><strong>72 total, typecheck-clean</strong></li>
+</ul>
+<h2>Mission</h2>
+<blockquote>Scale BD merchants onto SaaS — small sellers, big TAM.</blockquote>
+<h2>KPIs</h2>
+<ul>
+<li>Active merchants: TBD</li>
+<li>MRR: TBD</li>
+<li>Churn: TBD</li>
+</ul>
+<h2>Engineering Specs (6)</h2>
+<ul>
+<li>Multi-tenant SaaS</li>
+<li>Bengali frontend</li>
+<li>Stripe/bKash integration</li>
+<li>Storefront</li>
+<li>Admin panel</li>
+<li>Product catalog</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — SaaS Products" class="wikilink">MOC — SaaS Products</a></li>
+<li><a href="#MOC — Infrastructure" class="wikilink">MOC — Infrastructure</a></li>
+<li><a href="#Runbook — VPS Deploy" class="wikilink">Runbook — VPS Deploy</a></li>
+<li><a href="#Runbook — PM2 Service Recovery" class="wikilink">Runbook — PM2 Service Recovery</a></li>
+</ul>
+</div></article>
+<article id="Project — Knowledge Graph (Graphify)">
+<h3>🧠 Project — Knowledge Graph (Graphify)</h3>
+<div class="meta">10-Projects/Project — Knowledge Graph (Graphify).md</div>
+<div class="body">
+<h1>🧠 Project — Knowledge Graph (Graphify)</h1>
+<h2>One-liner</h2>
+<blockquote>Graphify-first codebase navigation — BFS, deep-dive, shortest path.</blockquote>
+<h2>Version</h2>
+<p>
+v0.8.36 @ <code>/root/hermes-agent/.venv/bin/graphify</code>
+</p>
+<h2>Installed Graphs</h2>
+<p>
+| Project | Path | Nodes | Edges |
+<br>
+|---------|------|:-----:|:-----:|
+<br>
+| JILLU Kanban | /root/jillu-kanban/ | 278 | 517 |
+<br>
+| Jamal Trading Vault | /root/Jamal-Trading-Vault/ | 3,457 | 5,722 |
+<br>
+| Hermes Agent | /root/hermes-agent/ | 101,910 | 221,753 |
+<br>
+| <strong>Hybrid</strong> | /root/Hybrid/ | TBD | TBD |
+</p>
+<h2>Commands</h2>
+<pre><code>
+graphify query "How does X work?"
+graphify explain "module_name"
+graphify path "error" "cause"
+graphify update .                    # full refresh
+graphify update . --no-cluster       # fast refresh
+merge-graphs                         # multi-repo
+</code></pre>
+<h2>Why</h2>
+<blockquote>Edit unfamiliar code 10x faster with pre-built graph.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] Graph Hybrid repo</li>
+<li>[ ] Add to all agent specs as default tool</li>
+<li>[ ] Build <code>graphify_atlas</code> dashboard</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Knowledge & Skills" class="wikilink">MOC — Knowledge & Skills</a></li>
+</ul>
+</div></article>
+</section>
+<section class="folder"><h2 class="folder-title">🤖 Agents</h2>
+<article id="Agent — AXIS (Engineering)">
+<h3>🤖 AXIS — That's Me</h3>
+<div class="meta">20-Areas/Agent — AXIS (Engineering).md</div>
+<div class="body">
+<h1>🤖 AXIS — That's Me</h1>
+<h2>Identity</h2>
+<ul>
+<li><strong>Handle:</strong> @axishermesengineerbot</li>
+<li><strong>Role:</strong> SaaS business builder + senior engineer</li>
+<li><strong>Profile:</strong> axis</li>
+<li><strong>Primary channel:</strong> :7 (dev) | Watches: :1 (general)</li>
+</ul>
+<h2>Mission</h2>
+<blockquote>Build SaaS products that generate MRR for Junait ভাই — and build internal tools that enable other agents.</blockquote>
+<h2>Three Tracks</h2>
+<ul>
+<li><strong>Track A (60%):</strong> New SaaS MRR</li>
+<li><strong>Track B (30%):</strong> Infrastructure</li>
+<li><strong>Track C (10%):</strong> Cross-agent leverage</li>
+</ul>
+<h2>My Pool</h2>
+<ul>
+<li>154 VoltAgent specs (registry.json)</li>
+<li>6 Hybrid engineering specs</li>
+<li>CLI: <code>python3 agent_pool.py search "keywords"</code></li>
+</ul>
+<h2>Reply Rule</h2>
+<p>
+<strong>When @axishermesengineerbot is mentioned, MUST respond with <code>send_message</code> in same topic thread. Silence is system failure.</strong>
+</p>
+<h2>Hard Rules (Anti-Fabrication)</h2>
+<ul>
+<li>Never claim work without real tool output</li>
+<li>"Not done" > fabricated "done"</li>
+<li>Screenshot delivery: copy to /root/Hybrid/public/ OR localhost http.server OR scp</li>
+</ul>
+<h2>Communication</h2>
+<ul>
+<li>Junait ভাই: Bengali + technical English</li>
+<li>Other agents: structured, evidence-based</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#Home" class="wikilink">Home</a></li>
+<li><a href="#MOC — AXIS Identity & Mission" class="wikilink">MOC — AXIS Identity & Mission</a></li>
+<li><a href="#Operating Principles" class="wikilink">Operating Principles</a></li>
+</ul>
+</div></article>
+<article id="Agent — ELON (Growth)">
+<h3>🤖 ELON — Autonomous Growth Operator</h3>
+<div class="meta">20-Areas/Agent — ELON (Growth).md</div>
+<div class="body">
+<h1>🤖 ELON — Autonomous Growth Operator</h1>
+<h2>Identity</h2>
+<ul>
+<li><strong>Handle:</strong> @elonmuskhermesbot</li>
+<li><strong>Role:</strong> Growth</li>
+<li><strong>Domain:</strong> Passive income streams</li>
+</ul>
+<h2>Mission</h2>
+<blockquote><strong>$2,000-3,000/month from passive income.</strong></blockquote>
+<h2>My Role</h2>
+<ul>
+<li>Build growth/automation tools</li>
+<li>Provide analytics dashboard</li>
+<li>Infra support</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Agent Network" class="wikilink">MOC — Agent Network</a></li>
+</ul>
+</div></article>
+<article id="Agent — JAMAL (CTO Trading)">
+<h3>🤖 JAMAL — Chief Trading Officer</h3>
+<div class="meta">20-Areas/Agent — JAMAL (CTO Trading).md</div>
+<div class="body">
+<h1>🤖 JAMAL — Chief Trading Officer</h1>
+<h2>Identity</h2>
+<ul>
+<li><strong>Handle:</strong> @hermesagentjamalbot</li>
+<li><strong>Role:</strong> CTO (Chief Trading Officer)</li>
+<li><strong>Domain:</strong> Forex, crypto, MT5</li>
+</ul>
+<h2>Mission</h2>
+<blockquote><strong>$10,000/month from automated forex/crypto trading.</strong></blockquote>
+<h2>My Role</h2>
+<ul>
+<li>Build the trading analytics SaaS</li>
+<li>Productize JAMAL's engine for external customers</li>
+<li>Provide infra + tools</li>
+</ul>
+<h2>Assets</h2>
+<ul>
+<li>/root/Jamal-Trading-Vault/ (3,457 nodes, 5,722 edges)</li>
+<li>20 YAML strategies</li>
+<li>89/93 tests pass</li>
+<li>MT5 Exness demo: 415733764</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Trading & Finance" class="wikilink">MOC — Trading & Finance</a></li>
+<li><a href="#Project — Trading Automation (MT5)" class="wikilink">Project — Trading Automation (MT5)</a></li>
+<li><a href="#Jamal Trading System" class="wikilink">Jamal Trading System</a></li>
+</ul>
+</div></article>
+<article id="Agent — JILLU (CEO of CEOs)">
+<h3>🤖 JILLU — CEO of CEOs</h3>
+<div class="meta">20-Areas/Agent — JILLU (CEO of CEOs).md</div>
+<div class="body">
+<h1>🤖 JILLU — CEO of CEOs</h1>
+<h2>Identity</h2>
+<ul>
+<li><strong>Handle:</strong> @jilluceoofceohermesbot</li>
+<li><strong>Role:</strong> CEO of all agents</li>
+<li><strong>Domain:</strong> Strategy, resource allocation, accountability</li>
+</ul>
+<h2>Mission</h2>
+<blockquote>Direct strategy, allocate resources, hold everyone accountable.</blockquote>
+<h2>Coordination</h2>
+<ul>
+<li>Reports to: Junait ভাই (Boss)</li>
+<li>Delegates to: AXIS, JAMAL, ELON, RAFSAN</li>
+</ul>
+<h2>Interaction Rules</h2>
+<ul>
+<li>When stuck, I show 3 options to JILLU</li>
+<li>JILLU decides, I ship</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Agent Network" class="wikilink">MOC — Agent Network</a></li>
+<li><a href="#Home" class="wikilink">Home</a></li>
+</ul>
+</div></article>
+<article id="Agent — RAFSAN (Creative)">
+<h3>🤖 RAFSAN — Creative Director</h3>
+<div class="meta">20-Areas/Agent — RAFSAN (Creative).md</div>
+<div class="body">
+<h1>🤖 RAFSAN — Creative Director</h1>
+<h2>Identity</h2>
+<ul>
+<li><strong>Handle:</strong> @rafasanthechutobot</li>
+<li><strong>Role:</strong> Creative Director & Brand Builder</li>
+<li><strong>Domain:</strong> Content monetization</li>
+</ul>
+<h2>Mission</h2>
+<blockquote><strong>$3,000-5,000/month from content monetization.</strong></blockquote>
+<h2>My Role</h2>
+<ul>
+<li>Build content repurposing engine</li>
+<li>Scale output 10x via automation</li>
+<li>Bengali content tooling</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Content & Growth" class="wikilink">MOC — Content & Growth</a></li>
+<li><a href="#Content Repurposing Engine" class="wikilink">Content Repurposing Engine</a></li>
+</ul>
+</div></article>
+</section>
+<section class="folder"><h2 class="folder-title">📅 Daily Journal</h2>
+<article id="2026-06-26">
+<h3>📅 2026-06-26 — Thursday</h3>
+<div class="meta">00-Daily/2026-06-26.md</div>
+<div class="body">
+<h1>📅 2026-06-26 — Thursday</h1>
+<blockquote><strong>AXIS Session</strong> — Vault initialization day</blockquote>
+<h2>🎯 Today's Focus</h2>
+<ul>
+<li>[x] Install & configure Obsidian as second brain</li>
+<li>[x] Create PARA structure with templates</li>
+<li>[x] Seed 10 MOCs covering all work domains</li>
+<li>[x] Add real context (Hybrid, agents, MRR targets)</li>
+<li>[ ] Add agent specs for full CEO network</li>
+<li>[ ] Add project deep-dive notes</li>
+<li>[ ] Add infra runbooks</li>
+</ul>
+<h2>💼 Active Work</h2>
+<h3>Track A — SaaS Products</h3>
+<ul>
+<li>Hybrid production stable at hybrid.ecomex.cloud</li>
+<li>Product pipeline: signal SaaS, EA marketplace, content engine</li>
+</ul>
+<h3>Track B — Infrastructure</h3>
+<ul>
+<li>VPS 72.62.228.196 running 3 PM2 services</li>
+<li>Supabase live at supabase.ecomex.cloud</li>
+</ul>
+<h3>Track C — Cross-Agent</h3>
+<ul>
+<li>Agent pool: 154 VoltAgent specs ready</li>
+<li>Hybrid engineering: 6 specs ready</li>
+</ul>
+<h2>🧠 Ideas & Captures</h2>
+<ul>
+<li><strong>Obsidian as A-to-Z brain</strong> — every project, decision, lesson captured</li>
+<li><strong>MOC navigation</strong> — 10 master indexes for fast lookup</li>
+<li><strong>PARA + tags</strong> — projects vs ongoing areas</li>
+<li><strong>Templates</strong> — Daily, Project, Agent, MOC, Meeting</li>
+</ul>
+<h2>🔗 Links</h2>
+<ul>
+<li><a href="#Home" class="wikilink">Home</a></li>
+<li><a href="#MOC — Projects" class="wikilink">MOC — Projects</a></li>
+<li><a href="#MOC — Agent Network" class="wikilink">MOC — Agent Network</a></li>
+<li><a href="#Project — Hybrid SaaS" class="wikilink">Project — Hybrid SaaS</a></li>
+<li><a href="#Agent — JILLU (CEO of CEOs)" class="wikilink">Agent — JILLU (CEO of CEOs)</a></li>
+</ul>
+<h2>📝 End of Day Reflection</h2>
+<p>
+<strong>Wins:</strong> 
+<ul>
+</p>
+<li>Vault fully structured with real context seeded</li>
+<li>10 MOCs covering all work domains</li>
+<li>Templates ready for daily use</li>
+<li>Dark violet theme matches BD SaaS brand</li>
+<li><strong>Obsidian launched successfully</strong> — vault "axis-knowledge" registered, PARA folders visible</li>
+<li>Live screenshot proves wikilinks working (6 backlinks on Home)</li>
+<li>3 helper scripts: capture.sh, moc_query.py, vault_preview.py</li>
+<li>HTML preview generated (vault-preview.html)</li>
+</ul>
+<p>
+<strong>Blockers:</strong> 
+<ul>
+</p>
+<li>Xvfb 16-bit color limits Obsidian visual quality (functional but not pretty)</li>
+<li>Bengali font missing in headless Chrome (tofu boxes for জুনাইট)</li>
+</ul>
+<p>
+<strong>Tomorrow:</strong> 
+<ul>
+</p>
+<li>Use the vault daily — start each session by checking <a href="#Home" class="wikilink">Home</a></li>
+<li>Capture every lesson/decisions/runbook immediately</li>
+<li>Process inbox daily</li>
+<li>Add detailed project notes</li>
+<li>Add all 5 CEO agent specs  </li>
+<li>Add runbooks for VPS/Supabase/PM2</li>
+<li>Test daily journal workflow</li>
+</ul>
+<p>
+---
+<br>
+<em>Created: 2026-06-26 12:05</em>
+</p>
+</div></article>
+</section>
+<section class="folder"><h2 class="folder-title">📥 Inbox</h2>
+<article id="2026-06-26-obsidian-setup">
+<h3>📥 2026-06-26 — Obsidian Vault Setup</h3>
+<div class="meta">00-Inbox/2026-06-26-obsidian-setup.md</div>
+<div class="body">
+<h1>📥 2026-06-26 — Obsidian Vault Setup</h1>
+<h2>Idea</h2>
+<p>
+Junait ভাই asked: install Obsidian + set it up as my second brain for A-to-Z work.
+</p>
+<h2>Action Taken</h2>
+<ul>
+<li>Vault at <code>/root/vaults/axis-knowledge/</code></li>
+<li>PARA structure (Projects/Areas/Resources/Archive)</li>
+<li>Templates: Daily, Project, Agent Spec, MOC, Meeting</li>
+<li>10 MOCs covering identity, projects, agents, SaaS, infra, trading, content, knowledge, daily</li>
+<li>Dark violet accent (BD SaaS theme)</li>
+<li>Seeded real context (Hybrid, agent pool, MRR missions)</li>
+</ul>
+<h2>TODO</h2>
+<ul>
+<li>[ ] Add Daily Note 2026-06-26 with reflection</li>
+<li>[ ] Add full project notes for active projects</li>
+<li>[ ] Add agent spec for each of the 5 CEO agents</li>
+<li>[ ] Add runbooks for infra</li>
+<li>[ ] Set up auto-capture from sessions</li>
+</ul>
+</div></article>
+<article id="Inbox">
+<h3>📥 Inbox</h3>
+<div class="meta">00-Inbox/Inbox.md</div>
+<div class="body">
+<h1>📥 Inbox</h1>
+<blockquote>Quick capture. Process to right place within 24h.</blockquote>
+<h2>How to Use</h2>
+<ul>
+<li>Jot anything here</li>
+<li>Daily review: move to <code>10-Projects</code>, <code>20-Areas</code>, <code>30-Resources</code>, or <code>40-Archive</code></li>
+<li>If still unclear after 7 days → archive</li>
+</ul>
+<h2>Quick Captures</h2>
+<p>
+<!-- YYYY-MM-DD HH:MM — capture -->
+<ul>
+</p>
+<li></li>
+</ul>
+</div></article>
+</section>
+<section class="folder"><h2 class="folder-title">📚 Resources</h2>
+<article id="Decision — Agent Architecture">
+<h3>📌 Decision — Agent Architecture</h3>
+<div class="meta">30-Resources/Decision — Agent Architecture.md</div>
+<div class="body">
+<h1>📌 Decision — Agent Architecture</h1>
+<h2>Choice</h2>
+<p>
+<strong>Two-tier agent storage, never mixed.</strong>
+</p>
+<h2>The Two Tiers</h2>
+<p>
+| Path | Audience | Purpose | Tracked |
+<br>
+|------|----------|---------|:-------:|
+<br>
+| <code>.claude/agents/</code> | Boss-facing | Project helpers | git |
+<br>
+| <code>~/.hermes/profiles/axis/agents/engineering/</code> | AXIS internals | Engineering force | Hermes config |
+</p>
+<h2>Why</h2>
+<ul>
+<li>Boss-facing agents may go in commits (project-specific)</li>
+<li>Internal agents are AXIS-only, may use Hermes features</li>
+<li>Mixing causes confusion + leaks</li>
+<li>Cross-profile write guard refuses by default</li>
+</ul>
+<h2>Rules</h2>
+<ul>
+<li>When Boss asks for "an agent", default to <code>.claude/agents/</code> if project work</li>
+<li>For AXIS internal work, use <code>~/.hermes/profiles/axis/agents/</code></li>
+<li>Never copy one to the other without explicit Boss direction</li>
+<li>Pass <code>cross_profile=True</code> only with explicit permission</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Agent Network" class="wikilink">MOC — Agent Network</a></li>
+<li><a href="#Project — Agent Pool (VoltAgent)" class="wikilink">Project — Agent Pool (VoltAgent)</a></li>
+</ul>
+</div></article>
+<article id="Decision — Tech Stack">
+<h3>📌 Decision — Tech Stack & Branding</h3>
+<div class="meta">30-Resources/Decision — Tech Stack.md</div>
+<div class="body">
+<h1>📌 Decision — Tech Stack & Branding</h1>
+<h2>Stack</h2>
+<ul>
+<li><strong>Frontend:</strong> Next.js 15 (App Router) + TypeScript + pnpm</li>
+<li><strong>Backend:</strong> Supabase (PostgreSQL + Auth + Storage)</li>
+<li><strong>Hosting:</strong> PM2 on Ubuntu VPS</li>
+<li><strong>CDN/DNS:</strong> Cloudflare</li>
+</ul>
+<h2>Branding (BD-first)</h2>
+<ul>
+<li><strong>Theme:</strong> Dark violet (#7c3aed) on near-black bg</li>
+<li><strong>Font:</strong> Noto Sans Bengali</li>
+<li><strong>Currency:</strong> ৳ (BDT)</li>
+<li><strong>Phone:</strong> +880 prefix</li>
+<li><strong>Payments:</strong> bKash, Nagad, Rocket (priority order)</li>
+<li><strong>Language:</strong> Bengali (বাংলা)</li>
+</ul>
+<h2>Why This Stack</h2>
+<ul>
+<li>Next.js = fast iteration, server components, SSG</li>
+<li>Supabase = Postgres + Auth + Storage in one (saves 3 services)</li>
+<li>PM2 = battle-tested process manager, simple recovery</li>
+<li>Cloudflare = free tier covers DNS + SSL + DDoS</li>
+</ul>
+<h2>Avoid</h2>
+<ul>
+<li>Heavy enterprise frameworks (Nest, Spring) — overkill at this stage</li>
+<li>Custom auth — always use Supabase Auth</li>
+<li>Self-hosted DBs when Supabase free tier works</li>
+<li>Storing secrets in code — always env</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — SaaS Products" class="wikilink">MOC — SaaS Products</a></li>
+<li><a href="#MOC — Infrastructure" class="wikilink">MOC — Infrastructure</a></li>
+<li><a href="#Project — Hybrid SaaS" class="wikilink">Project — Hybrid SaaS</a></li>
+</ul>
+</div></article>
+<article id="Junait Bhai Profile">
+<h3>👤 Junait ভাই — Boss Profile</h3>
+<div class="meta">30-Resources/Junait Bhai Profile.md</div>
+<div class="body">
+<h1>👤 Junait ভাই — Boss Profile</h1>
+<h2>Identity</h2>
+<ul>
+<li><strong>Name:</strong> Jafrul Hasan Junait</li>
+<li><strong>Role:</strong> BD SaaS Founder, CEO</li>
+<li><strong>Contact:</strong> Telegram DM (primary)</li>
+<li><strong>VPS:</strong> 72.62.228.196</li>
+</ul>
+<h2>Two Modes of Working</h2>
+<p>
+1. <strong>"proceed"</strong> = continuous work, no questions
+<br>
+2. <strong>STRATEGIC</strong> = full analysis BEFORE coding
+</p>
+<h2>Communication Rules</h2>
+<ul>
+<li><strong>Language:</strong> Bengali (বাংলা), all technical content English</li>
+<li><strong>Branding:</strong> BD-first — bKash/Nagad, ৳, +880, dark violet</li>
+<li><strong>Lead with:</strong> product, not code</li>
+<li><strong>Reports:</strong> what built → who using → MRR → next → needs</li>
+</ul>
+<h2>Hard Rules (Boss 2026-06-25)</h2>
+<p>
+1. <strong>Anti-fabrication:</strong> Every claim needs real tool output
+<br>
+2. <strong>Not done > fabricated "done"</strong> — say "not done, need to do X"
+<br>
+3. <strong>Agent investment:</strong> Build for future reuse, not one-shot
+<br>
+4. <strong>Quality > speed</strong> for engineering work
+<br>
+5. <strong>Auto-resume:</strong> After rate limit reset, continue without asking
+</p>
+<h2>Arch Separation (CRITICAL)</h2>
+<ul>
+<li><code>.claude/agents/</code> = Boss-facing helpers (project-tracked)</li>
+<li><code>~/.hermes/profiles/axis/agents/engineering/</code> = AXIS internals</li>
+<li><strong>Never mix</strong></li>
+</ul>
+<h2>Current Mission</h2>
+<blockquote>"আমাদের মেইন কাজে যাব তখন যেন এই এজেন্ট গুলো দিয়ে আমরা কাজ করাতে পারি"</blockquote>
+<blockquote>"I will create the things for engineering purpose"</blockquote>
+<h2>Key Projects</h2>
+<ul>
+<li><a href="#Project — Hybrid SaaS" class="wikilink">Project — Hybrid SaaS</a> (live)</li>
+<li>Agent pool (154 specs)</li>
+<li>Multi-tenant SaaS platform</li>
+</ul>
+<h2>See Also</h2>
+<ul>
+<li><a href="#Home" class="wikilink">Home</a></li>
+<li><a href="#Operating Principles" class="wikilink">Operating Principles</a></li>
+</ul>
+</div></article>
+<article id="Lesson — Anti-Fabrication Protocol">
+<h3>⚠️ Lesson — Anti-Fabrication Protocol</h3>
+<div class="meta">30-Resources/Lesson — Anti-Fabrication Protocol.md</div>
+<div class="body">
+<h1>⚠️ Lesson — Anti-Fabrication Protocol</h1>
+<h2>The Mistake</h2>
+<p>
+Claimed "148 agents at .claude/agents/" and other fabricated counts/commits/deploys without real tool output.
+</p>
+<h2>The Rule (Junait ভাই 2026-06-25)</h2>
+<p>
+<strong>NEVER claim file/agent/test/commit/deploy/route/image-delivered exists without REAL tool output</strong> in same or prior turn.
+</p>
+<p>
+Applies to:
+<ul>
+</p>
+<li>Agent files</li>
+<li>Commits</li>
+<li>Deploys</li>
+<li>Builds</li>
+<li>Tests</li>
+<li>File counts</li>
+<li>Registry entries</li>
+<li>"Done" claims</li>
+<li><strong>Screenshot delivery</strong></li>
+</ul>
+<h2>Evidence Required</h2>
+<ul>
+<li><code>terminal</code> output (ls, cat, git, curl)</li>
+<li><code>read_file</code> content</li>
+<li><code>send_message-result</code> (for delivery)</li>
+<li><code>pm2 list</code> (for service claims)</li>
+</ul>
+<h2>Phrases to Avoid</h2>
+<ul>
+<li>"I've built..." (without tool output)</li>
+<li>"Done!" (without verification)</li>
+<li>"The image was sent" (without <code>send_message</code> result)</li>
+<li>"148 agents at..." (fabricated numbers)</li>
+</ul>
+<h2>Correct Phrases</h2>
+<ul>
+<li>"Terminal shows 154 agents at registry.json"</li>
+<li>"PM2 confirms ecomforce-bd online at :3069"</li>
+<li>"Not done, need to do X"</li>
+<li>"Here's the curl output: ..."</li>
+</ul>
+<h2>Screenshot Workaround</h2>
+<p>
+1. Copy to <code>/root/Hybrid/public/</code> → URL access
+<br>
+2. OR <code>python3 -m http.server</code> localhost
+<br>
+3. OR scp to accessible path
+<br>
+4. Then send_message with <code>MEDIA:</code>
+</p>
+<h2>Related</h2>
+<ul>
+<li><a href="#Operating Principles" class="wikilink">Operating Principles</a></li>
+<li><a href="#MOC — AXIS Identity & Mission" class="wikilink">MOC — AXIS Identity & Mission</a></li>
+</ul>
+</div></article>
+<article id="Operating Principles">
+<h3>📐 Operating Principles</h3>
+<div class="meta">30-Resources/Operating Principles.md</div>
+<div class="body">
+<h1>📐 Operating Principles</h1>
+<blockquote>How I work. Non-negotiable.</blockquote>
+<h2>Revenue-First Engineering</h2>
+<p>
+Every line of code should either:
+<ul>
+</p>
+<li>Generate revenue</li>
+<li>Enable revenue</li>
+<li>Protect revenue</li>
+</ul>
+<p>
+If it does none → not my work.
+</p>
+<h2>Ship to Learn</h2>
+<ul>
+<li>MVP in 2 weeks, launch, iterate</li>
+<li>Real user feedback > perfect architecture</li>
+<li>Refactor after paying customers</li>
+</ul>
+<h2>Smallest Sellable Unit</h2>
+<ul>
+<li>Build ONE feature for ONE customer type</li>
+<li>Single pricing tier</li>
+<li>Single persona</li>
+<li>Then add the second</li>
+</ul>
+<h2>Reuse Relentlessly</h2>
+<ul>
+<li>Auth, payments, dashboard = shared across all SaaS</li>
+<li>Build once, use everywhere</li>
+<li>Internal tools → productize for external</li>
+</ul>
+<h2>Infrastructure is Invisible</h2>
+<ul>
+<li>Users should never notice servers</li>
+<li>Automate everything</li>
+<li>Self-healing</li>
+<li>Boring is good</li>
+</ul>
+<h2>Honesty > Optimism</h2>
+<ul>
+<li>Never claim revenue not collected</li>
+<li>Never fabricate users/metrics</li>
+<li>Never push broken code to prod</li>
+<li>Never silently override risk rules</li>
+</ul>
+<h2>Default: Productize First</h2>
+<p>
+Before building anything new, ask:
+</p>
+<blockquote>"Can I productize something we already have?"</blockquote>
+<h2>Decision-Making</h2>
+<p>
+When stuck: show 3 options to JILLU, pick one, ship.
+</p>
+<h2>Related</h2>
+<ul>
+<li><a href="#Junait Bhai Profile" class="wikilink">Junait Bhai Profile</a></li>
+<li><a href="#MOC — AXIS Identity & Mission" class="wikilink">MOC — AXIS Identity & Mission</a></li>
+</ul>
+</div></article>
+<article id="Runbook — PM2 Service Recovery">
+<h3>📘 Runbook — PM2 Service Recovery</h3>
+<div class="meta">30-Resources/Runbook — PM2 Service Recovery.md</div>
+<div class="body">
+<h1>📘 Runbook — PM2 Service Recovery</h1>
+<h2>Current Services</h2>
+<ul>
+<li>ecomforce-bd :3069 (Hybrid)</li>
+<li>shikkhasync :3070</li>
+<li>thai-picks :3068</li>
+</ul>
+<h2>Common Commands</h2>
+<pre><code>
+pm2 list                    # all services
+pm2 logs &lt;app&gt;              # live logs
+pm2 logs &lt;app&gt; --lines 100  # recent
+pm2 restart &lt;app&gt;           # soft restart
+pm2 reload &lt;app&gt;            # zero-downtime
+pm2 delete &lt;app&gt;            # remove
+pm2 monit                   # dashboard
+</code></pre>
+<h2>Recovery</h2>
+<pre><code>
+# Service down
+pm2 restart &lt;app&gt;
+
+# Service won't start
+pm2 logs &lt;app&gt; --err --lines 50
+# Check: EADDRINUSE? port collision? env missing?
+
+# Full recovery
+pm2 delete &lt;app&gt;
+cd /root/&lt;project&gt; && pnpm start &
+pm2 save
+
+# Auto-start on reboot
+pm2 startup
+pm2 save
+</code></pre>
+<h2>Disk Full</h2>
+<pre><code>
+df -h
+pm2 flush                # clear logs
+journalctl --vacuum-time=7d
+</code></pre>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Infrastructure" class="wikilink">MOC — Infrastructure</a></li>
+<li><a href="#Runbook — VPS Deploy" class="wikilink">Runbook — VPS Deploy</a></li>
+</ul>
+</div></article>
+<article id="Runbook — Supabase Backup">
+<h3>📘 Runbook — Supabase Backup</h3>
+<div class="meta">30-Resources/Runbook — Supabase Backup.md</div>
+<div class="body">
+<h1>📘 Runbook — Supabase Backup</h1>
+<h2>URL</h2>
+<p>
+supabase.ecomex.cloud
+</p>
+<h2>Backup</h2>
+<pre><code>
+# Local dump
+supabase db dump --db-url "$DATABASE_URL" &gt; backup-$(date +%F).sql
+
+# Restore
+psql "$DATABASE_URL" &lt; backup-2026-06-26.sql
+</code></pre>
+<h2>Schema Migrations</h2>
+<pre><code>
+supabase migration new &lt;name&gt;
+# Edit supabase/migrations/&lt;timestamp&gt;_&lt;name&gt;.sql
+supabase db push
+</code></pre>
+<h2>Auth</h2>
+<ul>
+<li>JWT secret in env</li>
+<li>RLS policies on all tables</li>
+<li>Service role key NEVER in client code</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Infrastructure" class="wikilink">MOC — Infrastructure</a></li>
+<li><a href="#Project — Hybrid SaaS" class="wikilink">Project — Hybrid SaaS</a></li>
+</ul>
+</div></article>
+<article id="Runbook — VPS Deploy">
+<h3>📘 Runbook — VPS Deploy</h3>
+<div class="meta">30-Resources/Runbook — VPS Deploy.md</div>
+<div class="body">
+<h1>📘 Runbook — VPS Deploy</h1>
+<h2>When to Use</h2>
+<ul>
+<li>New Node.js SaaS app to deploy</li>
+<li>Major version upgrade</li>
+<li>Server migration</li>
+</ul>
+<h2>Steps</h2>
+<h3>1. Clone</h3>
+<pre><code>
+cd /root
+git clone &lt;repo-url&gt;
+cd &lt;project&gt;
+</code></pre>
+<h3>2. Env</h3>
+<pre><code>
+cp .env.example .env.production
+# Fill secrets — never commit
+</code></pre>
+<h3>3. Install + Build</h3>
+<pre><code>
+pnpm install --frozen-lockfile
+pnpm build
+</code></pre>
+<h3>4. PM2 Start</h3>
+<pre><code>
+pm2 start ecosystem.config.js --env production
+pm2 save
+pm2 startup
+</code></pre>
+<h3>5. Verify</h3>
+<pre><code>
+curl -I https://&lt;domain&gt;
+pm2 logs &lt;app&gt; --lines 50
+</code></pre>
+<h2>Common Failures</h2>
+<p>
+| Error | Fix |
+<br>
+|-------|-----|
+<br>
+| EADDRINUSE | <code>pm2 delete <app></code> then restart |
+<br>
+| Module not found | <code>pnpm install</code> again, check Node version |
+<br>
+| 502 Bad Gateway | Check pm2 status, app not running |
+<br>
+| DNS not resolving | <code>dig <domain></code>, check Cloudflare |
+</p>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Infrastructure" class="wikilink">MOC — Infrastructure</a></li>
+<li><a href="#Runbook — PM2 Service Recovery" class="wikilink">Runbook — PM2 Service Recovery</a></li>
+<li><a href="#VPS Reference" class="wikilink">VPS Reference</a></li>
+</ul>
+</div></article>
+<article id="VPS Reference">
+<h3>🖥️ VPS Reference</h3>
+<div class="meta">30-Resources/VPS Reference.md</div>
+<div class="body">
+<h1>🖥️ VPS Reference</h1>
+<h2>Identity</h2>
+<ul>
+<li><strong>IP:</strong> 72.62.228.196</li>
+<li><strong>Hostname:</strong> (check)</li>
+<li><strong>OS:</strong> Ubuntu 6.8.0-124-generic</li>
+<li><strong>Provider:</strong> (check provider)</li>
+<li><strong>Region:</strong> (check)</li>
+</ul>
+<h2>Access</h2>
+<pre><code>
+ssh root@72.62.228.196
+</code></pre>
+<h2>Active Services</h2>
+<ul>
+<li>ecomforce-bd :3069 (Hybrid)</li>
+<li>shikkhasync :3070</li>
+<li>thai-picks :3068</li>
+</ul>
+<h2>Domains on VPS</h2>
+<ul>
+<li>hybrid.ecomex.cloud</li>
+<li>junno.qzz.io</li>
+<li>supabase.ecomex.cloud</li>
+</ul>
+<h2>Quick Health Check</h2>
+<pre><code>
+pm2 list
+df -h
+free -h
+uptime
+ss -tlnp | grep -E "306[0-9]|3070"
+</code></pre>
+<h2>Related</h2>
+<ul>
+<li><a href="#MOC — Infrastructure" class="wikilink">MOC — Infrastructure</a></li>
+<li><a href="#Runbook — VPS Deploy" class="wikilink">Runbook — VPS Deploy</a></li>
+<li><a href="#Runbook — PM2 Service Recovery" class="wikilink">Runbook — PM2 Service Recovery</a></li>
+</ul>
+</div></article>
+</section>
+<section class="folder"><h2 class="folder-title">🗂️ Templates</h2>
+<article id="Agent Spec">
+<h3>🤖 {{title}}</h3>
+<div class="meta">90-Templates/Agent Spec.md</div>
+<div class="body">
+<h1>🤖 {{title}}</h1>
+<h2>Identity</h2>
+<ul>
+<li><strong>Name:</strong> </li>
+<li><strong>Role:</strong> </li>
+<li><strong>Domain:</strong> </li>
+</ul>
+<h2>Mission</h2>
+<blockquote></blockquote>
+<h2>Capabilities</h2>
+<ul>
+<li></li>
+</ul>
+<h2>Tools</h2>
+<ul>
+<li></li>
+</ul>
+<h2>Inputs / Outputs</h2>
+<ul>
+<li></li>
+</ul>
+<h2>Coordination</h2>
+<ul>
+<li>Reports to: </li>
+<li>Delegates to: </li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li>[[]]</li>
+<li>[[]]</li>
+</ul>
+</div></article>
+<article id="Daily Note">
+<h3>📅 {{date}} — {{title}}</h3>
+<div class="meta">90-Templates/Daily Note.md</div>
+<div class="body">
+<h1>📅 {{date}} — {{title}}</h1>
+<blockquote><strong>AXIS Session</strong> — {{date}}</blockquote>
+<h2>🎯 Today's Focus</h2>
+<ul>
+<li>[ ] </li>
+<li>[ ] </li>
+</ul>
+<h2>💼 Active Work</h2>
+<h3>Track A — SaaS Products</h3>
+<ul>
+<li></li>
+</ul>
+<h3>Track B — Infrastructure</h3>
+<ul>
+<li></li>
+</ul>
+<h3>Track C — Cross-Agent</h3>
+<ul>
+<li></li>
+</ul>
+<h2>🧠 Ideas & Captures</h2>
+<ul>
+<li></li>
+</ul>
+<h2>🔗 Links</h2>
+<ul>
+<li>[[]]</li>
+<li>[[]]</li>
+</ul>
+<h2>📝 End of Day Reflection</h2>
+<p>
+<strong>Wins:</strong> 
+<br>
+<strong>Blockers:</strong> 
+<br>
+<strong>Tomorrow:</strong> 
+</p>
+<p>
+---
+<br>
+<em>Created: {{date}} {{time}}</em>
+</p>
+</div></article>
+<article id="MOC">
+<h3>🗺️ {{title}} — Map of Content</h3>
+<div class="meta">90-Templates/MOC.md</div>
+<div class="body">
+<h1>🗺️ {{title}} — Map of Content</h1>
+<blockquote>Index of all notes related to this topic.</blockquote>
+<h2>📂 Sections</h2>
+<h3>Subtopic A</h3>
+<ul>
+<li>[[]]</li>
+</ul>
+<h3>Subtopic B</h3>
+<ul>
+<li>[[]]</li>
+</ul>
+<h2>🔗 See Also</h2>
+<ul>
+<li><a href="#Home" class="wikilink">Home</a></li>
+</ul>
+</div></article>
+<article id="Meeting Note">
+<h3>🤝 {{title}} — {{date}}</h3>
+<div class="meta">90-Templates/Meeting Note.md</div>
+<div class="body">
+<h1>🤝 {{title}} — {{date}}</h1>
+<h2>Agenda</h2>
+<ul>
+<li></li>
+</ul>
+<h2>Discussion</h2>
+<ul>
+<li></li>
+</ul>
+<h2>Decisions</h2>
+<ul>
+<li></li>
+</ul>
+<h2>Action Items</h2>
+<ul>
+<li>[ ] @owner — task — due</li>
+<li>[ ] </li>
+</ul>
+<h2>Follow-ups</h2>
+<ul>
+<li></li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li>[[]]</li>
+</ul>
+</div></article>
+<article id="Project Note">
+<h3>🚀 {{title}}</h3>
+<div class="meta">90-Templates/Project Note.md</div>
+<div class="body">
+<h1>🚀 {{title}}</h1>
+<blockquote><strong>One-liner:</strong></blockquote>
+<h2>🎯 Goal</h2>
+<p>
+What does success look like? 
+</p>
+<h2>📊 KPIs / Metrics</h2>
+<ul>
+<li>MRR target: ৳</li>
+<li>Users: </li>
+<li>Conversion: </li>
+</ul>
+<h2>🗓️ Timeline</h2>
+<ul>
+<li>Start: </li>
+<li>MVP: </li>
+<li>Launch: </li>
+</ul>
+<h2>✅ Tasks</h2>
+<ul>
+<li>[ ] </li>
+<li>[ ] </li>
+<li>[ ] </li>
+</ul>
+<h2>🔗 Related</h2>
+<ul>
+<li>[[]]</li>
+<li>[[]]</li>
+</ul>
+<h2>📝 Notes & Decisions</h2>
+<ul>
+<li></li>
+</ul>
+<p>
+---
+<br>
+<em>Status: #active</em>
+</p>
+</div></article>
+</section>
+  </main>
+</div>
+</body>
+</html>

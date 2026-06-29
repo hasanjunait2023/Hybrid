@@ -7,6 +7,9 @@ interface StoreFooterProps {
   store: StoreIdentity;
   /** "en" (system default) or "bn" — pass the active locale from getDict/useDict. */
   lang?: "bn" | "en";
+  /** Marketing-site URL for the "Powered by Hybrid" mark; when set it becomes a
+   *  link. The storefront stays tenant white-label — this is the only Hybrid mark. */
+  poweredByHref?: string;
 }
 
 const COPY = {
@@ -32,7 +35,7 @@ const COPY = {
 
 // DESIGN §6.1 #7 — store info, tappable phone (Bangla digits), Facebook first
 // (these sellers come from FB), policy links, payment marks, "Powered by Hybrid".
-export function StoreFooter({ store, lang = "en" }: StoreFooterProps) {
+export function StoreFooter({ store, lang = "en", poweredByHref }: StoreFooterProps) {
   const phone = store.phone ?? "";
   // Seller-controlled URL: drop any non-http(s) scheme at render time.
   const facebookUrl = safeUrl(store.facebookUrl);
@@ -101,8 +104,23 @@ export function StoreFooter({ store, lang = "en" }: StoreFooterProps) {
           </div>
         </div>
 
-        <div className="mt-8 border-t border-border pt-4 text-center">
-          <span className="text-xs text-ink-subtle">Powered by Hybrid</span>
+        <div className="mt-8 flex justify-center border-t border-border pt-4">
+          {poweredByHref ? (
+            <a
+              href={poweredByHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-ink-subtle transition-colors hover:text-ink"
+            >
+              <img src="/hybrid-mark.webp" alt="" width={16} height={16} className="h-4 w-4" />
+              Powered by Hybrid
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs text-ink-subtle">
+              <img src="/hybrid-mark.webp" alt="" width={16} height={16} className="h-4 w-4" />
+              Powered by Hybrid
+            </span>
+          )}
         </div>
       </div>
     </footer>

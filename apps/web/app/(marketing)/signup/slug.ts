@@ -23,6 +23,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "store-not-found",
   "_sites",
   "hybrid",
+  "bazar",
 ]);
 
 export type SlugError =

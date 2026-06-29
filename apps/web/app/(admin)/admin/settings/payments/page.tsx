@@ -5,9 +5,11 @@ import {
   getPaymentSettings,
   getNagadSettings,
   getSslcommerzSettings,
+  getHybridpaySettings,
 } from "@/lib/admin/settings";
 import { getProviderCallbackUrl } from "@/lib/domains/callbackUrl";
 import { getDict } from "@/lib/i18n/server";
+import { HybridPayForm } from "./HybridPayForm";
 import { BkashForm } from "./BkashForm";
 import { NagadForm } from "./NagadForm";
 import { SslcommerzForm } from "./SslcommerzForm";
@@ -25,14 +27,17 @@ export default async function PaymentSettingsPage() {
   if (!tenantId) redirect("/platform");
   const userId = session.userId;
 
-  const [payment, nagad, sslcommerz, bkashCb, nagadCb, sslIpn] = await Promise.all([
-    getPaymentSettings(tenantId, userId),
-    getNagadSettings(tenantId, userId),
-    getSslcommerzSettings(tenantId, userId),
-    getProviderCallbackUrl(tenantId, userId, "bkash"),
-    getProviderCallbackUrl(tenantId, userId, "nagad"),
-    getProviderCallbackUrl(tenantId, userId, "sslcommerz"),
-  ]);
+  const [payment, nagad, sslcommerz, hybridpay, bkashCb, nagadCb, sslIpn, hybridpayCb] =
+    await Promise.all([
+      getPaymentSettings(tenantId, userId),
+      getNagadSettings(tenantId, userId),
+      getSslcommerzSettings(tenantId, userId),
+      getHybridpaySettings(tenantId, userId),
+      getProviderCallbackUrl(tenantId, userId, "bkash"),
+      getProviderCallbackUrl(tenantId, userId, "nagad"),
+      getProviderCallbackUrl(tenantId, userId, "sslcommerz"),
+      getProviderCallbackUrl(tenantId, userId, "hybridpay"),
+    ]);
 
   const { d } = await getDict();
   const t = d.admin.settingsPayments;
@@ -47,10 +52,23 @@ export default async function PaymentSettingsPage() {
       />
       <h1 className="text-xl font-bold text-ink">{t.title}</h1>
 
+      {/* Hybrid Pay = the single online gateway (subsumes bKash/Nagad/etc) + COD. */}
+      <HybridPayForm settings={hybridpay} webhookUrl={hybridpayCb} />
       <CodForm enabled={payment.cod.enabled} />
-      <BkashForm settings={payment.bkash} callbackUrl={bkashCb} />
-      <NagadForm settings={nagad} callbackUrl={nagadCb} />
-      <SslcommerzForm settings={sslcommerz} ipnUrl={sslIpn} />
+
+      {/* Legacy direct gateways — kept functional but de-emphasized. Hybrid Pay
+          is the recommended path; these remain for tenants already wired to a
+          direct merchant account. */}
+      <details className="rounded-lg border border-border bg-surface">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink-muted">
+          ডিরেক্ট গেটওয়ে (ঐচ্ছিক / অ্যাডভান্সড)
+        </summary>
+        <div className="space-y-5 border-t border-border p-4">
+          <BkashForm settings={payment.bkash} callbackUrl={bkashCb} />
+          <NagadForm settings={nagad} callbackUrl={nagadCb} />
+          <SslcommerzForm settings={sslcommerz} ipnUrl={sslIpn} />
+        </div>
+      </details>
     </div>
   );
 }

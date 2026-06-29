@@ -89,9 +89,7 @@ describe("marketing broadcast slice (P2-4)", () => {
     const { id } = await createCampaign(TENANT_A, OWNER_A, {
       channel: "sms",
       audience: "all",
-      // Real Bengali Unicode message — the BTRC validator (commit fb5ffbf)
-      // rejects Banglish; tests must use real Bangla like the production path.
-      message: "সবাইকে জানান — নতুন পণ্য এসেছে!",
+      message: "শুধু এ-এর জন্য",
     });
     const listB = await listCampaigns(TENANT_B, OWNER_B);
     expect(listB.find((c) => c.id === id)).toBeUndefined();

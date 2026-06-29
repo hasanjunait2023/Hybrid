@@ -28,6 +28,15 @@ export interface PlatformStats {
   mrrByPlan: { plan: string; tenants: number; mrr: number }[];
 }
 
+export interface WholesaleStats {
+  totalWholesalers: number;
+  pendingKyc: number;
+  wholesaleGmv30d: number;
+  wholesaleOrders30d: number;
+  wholesaleProductsCount: number;
+  wholesaleByCategory: { category: string; count: number }[];
+}
+
 export async function getPlatformStats(): Promise<PlatformStats> {
   return asPlatformAdmin(async (tx) => {
     const byStatus = await tx<{ status: string; n: number }[]>`
@@ -97,6 +106,65 @@ export async function getPlatformStats(): Promise<PlatformStats> {
       liveStores: get("active") + get("trial"),
       signupSeries: series.map((r) => ({ day: r.day, count: r.count })),
       mrrByPlan: byPlan.map((r) => ({ plan: r.plan, tenants: r.tenants, mrr: Number(r.mrr) })),
+    };
+  });
+}
+
+// Wholesale / B2B analytics for the super-admin dashboard. Cross-tenant
+// aggregates: wholesaler count, pending KYC, wholesale GMV/orders/products.
+export async function getWholesaleStats(): Promise<WholesaleStats> {
+  return asPlatformAdmin(async (tx) => {
+    const [wholesalerRow] = await tx<{ n: number; pending: number }[]>`
+      select
+        count(*)::int as n,
+        count(*) filter (where kyc_status = 'pending' or kyc_status = 'submitted')::int as pending
+      from tenant
+      where business_type in ('wholesale'::tenant_business_type, 'both'::tenant_business_type)
+    `;
+
+    const [gmvRow] = await tx<{ gmv: string; orders: number }[]>`
+      select
+        coalesce(sum(so.grand_total), 0) as gmv,
+        count(*)::int as orders
+      from marketplace_suborder so
+      join marketplace_order o on o.id = so.order_id
+      where o.order_mode = 'wholesale'
+        and o.status <> 'cancelled'
+        and (o.created_at at time zone 'Asia/Dhaka')::date
+            > (now() at time zone 'Asia/Dhaka')::date - 30
+    `;
+
+    const [productsRow] = await tx<{ n: number }[]>`
+      select count(*)::int as n
+      from marketplace_listing
+      where is_wholesale = true
+        and status = 'active'
+        and hidden = false
+    `;
+
+    const byCategory = await tx<{ category: string; count: number }[]>`
+      select
+        coalesce(category, 'Uncategorized') as category,
+        count(*)::int as count
+      from marketplace_listing
+      where is_wholesale = true
+        and status = 'active'
+        and hidden = false
+      group by category
+      order by count desc
+      limit 20
+    `;
+
+    return {
+      totalWholesalers: wholesalerRow?.n ?? 0,
+      pendingKyc: wholesalerRow?.pending ?? 0,
+      wholesaleGmv30d: Number(gmvRow?.gmv ?? 0),
+      wholesaleOrders30d: gmvRow?.orders ?? 0,
+      wholesaleProductsCount: productsRow?.n ?? 0,
+      wholesaleByCategory: byCategory.map((r) => ({
+        category: r.category,
+        count: r.count,
+      })),
     };
   });
 }

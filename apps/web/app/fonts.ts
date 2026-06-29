@@ -15,9 +15,6 @@ import {
   Noto_Sans_Bengali,
   IBM_Plex_Mono,
   Inter_Tight,
-  Noto_Serif_Bengali,
-  Fraunces,
-  Poppins,
 } from "next/font/google";
 
 // Primary Bangla UI face. Weights 400/500/600/700 only (DESIGN §4.1).
@@ -63,59 +60,4 @@ export const fontVariables = [
   notoSansBengali.variable,
   ibmPlexMono.variable,
   interTight.variable,
-].join(" ");
-
-// ---- Marketing-only editorial serif faces (NOT applied app-wide) ----
-// The marketing landing page uses confident serif headlines (Shopify-style
-// restraint). These are scoped to app/(marketing)/layout.tsx via
-// `marketingFontVariables` — admin and storefront keep Hind Siliguri.
-
-// Bengali editorial serif (default locale).
-export const notoSerifBengali = Noto_Serif_Bengali({
-  subsets: ["bengali"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-noto-serif-bengali",
-  display: "swap",
-  preload: true,
-  fallback: ["Noto Sans Bengali", "serif"],
-});
-
-// Latin editorial DISPLAY serif (English locale). Fraunces is a variable,
-// high-contrast "old-style" serif with optical sizing — it gives the English
-// headlines real character at large sizes (the signature scale-contrast),
-// the opposite of a generic system serif. opsz lets the renderer push contrast
-// up at hero scale and keep small caption serifs readable. Variable axis weight
-// range covers eyebrow→hero. Kept under the existing --font-noto-serif variable
-// so marketing.css and the layout need no rename churn.
-export const fraunces = Fraunces({
-  subsets: ["latin"],
-  axes: ["opsz"],
-  // Variable font: weight must be "variable" (not a list) to declare axes.
-  // The wght axis then spans 100–900 automatically; marketing.css sets weights.
-  weight: "variable",
-  style: ["normal", "italic"],
-  variable: "--font-noto-serif",
-  display: "swap",
-  preload: true,
-  fallback: ["Georgia", "serif"],
-});
-
-// Brand wordmark / UI face — the "Hybrid" lockup, all-caps eyebrows, UI labels
-// AND the English body text on the marketing landing (weight 400). Headlines
-// stay Noto Serif Bengali / Fraunces. Two Latin families total (Fraunces +
-// Poppins), within the font budget.
-export const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-poppins",
-  display: "swap",
-  preload: false,
-  fallback: ["system-ui", "sans-serif"],
-});
-
-/** Serif + brand-wordmark CSS-variable classes scoped to the marketing layout. */
-export const marketingFontVariables = [
-  notoSerifBengali.variable,
-  fraunces.variable,
-  poppins.variable,
 ].join(" ");

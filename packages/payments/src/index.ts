@@ -14,6 +14,10 @@ export { SslcommerzProvider } from "./sslcommerz/provider";
 export type { SslcommerzProviderOptions } from "./sslcommerz/provider";
 export { mapSslcommerzInitState, mapSslcommerzTxnState } from "./sslcommerz/codes";
 
+export { HybridpayProvider } from "./hybridpay/provider";
+export type { HybridpayProviderOptions } from "./hybridpay/provider";
+export { mapHybridpayState } from "./hybridpay/codes";
+
 export type {
   PaymentProvider,
   PaymentState,

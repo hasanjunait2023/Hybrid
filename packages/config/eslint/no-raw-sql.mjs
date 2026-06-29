@@ -17,7 +17,18 @@ const FORBIDDEN = [
   {
     name: "@hybrid/db/client",
     message:
-      "@hybrid/db/client is internal to packages/db. Import withTenant/asPlatformAdmin/adminSql from @hybrid/db instead.",
+      "@hybrid/db/client is internal to packages/db. Import withTenant/asPlatformAdmin from @hybrid/db instead.",
+  },
+  {
+    // adminSql is the `postgres` (BYPASSRLS) superuser pool — a single
+    // adminSql`select ...` returns EVERY tenant's rows with no RLS filtering and
+    // no other warning. Banned in consumers; use withTenant()/asPlatformAdmin().
+    // Legit raw-connection needs (e.g. LISTEN/pg_notify) require a scoped,
+    // commented per-file override in the consumer's eslint.config.
+    name: "@hybrid/db",
+    importNames: ["adminSql"],
+    message:
+      "adminSql bypasses tenant RLS (postgres superuser pool). Use withTenant()/asPlatformAdmin() from @hybrid/db. For a genuine LISTEN/raw-connection need, add a scoped eslint override.",
   },
 ];
 

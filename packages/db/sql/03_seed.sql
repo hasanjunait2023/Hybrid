@@ -57,18 +57,18 @@ on conflict (id) do nothing;
 -- ---------------------------------------------------------------------------
 -- Tenants
 -- ---------------------------------------------------------------------------
-insert into tenant (id, name, slug, status, owner_user_id, plan_id, default_locale, currency, timezone)
+insert into tenant (id, name, slug, status, business_type, owner_user_id, plan_id, default_locale, currency, timezone)
 values
   (
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa000a',
-    'Store A', 'store-a', 'active',
+    'Store A', 'store-a', 'active', 'retail',
     '11111111-1111-1111-1111-111111111001',
     (select id from plan where code = 'starter'),
     'bn', 'BDT', 'Asia/Dhaka'
   ),
   (
     'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb000b',
-    'Store B', 'store-b', 'active',
+    'Store B', 'store-b', 'active', 'wholesale',
     '11111111-1111-1111-1111-111111111002',
     (select id from plan where code = 'starter'),
     'bn', 'BDT', 'Asia/Dhaka'

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getOrderDetail } from "@/lib/admin/orders";
+import { getStoreProfile } from "@/lib/admin/settings";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
 import { PrintTrigger } from "./PrintTrigger";
@@ -27,6 +28,10 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
 
   const order = await getOrderDetail(tenantId, session.userId, id);
   if (!order) notFound();
+
+  // The invoice is the seller's customer-facing document → brand it with the
+  // STORE name (white-label), not Hybrid.
+  const profile = await getStoreProfile(tenantId, session.userId);
 
   const addr = order.shippingAddress;
   const addressLine = [addr.line, addr.thana, addr.district, addr.division]
@@ -56,7 +61,8 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
 
       <header className="flex items-start justify-between border-b-2 border-black pb-3">
         <div>
-          <h1 className="text-xl font-bold">
+          <p className="text-lg font-bold leading-tight">{profile.name}</p>
+          <h1 className="mt-0.5 text-sm font-semibold uppercase tracking-wide text-black/60">
             {isPacking ? t.packingSlip : t.invoice}
           </h1>
           <p className="font-mono text-sm">{t.orderPrefix} #{order.orderNumber}</p>

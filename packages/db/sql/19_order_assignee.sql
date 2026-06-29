@@ -27,6 +27,7 @@ create index if not exists order_note_lookup_idx
 
 -- RLS: tenant members can read/write their own order notes
 alter table order_note enable row level security;
+alter table order_note force row level security;
 
 create policy order_note_tenant_select on order_note
   for select using (tenant_id = app.current_tenant_id());

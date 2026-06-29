@@ -33,3 +33,33 @@ export async function asPlatformAdmin<T>(fn: (tx: Tx) => Promise<T>): Promise<T>
     return fn(tx);
   }) as Promise<T>;
 }
+
+// Anonymous public context: no tenant, no buyer, not admin. Reads only reach
+// world-readable tables (plan/theme + the marketplace catalog projection, whose
+// policies are USING (true)); every tenant/buyer-scoped table returns zero rows.
+// This is the safe path for public marketplace browse — never asPlatformAdmin.
+export async function withPublic<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return sql.begin(async (tx) => {
+    await tx`SELECT set_config('app.current_tenant_id', '', true)`;
+    await tx`SELECT set_config('app.current_user_id', '', true)`;
+    await tx`SELECT set_config('app.current_buyer_id', '', true)`;
+    await tx`SELECT set_config('app.is_platform_admin', 'false', true)`;
+    return fn(tx);
+  }) as Promise<T>;
+}
+
+// Marketplace buyer context: a buyer sees only their own rows via
+// app.current_buyer_id() (marketplace_customer/order/suborder/review). Mirrors
+// withTenant exactly — all three GUCs are pinned so a pooled connection that
+// last ran asPlatformAdmin can never leak is_platform_admin=true into a buyer
+// transaction. set_config(..., true) is transaction-local. RLS stays sacred:
+// buyer data never travels the asPlatformAdmin path during normal operation.
+export async function withBuyer<T>(buyerId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return sql.begin(async (tx) => {
+    await tx`SELECT set_config('app.current_buyer_id', ${buyerId}, true)`;
+    await tx`SELECT set_config('app.current_tenant_id', '', true)`;
+    await tx`SELECT set_config('app.current_user_id', '', true)`;
+    await tx`SELECT set_config('app.is_platform_admin', 'false', true)`;
+    return fn(tx);
+  }) as Promise<T>;
+}

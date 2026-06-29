@@ -17,14 +17,14 @@ import { Avatar } from "./_components/Avatar";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "myhybrid.com";
 
-// Hybrid marketing landing — "Bengali editorial commerce: premium,
-// atmospheric, confident". Bengali-default with an EN/BN cookie toggle resolved
-// server-side (no hydration flash). The signature is dramatic SCALE CONTRAST:
-// tiny tracked all-caps eyebrows against oversized editorial serif headlines
-// (Noto Serif Bengali / Fraunces). Warm paper trust bands alternate with DARK
-// ink bands (hero + closing) carrying a glowing purple gradient-mesh + film
-// grain that echoes the logo bloom. All copy comes from the i18n dictionary;
-// all motion is compositor-friendly and gated behind prefers-reduced-motion.
+// Hybrid marketing landing — "Bazaar Modern" showroom (DESIGN §2): persuasive,
+// confident, Bengali, spacious. Bengali-default with an EN/BN cookie toggle
+// resolved server-side (no hydration flash). The signature is dramatic SCALE
+// CONTRAST: small tracked Latin eyebrows against oversized Hind Siliguri
+// headlines. Warm paper trust bands alternate with FLAT INDIGO bands (hero +
+// closing, DESIGN §6.2); marigold carries the energy. All copy comes from the
+// i18n dictionary; all motion is compositor-friendly and gated behind
+// prefers-reduced-motion.
 export default async function MarketingHome() {
   const locale = await getMarketingLocale();
   const t = getMessages(locale);
@@ -68,7 +68,7 @@ function Eyebrow({
   children: React.ReactNode;
   tone?: "default" | "onInk";
 }) {
-  const color = tone === "onInk" ? "text-[var(--brand-violet-bright)]" : "text-primary";
+  const color = tone === "onInk" ? "text-accent" : "text-primary";
   return <p className={`eyebrow ${color}`}>{children}</p>;
 }
 
@@ -147,18 +147,17 @@ function Hero({ t }: { t: MarketingMessages }) {
             className="reveal mt-5"
             style={{ ["--reveal-delay" as string]: "80ms" }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full border border-cod/40 bg-cod/15 px-3 py-1 text-xs font-semibold text-[#5eead4]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#34d399]" aria-hidden="true" />
+            <span className="bn-body inline-flex items-center rounded-full bg-cod-weak px-3 py-1 text-xs font-semibold text-cod">
               {t.hero.badge}
             </span>
           </div>
           <h1
             id="hero-heading"
-            className="font-serif-display display-hero reveal mt-6 text-white"
+            className="font-serif-display display-hero reveal mt-6 text-ink-on-primary"
             style={{ ["--reveal-delay" as string]: "150ms" }}
           >
             {t.hero.titleLead}{" "}
-            <span className="display-emphasis text-[var(--brand-violet-bright)]">
+            <span className="display-emphasis text-accent">
               {t.hero.titleEmphasis}
             </span>
           </h1>
@@ -189,18 +188,12 @@ function Hero({ t }: { t: MarketingMessages }) {
           </p>
         </div>
 
-        {/* Right: storefront mock, offset + overlapping its container, on a
-            glowing purple bloom plate. */}
+        {/* Right: storefront mock, offset + overlapping its container. */}
         <div
           className="reveal relative mx-auto w-full max-w-sm lg:max-w-none lg:translate-x-6"
           style={{ ["--reveal-delay" as string]: "320ms" }}
         >
-          <div
-            aria-hidden="true"
-            className="bloom bloom-pulse"
-            style={{ inset: "-12% -6% -8% -6%" }}
-          />
-          <div className="frame-shadow float-slow relative overflow-hidden rounded-2xl border border-white/10 lg:-mt-6 lg:-rotate-1">
+          <div className="frame-shadow float-slow relative overflow-hidden rounded-2xl border border-white/15 lg:-mt-6 lg:-rotate-1">
             <MarketingImage
               src="/marketing/hero-storefront.webp"
               alt={t.hero.mockupAlt}

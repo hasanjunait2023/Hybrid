@@ -39,8 +39,14 @@ class SmsNetBdAdapter implements SmsAdapter {
   async send(to: string, message: string): Promise<SmsSendResult> {
     if (!isLive()) {
       // Log-only mode — the default until a funded account + masked sender-id
-      // exist. Never throws; mirrors a successful send for the caller.
-      console.warn(`[sms] (log-only, SMS_LIVE!=1) would send to ${to}: ${message}`);
+      // exist. Never throws; mirrors a successful send for the caller. Outside
+      // dev we must NOT log the recipient phone or message body (customer PII in
+      // server logs if SMS_LIVE is ever unset/misconfigured in production).
+      if (process.env.NODE_ENV === "production") {
+        console.warn(`[sms] log-only mode (SMS_LIVE!=1) — send skipped`);
+      } else {
+        console.warn(`[sms] (log-only, SMS_LIVE!=1) would send to ${to}: ${message}`);
+      }
       return { ok: true, messageId: "log-only" };
     }
 

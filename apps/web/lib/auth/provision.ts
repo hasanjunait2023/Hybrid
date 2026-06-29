@@ -29,6 +29,8 @@ export interface ProvisionTenantInput {
   slug: string;
   /** Plan code to start on. Defaults to the starter plan (GATE-1 default). */
   plan?: string;
+  /** Business type: retail (default), wholesale, or both. */
+  businessType?: "retail" | "wholesale" | "both";
 }
 
 export interface ProvisionTenantResult {
@@ -148,10 +150,11 @@ export async function provisionTenant(
       // (1) tenant — trial status, starter plan, 14-day trial, Bengali default.
       const tenantRows = await tx<{ id: string; slug: string }[]>`
         insert into tenant (
-          slug, name, status, owner_user_id, plan_id, trial_ends_at, default_locale
+          slug, name, status, owner_user_id, plan_id, trial_ends_at, default_locale, business_type
         ) values (
           ${input.slug}, ${input.storeName}, 'trial', ${input.userId}, ${planId},
-          now() + ${`${TRIAL_DAYS} days`}::interval, 'bn'
+          now() + ${`${TRIAL_DAYS} days`}::interval, 'bn',
+          ${input.businessType ?? "retail"}
         )
         returning id, slug
       `;

@@ -46,7 +46,7 @@ export default async function PlatformSales() {
         {funnel.map((f) => (
           <div
             key={f.label}
-            className={`rounded-2xl border p-4 ${f.accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[#fdf4d4] to-[#fbe6a8]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}
+            className={`rounded-2xl border p-4 ${f.accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[var(--pf-grad-gold-1)] to-[var(--pf-grad-gold-2)]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}
           >
             <p className="text-[26px] font-bold leading-none text-[var(--pf-ink)]">{f.value}</p>
             <p className="mt-1.5 text-[12.5px] font-semibold text-[var(--pf-ink)]">{f.label}</p>
@@ -97,7 +97,7 @@ export default async function PlatformSales() {
                       <td className="py-3 font-mono text-[12px] text-[var(--pf-muted)]">{fmtDate(t.trialEndsAt)}</td>
                       <td className="py-3"><Urgency days={days} /></td>
                       <td className="py-3 text-right">
-                        <Link href={`/platform/tenants/${t.id}`} className="rounded-lg border border-[var(--pf-border)] px-2.5 py-1 text-[12px] font-semibold text-[var(--pf-ink)] hover:bg-[#fbf9f2]">
+                        <Link href={`/platform/tenants/${t.id}`} className="rounded-lg border border-[var(--pf-border)] px-2.5 py-1 text-[12px] font-semibold text-[var(--pf-ink)] hover:bg-[var(--pf-hover)]">
                           View
                         </Link>
                       </td>
@@ -124,10 +124,10 @@ function Urgency({ days }: { days: number | null }) {
   const expired = days <= 0;
   const hot = days <= 3;
   const cls = expired
-    ? "bg-[#fde9e8] text-[var(--pf-danger)]"
+    ? "bg-[var(--pf-danger-weak)] text-[var(--pf-danger)]"
     : hot
       ? "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]"
-      : "bg-[#e6f6ee] text-[var(--pf-success)]";
+      : "bg-[var(--pf-success-weak)] text-[var(--pf-success)]";
   const label = expired ? "Expired" : `${days}d left`;
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{label}</span>;
 }

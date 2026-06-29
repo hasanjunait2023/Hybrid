@@ -4,7 +4,7 @@
 // bKash (single pink), Division→District→Thana bottom sheets, order summary,
 // sticky "অর্ডার করুন" bar. Submits to the submitCheckout Server Action.
 import { useEffect, useMemo, useState } from "react";
-import { Button, BkashIcon, CheckIcon } from "@hybrid/ui";
+import { Button, CheckIcon } from "@hybrid/ui";
 import type { LocationTree, CascadeOption } from "@/lib/location";
 import { useDict, useLocale } from "@/lib/i18n/provider";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
@@ -19,11 +19,13 @@ interface CheckoutFormProps {
   storeName: string;
   storePhone: string | null;
   locationTree: LocationTree;
-  /** ?payment=failed/invalid surfaced from a returned bKash callback. */
+  /** ?payment=failed/invalid surfaced from a returned Hybrid Pay callback. */
   paymentNotice?: "failed" | "invalid" | null;
 }
 
-type Method = "cod" | "bkash";
+// Storefront shows one online option, "Hybrid Pay" (it subsumes bKash/Nagad —
+// the buyer picks the underlying method on Hybrid Pay's hosted page) plus COD.
+type Method = "cod" | "hybridpay";
 
 export function CheckoutForm({
   tenantSlug,
@@ -119,11 +121,11 @@ export function CheckoutForm({
       return;
     }
 
-    if (result.method === "bkash") {
-      // Hand off to the tokenized bKash popup/iframe. The callback redirects
+    if (result.method === "hybridpay") {
+      // Hand off to the Hybrid Pay hosted page. The webhook/return redirects
       // back to /order/N (or /checkout?payment=failed). Clear cart on handoff.
       cart.clear();
-      window.location.href = result.bkashURL;
+      window.location.href = result.redirectURL;
       return;
     }
 
@@ -134,7 +136,7 @@ export function CheckoutForm({
   }
 
   const confirmLabel =
-    method === "bkash" ? t.payWithBkash : t.placeOrder;
+    method === "hybridpay" ? t.payWithHybridpay : t.placeOrder;
 
   return (
     <div className="mx-auto max-w-[480px] px-4 pb-32 pt-4">
@@ -221,7 +223,7 @@ export function CheckoutForm({
           />
         </Field>
 
-        {/* Payment method — COD loudest, bKash single pink. */}
+        {/* Payment method — COD loudest, Hybrid Pay (the single online option). */}
         <fieldset className="flex flex-col gap-3">
           <legend className="bn-body mb-1 text-sm font-semibold text-ink">{t.paymentMethod}</legend>
 
@@ -235,12 +237,12 @@ export function CheckoutForm({
             reassurance={t.codReassurance}
           />
           <PaymentCard
-            selected={method === "bkash"}
-            onSelect={() => setMethod("bkash")}
-            tone="bkash"
-            icon={<BkashIcon width={20} height={20} />}
-            title={t.bkashTitle}
-            subtitle={t.bkashSubtitle}
+            selected={method === "hybridpay"}
+            onSelect={() => setMethod("hybridpay")}
+            tone="hybridpay"
+            icon={<HybridPayIcon width={20} height={20} />}
+            title={t.hybridpayTitle}
+            subtitle={t.hybridpaySubtitle}
           />
         </fieldset>
 
@@ -316,8 +318,8 @@ export function CheckoutForm({
             onClick={() => void handleSubmit()}
           >
             {submitting
-              ? method === "bkash"
-                ? t.bkashProcessing
+              ? method === "hybridpay"
+                ? t.hybridpayProcessing
                 : t.placingOrder
               : confirmLabel}
           </Button>
@@ -339,11 +341,22 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 interface PaymentCardProps {
   selected: boolean;
   onSelect: () => void;
-  tone: "cod" | "bkash";
+  tone: "cod" | "hybridpay";
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   reassurance?: string;
+}
+
+// Hybrid Pay glyph — a simple wallet mark in the brand indigo (currentColor).
+function HybridPayIcon({ width = 20, height = 20 }: { width?: number; height?: number }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="6" width="18" height="13" rx="2.5" stroke="currentColor" strokeWidth="2" />
+      <path d="M3 10h18" stroke="currentColor" strokeWidth="2" />
+      <circle cx="16.5" cy="14.5" r="1.5" fill="currentColor" />
+    </svg>
+  );
 }
 
 function PaymentCard({
@@ -361,9 +374,9 @@ function PaymentCard({
         ? "border-cod ring-2 ring-cod bg-cod-weak"
         : "border-border bg-surface"
       : selected
-        ? "border-bkash ring-2 ring-bkash bg-bkash-weak"
+        ? "border-primary ring-2 ring-primary bg-primary-weak"
         : "border-border bg-surface";
-  const iconColor = tone === "cod" ? "text-cod" : "text-bkash";
+  const iconColor = tone === "cod" ? "text-cod" : "text-primary";
 
   return (
     <button

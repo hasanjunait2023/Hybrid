@@ -150,6 +150,7 @@ export interface AdminProductFull {
   variants: AdminVariant[];
   images: AdminImage[];
   collectionIds: string[];
+  marketplaceHidden: boolean;
 }
 
 // Full product for the edit form: options, the variant matrix, images, and
@@ -168,9 +169,10 @@ export async function getProductFull(
         status: string;
         description: string | null;
         options: ProductOption[];
+        marketplace_hidden: boolean;
       }[]
     >`
-      select id, title, slug, status, description, options
+      select id, title, slug, status, description, options, marketplace_hidden
       from product where id = ${productId} limit 1
     `;
     const product = products[0];
@@ -209,6 +211,7 @@ export async function getProductFull(
       slug: product.slug,
       status: product.status,
       description: product.description,
+      marketplaceHidden: product.marketplace_hidden,
       options: Array.isArray(product.options) ? product.options : [],
       variants: variants.map((v) => ({
         id: v.id,

@@ -1,4 +1,4 @@
-import { Button } from "@hybrid/ui";
+import { Button, HybridLogo } from "@hybrid/ui";
 import { getDict } from "@/lib/i18n/server";
 
 // Branded unknown-host fallback (blueprint §6 → middleware rewrite). Stays on
@@ -8,7 +8,7 @@ export default async function StoreNotFound() {
   return (
     <main className="grid min-h-screen place-items-center bg-bg px-4">
       <div className="max-w-md text-center">
-        <span className="text-base font-bold text-ink">{d.common.brand}</span>
+        <span className="inline-flex justify-center"><HybridLogo /></span>
         <h1 className="bn-heading mt-6 text-3xl font-bold text-ink">
           {d.auth.storeNotFound.heading}
         </h1>

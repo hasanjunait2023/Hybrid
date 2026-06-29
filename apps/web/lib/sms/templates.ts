@@ -16,7 +16,7 @@ export interface OrderNotificationData {
   /** Grand total in taka (Latin number from the DB). */
   total: number;
   /** Payment rail — drives the COD vs paid copy. */
-  paymentMethod: "cod" | "bkash";
+  paymentMethod: "cod" | "bkash" | "hybridpay";
   /** Customer name (for the seller alert). */
   customerName: string;
   /** Customer phone (for the seller alert). */
@@ -40,7 +40,12 @@ export function customerOrderConfirmationSms(data: OrderNotificationData): strin
 // Seller alert. Latin-ish operational copy is fine here, but we keep it Bengali
 // for consistency; phone stays Latin so the seller can dial it directly.
 export function sellerNewOrderAlertSms(data: OrderNotificationData): string {
-  const method = data.paymentMethod === "cod" ? "ক্যাশ অন ডেলিভারি" : "বিকাশ";
+  const method =
+    data.paymentMethod === "cod"
+      ? "ক্যাশ অন ডেলিভারি"
+      : data.paymentMethod === "hybridpay"
+        ? "Hybrid Pay"
+        : "বিকাশ";
   return `নতুন অর্ডার #${toBnDigits(data.orderNumber)} — ${data.customerName} (${data.customerPhone}), ${bnTaka(data.total)}, ${method}। অর্ডারটি কনফার্ম করুন।`;
 }
 
