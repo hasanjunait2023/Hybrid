@@ -177,6 +177,9 @@ export async function submitCheckout(
     if (error instanceof Error && error.message === "EMPTY_ORDER") {
       return { ok: false, error: "আপনার কার্ট খালি।" };
     }
+    if (error instanceof Error && error.message === "ORDER_LIMIT_REACHED") {
+      return { ok: false, error: "এই মাসে অর্ডার সীমা পূর্ণ হয়েছে। দোকানটি আবার খুলবে পরের মাসে।" };
+    }
     console.error("[checkout] placeOrder failed:", error);
     return { ok: false, error: "অর্ডার তৈরি করা যায়নি। আবার চেষ্টা করুন।" };
   }

@@ -21,6 +21,7 @@ import { randomUUID } from "node:crypto";
 import { withTenant } from "@hybrid/db";
 import type { Tx } from "@hybrid/db";
 import { upsertCustomerByPhone } from "./customer";
+import { checkPlanLimit } from "@/lib/platform/plans";
 
 // 'hybridpay' is Hybrid's single white-labeled online gateway (subsumes the
 // individual MFS gateways — bKash/Nagad are methods INSIDE Hybrid Pay, not
@@ -367,6 +368,12 @@ async function applyDiscount(
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   if (input.items.length === 0) {
     throw new Error("EMPTY_ORDER");
+  }
+
+  // Enforce monthly order limit before entering the transaction.
+  const orderLimit = await checkPlanLimit(input.tenantId, "order");
+  if (!orderLimit.allowed) {
+    throw new Error("ORDER_LIMIT_REACHED");
   }
 
   const isCod = input.paymentMethod === "cod";

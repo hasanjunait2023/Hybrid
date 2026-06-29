@@ -15,6 +15,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { getBlobStore, BlobValidationError } from "@/lib/storage";
 import { slugify } from "@/lib/admin/format";
 import { syncMarketplaceListing } from "@/lib/marketplace/sync";
+import { checkPlanLimit } from "@/lib/platform/plans";
 
 export interface ActionResult {
   ok: boolean;
@@ -96,6 +97,16 @@ export async function createProduct(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "ইনপুট ভুল।" };
   }
   const input = parsed.data;
+
+  // Enforce plan product limit before inserting.
+  const productLimit = await checkPlanLimit(auth.tenantId, "product");
+  if (!productLimit.allowed) {
+    const msg = productLimit.limit === null
+      ? "পণ্য সীমা অতিক্রম হয়েছে।"
+      : `আপনার প্ল্যানে সর্বোচ্চ ${productLimit.limit}টি পণ্য রাখা যায় (বর্তমান: ${productLimit.used})। আপগ্রেড করুন।`;
+    return { ok: false, error: msg };
+  }
+
   const slug = slugify(input.title);
 
   let newProductId: string;

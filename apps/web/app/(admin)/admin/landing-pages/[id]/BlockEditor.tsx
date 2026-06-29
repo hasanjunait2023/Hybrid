@@ -76,15 +76,26 @@ interface Props {
   page: LandingPageDetail;
 }
 
+interface Upsell {
+  label: string;
+  bump_price: number;
+}
+
 export function BlockEditor({ page }: Props) {
   const [title, setTitle] = useState(page.title ?? "");
   const [slug, setSlug] = useState(page.slug);
   const [blocks, setBlocks] = useState<LpBlock[]>(page.blocks);
   const [thankYouUrl, setThankYouUrl] = useState(page.funnelConfig.thank_you_url ?? "");
+  const [upsells, setUpsells] = useState<Upsell[]>(page.funnelConfig.upsells ?? []);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [status, setStatus] = useState(page.status);
   const [pending, startTransition] = useTransition();
+
+  const addUpsell = () => setUpsells((prev) => [...prev, { label: "", bump_price: 0 }]);
+  const removeUpsell = (i: number) => setUpsells((prev) => prev.filter((_, idx) => idx !== i));
+  const setUpsell = (i: number, field: keyof Upsell, val: string | number) =>
+    setUpsells((prev) => prev.map((u, idx) => idx === i ? { ...u, [field]: val } : u));
 
   const addBlock = (type: BlockType) => {
     setBlocks((prev) => [...prev, emptyBlock(type)]);
@@ -129,7 +140,12 @@ export function BlockEditor({ page }: Props) {
         title: title || undefined,
         slug,
         blocks: JSON.stringify(blocks),
-        funnelConfig: JSON.stringify({ thank_you_url: thankYouUrl || undefined }),
+        funnelConfig: JSON.stringify({
+          thank_you_url: thankYouUrl || undefined,
+          upsells: upsells.filter((u) => u.label.trim()).length > 0
+            ? upsells.filter((u) => u.label.trim())
+            : undefined,
+        }),
       });
       if (!res.ok) { setError(res.error ?? "সংরক্ষণ ব্যর্থ।"); return; }
       setSaved(true);
@@ -186,6 +202,48 @@ export function BlockEditor({ page }: Props) {
           <label className="block text-xs text-ink-muted">Thank-you URL (অর্ডারের পরে redirect)</label>
           <input className={INPUT} placeholder="https://example.com/thank-you" value={thankYouUrl} onChange={(e) => { setThankYouUrl(e.target.value); setSaved(false); }} />
         </div>
+      </div>
+
+      {/* Upsells / Order Bumps */}
+      <div className="space-y-3 rounded-lg border border-border bg-surface p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-ink">অর্ডার বাম্প / Upsell ({upsells.length})</p>
+          <button
+            type="button"
+            onClick={addUpsell}
+            disabled={pending}
+            className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+          >
+            + যোগ করুন
+          </button>
+        </div>
+        <p className="text-xs text-ink-muted">চেকআউটে অতিরিক্ত অফার দেখানো হবে। বায়ার টিক দিলে এই মূল্য যোগ হয়।</p>
+        {upsells.map((u, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              className={`${INPUT} flex-1`}
+              placeholder="অফারের নাম (যেমন: এক্সট্রা ওয়ারেন্টি)"
+              value={u.label}
+              onChange={(e) => { setUpsell(i, "label", e.target.value); setSaved(false); }}
+            />
+            <input
+              type="number"
+              min={0}
+              className={`${INPUT} w-28`}
+              placeholder="মূল্য (৳)"
+              value={u.bump_price || ""}
+              onChange={(e) => { setUpsell(i, "bump_price", Number(e.target.value)); setSaved(false); }}
+            />
+            <button
+              type="button"
+              onClick={() => { removeUpsell(i); setSaved(false); }}
+              disabled={pending}
+              className="shrink-0 text-xs text-danger hover:underline disabled:opacity-50"
+            >
+              মুছুন
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Blocks */}

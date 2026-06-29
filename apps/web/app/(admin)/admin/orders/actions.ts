@@ -276,6 +276,9 @@ export async function createManualOrder(
     if (error instanceof InsufficientStockError) {
       return { ok: false, error: "একটি পণ্যের পর্যাপ্ত স্টক নেই।" };
     }
+    if (error instanceof Error && error.message === "ORDER_LIMIT_REACHED") {
+      return { ok: false, error: "এই মাসে অর্ডার সীমা পূর্ণ হয়েছে। প্ল্যান আপগ্রেড করুন।" };
+    }
     console.error("[createManualOrder] failed", error);
     return { ok: false, error: "অর্ডার তৈরি ব্যর্থ হয়েছে।" };
   }
