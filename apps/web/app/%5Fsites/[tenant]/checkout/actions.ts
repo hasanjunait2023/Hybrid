@@ -23,6 +23,7 @@ import {
 import { getTenantContextBySlug } from "@/lib/storefront/data";
 import { calculateShipping } from "@/lib/commerce/shipping";
 import { getEnabledBkash } from "@/lib/payments/bkash";
+import { getEnabledHybridpay } from "@/lib/payments/hybridpay";
 import { toJsonRecord } from "@/lib/payments/json";
 import { sendOrderNotifications } from "@/lib/sms/notify";
 import { rateLimit, clientIpFrom } from "@/lib/ratelimit";
@@ -40,7 +41,9 @@ const checkoutSchema = z.object({
   district: z.string().min(1).max(60),
   thana: z.string().min(1).max(60),
   addressLine: z.string().min(1).max(300),
-  paymentMethod: z.enum(["cod", "bkash"]),
+  // Hybrid Pay is the single online gateway shown on the storefront (it subsumes
+  // bKash/Nagad). 'bkash' stays accepted as a still-functional legacy method.
+  paymentMethod: z.enum(["cod", "bkash", "hybridpay"]),
   note: z.string().max(500).optional(),
   // Optional promo code (Phase 2.4). The client sends ONLY the code; placeOrder
   // re-validates and computes the amount server-side under a row lock.
@@ -71,6 +74,14 @@ export type SubmitCheckoutResult =
       ok: true;
       method: "bkash";
       bkashURL: string;
+      orderNumber: number;
+      discount: SubmitCheckoutDiscount | null;
+    }
+  | {
+      ok: true;
+      method: "hybridpay";
+      // The Hybrid Pay hosted page to redirect the buyer to (pp_url).
+      redirectURL: string;
       orderNumber: number;
       discount: SubmitCheckoutDiscount | null;
     }
@@ -175,7 +186,7 @@ export async function submitCheckout(
   const total = await readPaymentAmount(ctx.id, placed.paymentId);
 
   // COD: order is confirmed at commit. Fire SMS (non-blocking) + redirect.
-  if (!placed.bkashRequired) {
+  if (!placed.onlineRequired) {
     await sendOrderNotifications({
       tenantId: ctx.id,
       storeName: ctx.store.name,
@@ -194,7 +205,66 @@ export async function submitCheckout(
     };
   }
 
-  // bKash: kick off the tokenized create. The payment row exists (status
+  // Hybrid Pay: kick off the create-charge. The payment row exists (status
+  // pending, id = merchantInvoiceNumber); we ask Hybrid Pay for a pp_id + pp_url,
+  // record the pp_id on provider_ref so the webhook can resolve the payment back,
+  // and redirect the buyer to the hosted page (where they pick bKash/Nagad/etc).
+  if (input.paymentMethod === "hybridpay") {
+    const hp = await getEnabledHybridpay(ctx.id);
+    if (!hp) {
+      return { ok: false, error: "Hybrid Pay এই মুহূর্তে উপলব্ধ নয়। ক্যাশ অন ডেলিভারি বেছে নিন।" };
+    }
+
+    // Callback origin derived SERVER-SIDE from the tenant's verified domain (never
+    // a client value) — same open-redirect guard as the bKash path below.
+    const hpOrigin = await resolveCallbackOrigin(ctx.id, reqHeaders);
+    if (!hpOrigin) {
+      return { ok: false, error: "Hybrid Pay পেমেন্ট শুরু করা যায়নি। আবার চেষ্টা করুন।" };
+    }
+
+    let hpCreated;
+    try {
+      hpCreated = await hp.provider.createPayment(
+        {
+          amount: String(total),
+          currency: "BDT",
+          merchantInvoiceNumber: placed.paymentId,
+          payerReference: phone,
+          callbackURL: `${hpOrigin}/api/hybridpay/webhook`,
+        },
+        hp.creds,
+      );
+    } catch (error) {
+      console.error("[checkout] Hybrid Pay createPayment failed:", error);
+      return { ok: false, error: "Hybrid Pay পেমেন্ট শুরু করা যায়নি। আবার চেষ্টা করুন।" };
+    }
+
+    if (!hpCreated.paymentId || !hpCreated.redirectUrl) {
+      return { ok: false, error: "Hybrid Pay পেমেন্ট শুরু করা যায়নি। আবার চেষ্টা করুন।" };
+    }
+
+    // Bind the gateway pp_id → our payment row for the webhook lookup. MERGE into
+    // the existing jsonb (||) to preserve payload.analytics.eventId.
+    await withTenant(ctx.id, null, (tx) =>
+      tx`
+        update payment
+           set provider_ref = ${hpCreated.paymentId},
+               payload = coalesce(payload, '{}'::jsonb) || ${tx.json(toJsonRecord({ create: hpCreated.raw }))},
+               updated_at = now()
+         where id = ${placed.paymentId}
+      `,
+    );
+
+    return {
+      ok: true,
+      method: "hybridpay",
+      redirectURL: hpCreated.redirectUrl,
+      orderNumber: placed.orderNumber,
+      discount: placed.discount,
+    };
+  }
+
+  // bKash (legacy): kick off the tokenized create. The payment row exists (status
   // pending, id = merchantInvoiceNumber); we now ask the gateway for a paymentID
   // + bkashURL and record the gateway paymentID on provider_ref so the callback
   // can resolve the payment back from ?paymentID.

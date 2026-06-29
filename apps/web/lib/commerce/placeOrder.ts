@@ -22,7 +22,11 @@ import { withTenant } from "@hybrid/db";
 import type { Tx } from "@hybrid/db";
 import { upsertCustomerByPhone } from "./customer";
 
-export type PaymentMethod = "cod" | "bkash";
+// 'hybridpay' is Hybrid's single white-labeled online gateway (subsumes the
+// individual MFS gateways — bKash/Nagad are methods INSIDE Hybrid Pay, not
+// separate Hybrid options). 'bkash' is kept as a still-functional legacy path.
+// All three map 1:1 to a payment_provider enum value (payment.provider below).
+export type PaymentMethod = "cod" | "bkash" | "hybridpay";
 // Mirrors the `order_source` Postgres enum (01_schema.sql) exactly. Kept in
 // sync with the DB so callers (admin manual/messenger entry, landing pages, API)
 // don't need `as` casts to satisfy the type.
@@ -98,6 +102,11 @@ export interface PlaceOrderResult {
   paymentId: string;
   /** true for bkash → checkout slice runs BkashProvider.createPayment next. */
   bkashRequired: boolean;
+  /**
+   * true for any non-COD (online, redirect-based) method — bkash OR hybridpay.
+   * The checkout slice runs the gateway create + redirect when this is set.
+   */
+  onlineRequired: boolean;
   /** Applied discount (Phase 2.4), or null when no code was applied. */
   discount: AppliedDiscount | null;
   /**
@@ -499,6 +508,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       orderNumber: Number(order.order_number),
       paymentId,
       bkashRequired: input.paymentMethod === "bkash",
+      onlineRequired: input.paymentMethod !== "cod",
       discount: appliedDiscount,
       analyticsEventId,
     };
