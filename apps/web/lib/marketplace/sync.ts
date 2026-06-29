@@ -80,7 +80,8 @@ async function readSource(tenantId: string, productId: string): Promise<ListingS
     if (!tenant) return null;
 
     const variants = await tx<VariantSource[]>`
-      select id, title, options, price, wholesale_price, tier_prices, moq,
+      select id, title, options, price,
+             wholesale_price as "wholesalePrice", tier_prices as "tierPrices", moq,
              inventory_quantity, track_inventory, position
         from product_variant
        where product_id = ${productId} and is_active = true
@@ -176,7 +177,7 @@ export async function syncMarketplaceListing(tenantId: string, productId: string
           values
             (${v.id}, ${listingId}, ${productId}, ${tenantId}, ${v.title},
              ${tx.json(v.options)}, ${Number(v.price)}, ${v.wholesalePrice ? Number(v.wholesalePrice) : null},
-             ${tx.json(v.tierPrices)}, ${v.moq},
+             ${tx.json(v.tierPrices ?? [])}, ${v.moq ?? null},
              ${!v.track_inventory || v.inventory_quantity > 0}, ${v.position})
         `;
       }
