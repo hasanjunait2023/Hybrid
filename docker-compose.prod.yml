@@ -99,14 +99,14 @@ services:
   # reaches it as hybrid-piprapay:80. Founder = super admin; each tenant is a
   # "brand" with its own API key (what they paste into Hybrid Pay settings).
   piprapay:
-    image: php:8.2-apache
+    build:
+      context: .
+      dockerfile: piprapay.Dockerfile
+    image: hybrid-piprapay:local
     container_name: hybrid-piprapay
     profiles:
     - hybridpay
     working_dir: /var/www/html
-    command: >
-      bash -c "docker-php-ext-install bcmath pdo pdo_mysql mysqli > /dev/null 2>&1;
-      a2enmod rewrite > /dev/null 2>&1; apache2-foreground"
     volumes:
     - ./piprapay:/var/www/html
     depends_on:
