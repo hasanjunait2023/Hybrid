@@ -41,13 +41,13 @@ export default function MarketLayout({ children }: { children: ReactNode }) {
         {/* Retail | Wholesale toggle — separate routes, no redirect */}
         <nav className="mx-auto flex max-w-5xl items-center gap-1 px-4 pb-2" aria-label="বাজার মোড">
           <Link
-            href="/market"
+            href="/"
             className="rounded-md px-3 py-1 text-sm font-medium transition hover:bg-surface-2"
           >
             খুচরা
           </Link>
           <Link
-            href="/market/wholesale"
+            href="/wholesale"
             className="rounded-md px-3 py-1 text-sm font-medium transition hover:bg-surface-2"
           >
             পাইকারি
