@@ -18,10 +18,12 @@ import { settingsDbid } from "./admin/settingsDbid";
 import { shipping } from "./admin/shipping";
 import { wholesale } from "./admin/wholesale";
 import { tasks } from "./admin/tasks";
+import { leads } from "./admin/leads";
 
 export const admin: typeof EnAdmin = {
   products,
   tasks,
+  leads,
   customers,
   collections,
   discounts,
@@ -51,6 +53,7 @@ export const admin: typeof EnAdmin = {
     products: "পণ্য",
     customers: "গ্রাহক",
     tasks: "কাজ",
+    leads: "লিড",
     more: "আরও",
     wholesale: "পাইকারি",
     purchaseRequests: "পারচেজ রিকোয়েস্ট",

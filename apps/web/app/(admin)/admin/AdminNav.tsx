@@ -48,6 +48,7 @@ const WHOLESALE_ITEMS: NavItem[] = [
 // these live in the desktop sidebar's "More" group and remain reachable there.
 const MORE_ITEMS: NavItem[] = [
   { href: "/admin/tasks", tKey: "tasks", Icon: CheckCircleIcon, match: "/admin/tasks" },
+  { href: "/admin/leads", tKey: "leads", Icon: UsersIcon, match: "/admin/leads" },
   { href: "/admin/themes", tKey: "themes", Icon: MenuIcon, match: "/admin/themes" },
   { href: "/admin/returns", tKey: "returns", Icon: UndoIcon, match: "/admin/returns" },
   { href: "/admin/cod", tKey: "cod", Icon: TruckIcon, match: "/admin/cod" },
