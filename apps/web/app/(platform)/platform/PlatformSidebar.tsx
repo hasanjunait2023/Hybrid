@@ -30,6 +30,7 @@ const TILES: NavItem[] = [
   { href: "/platform", label: "Dashboard", Icon: HomeIcon },
   { href: "/platform/tenants", label: "Stores", Icon: BoxesIcon },
   { href: "/platform/wholesale-kyc", label: "Wholesale KYC", Icon: ShieldIcon },
+  { href: "/platform/marketplace-fees", label: "Market Fees", Icon: ReceiptIcon },
   { href: "/platform/finance", label: "Finance", Icon: ReceiptIcon },
   { href: "/platform/plans", label: "Plans", Icon: ShieldIcon },
   { href: "/platform/billing", label: "Billing", Icon: CheckCircleIcon },

@@ -381,6 +381,17 @@ export interface MarketplaceCustomer {
   updatedAt: Generated<Timestamp>;
 }
 
+export interface MarketplaceFee {
+  amount: Numeric;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  note: string | null;
+  paidAt: Timestamp | null;
+  periodMonth: Timestamp;
+  status: Generated<string>;
+  tenantId: string;
+}
+
 export interface MarketplaceListing {
   categoryId: string | null;
   description: string | null;
@@ -884,6 +895,7 @@ export interface Tenant {
   id: Generated<string>;
   kycDocuments: Generated<Json>;
   kycStatus: Generated<string>;
+  marketplaceMonthlyFee: Generated<Numeric>;
   name: string;
   ownerUserId: string | null;
   planId: string | null;
@@ -1023,6 +1035,7 @@ export interface DB {
   marketplaceCommission: MarketplaceCommission;
   marketplaceConfig: MarketplaceConfig;
   marketplaceCustomer: MarketplaceCustomer;
+  marketplaceFee: MarketplaceFee;
   marketplaceListing: MarketplaceListing;
   marketplaceListingVariant: MarketplaceListingVariant;
   marketplaceOrder: MarketplaceOrder;
