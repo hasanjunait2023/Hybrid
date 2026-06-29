@@ -406,6 +406,64 @@ export async function getStorefrontProductBySlug(
   )();
 }
 
+// A published static page (privacy / returns / terms / about / custom). Content
+// is stored as a block tree; static pages use one richtext block whose `value`
+// is the plain-text body the storefront renders (whitespace-preserved). Draft
+// pages return null (not publicly visible). Cached + busted by tenant:{id}:page:{slug}.
+export interface StorefrontPage {
+  title: string;
+  body: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
+interface PageBlock {
+  type?: string;
+  value?: string;
+  content?: string;
+  heading?: string;
+}
+
+export async function getStorePage(
+  tenantId: string,
+  slug: string,
+): Promise<StorefrontPage | null> {
+  return unstable_cache(
+    async () => {
+      const row = await withTenant(tenantId, null, async (tx) => {
+        const rows = await tx<
+          { title: string | null; blocks: PageBlock[]; seo: { title?: string; description?: string } }[]
+        >`
+          select title, blocks, seo
+            from store_page
+           where slug = ${slug} and status = 'published'
+           limit 1
+        `;
+        return rows[0] ?? null;
+      });
+      if (!row) return null;
+
+      const blocks = Array.isArray(row.blocks) ? row.blocks : [];
+      const body = blocks
+        .map((b) => b?.value ?? b?.content ?? b?.heading ?? "")
+        .filter((s) => s.trim().length > 0)
+        .join("\n\n");
+
+      return {
+        title: row.title ?? "",
+        body,
+        seoTitle: row.seo?.title ?? null,
+        seoDescription: row.seo?.description ?? null,
+      } satisfies StorefrontPage;
+    },
+    [`page:${tenantId}:${slug}`],
+    {
+      revalidate: 3600,
+      tags: [`tenant:${tenantId}`, `tenant:${tenantId}:page:${slug}`],
+    },
+  )();
+}
+
 // Active products for a tenant. min(variant.price) is the card price.
 export async function getStorefrontProducts(
   tenantId: string,

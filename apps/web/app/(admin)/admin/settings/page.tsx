@@ -47,6 +47,21 @@ export default async function SettingsPage() {
             </a>
           </li>
         ))}
+        {/* Static / policy pages — not yet in the i18n sections map (inline). */}
+        <li>
+          <a
+            href="/admin/settings/pages"
+            className="flex min-h-[56px] items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 shadow-xs hover:bg-surface-2"
+          >
+            <span>
+              <span className="block font-semibold text-ink">পেজ</span>
+              <span className="block text-xs text-ink-muted">প্রাইভেসি, রিটার্ন, শর্তাবলী ও কাস্টম পেজ</span>
+            </span>
+            <span aria-hidden className="text-ink-subtle">
+              →
+            </span>
+          </a>
+        </li>
       </ul>
     </div>
   );
