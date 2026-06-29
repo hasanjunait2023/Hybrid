@@ -62,7 +62,7 @@ export default async function PlatformDashboard() {
 
       {/* Hero panel: greeting + gauge + KPI stats */}
       <section className="pf-rise relative overflow-hidden rounded-[22px] border border-[var(--pf-border)] bg-gradient-to-br from-[#fdf8ec] to-[#fbf3dc] p-6 lg:p-7">
-        <div className="flex flex-wrap items-start justify-between gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-6">
           <div className="min-w-0">
             <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[var(--pf-ink)] lg:text-[34px]">
               {greetingFor(hour)}, {name}
@@ -267,19 +267,21 @@ function StatusCard({ s }: { s: PlatformStats }) {
         <p className="text-[26px] font-bold leading-none text-[var(--pf-ink)]">{fmt(s.liveStores)}</p>
         <p className="mt-1 text-[12px] text-[var(--pf-muted)]">Live stores</p>
       </div>
-      <div className="mt-5 flex flex-1 items-end justify-around gap-3">
-        {bars.map((b) => {
-          const pct = Math.round((b.value / total) * 100);
-          return (
-            <div key={b.label} className="flex w-full flex-col items-center gap-2">
-              <span className="text-[12px] font-bold text-[var(--pf-ink)]">{pct}%</span>
-              <div className="flex h-[120px] w-full items-end">
-                <div className={`w-full rounded-xl ${b.cls}`} style={{ height: `${Math.max(6, pct)}%` }} />
+      <div className="mt-4 flex flex-1 items-center">
+        <div className="flex w-full items-end justify-around gap-3">
+          {bars.map((b) => {
+            const pct = Math.round((b.value / total) * 100);
+            return (
+              <div key={b.label} className="flex w-full flex-col items-center gap-2">
+                <span className="text-[12px] font-bold text-[var(--pf-ink)]">{pct}%</span>
+                <div className="flex h-[150px] w-full items-end">
+                  <div className={`w-full rounded-xl ${b.cls}`} style={{ height: `${Math.max(6, pct)}%` }} />
+                </div>
+                <span className="text-[10.5px] text-[var(--pf-muted)]">{b.label}</span>
               </div>
-              <span className="text-[10.5px] text-[var(--pf-muted)]">{b.label}</span>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

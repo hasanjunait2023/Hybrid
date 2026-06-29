@@ -40,12 +40,11 @@ const SHORTCUTS: { href: string; label: string }[] = [
   { href: "/platform", label: "New signups" },
 ];
 
-// Modules on the roadmap — shown so the operator sees what's coming without dead
-// links. Wired up in later iterations.
-const ROADMAP: { label: string; Icon: (p: { className?: string }) => React.ReactElement }[] = [
-  { label: "Sales pipeline", Icon: ChatIcon },
-  { label: "Marketing", Icon: ChatIcon },
-  { label: "Support inbox", Icon: ChatIcon },
+// "Manage" modules. Items with an href are live; the rest show a "Soon" badge.
+const ROADMAP: { label: string; href?: string; Icon: (p: { className?: string }) => React.ReactElement }[] = [
+  { label: "Sales pipeline", href: "/platform/sales", Icon: ChatIcon },
+  { label: "Marketing", href: "/platform/marketing", Icon: ChatIcon },
+  { label: "Support inbox", href: "/platform/support", Icon: ChatIcon },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -120,20 +119,38 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
           Manage
         </p>
         <ul className="space-y-0.5">
-          {ROADMAP.map((m) => (
-            <li
-              key={m.label}
-              className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-subtle)]"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--pf-border)] bg-[#fbf9f2]">
-                <m.Icon className="h-3.5 w-3.5" />
-              </span>
-              {m.label}
-              <span className="ml-auto rounded-full bg-[var(--pf-yellow-soft)] px-1.5 py-0.5 text-[8px] font-semibold uppercase text-[var(--pf-yellow-deep)]">
-                Soon
-              </span>
-            </li>
-          ))}
+          {ROADMAP.map((m) => {
+            const inner = (
+              <>
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--pf-border)] bg-[#fbf9f2]">
+                  <m.Icon className="h-3.5 w-3.5" />
+                </span>
+                {m.label}
+                {!m.href && (
+                  <span className="ml-auto rounded-full bg-[var(--pf-yellow-soft)] px-1.5 py-0.5 text-[8px] font-semibold uppercase text-[var(--pf-yellow-deep)]">
+                    Soon
+                  </span>
+                )}
+              </>
+            );
+            return m.href ? (
+              <li key={m.label}>
+                <Link
+                  href={m.href}
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-muted)] hover:bg-[#fbf9f2] hover:text-[var(--pf-ink)]"
+                >
+                  {inner}
+                </Link>
+              </li>
+            ) : (
+              <li
+                key={m.label}
+                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-[var(--pf-subtle)]"
+              >
+                {inner}
+              </li>
+            );
+          })}
         </ul>
       </div>
 
