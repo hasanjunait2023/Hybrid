@@ -14,6 +14,7 @@ export const settingsGeneral: typeof En = {
     store: { label: "স্টোর প্রোফাইল", sub: "নাম, ফোন, ঠিকানা, পলিসি" },
     staff: { label: "স্টাফ ও ভূমিকা", sub: "সদস্য, মালিক/অ্যাডমিন/স্টাফ" },
     loyalty: { label: "লয়্যালটি পয়েন্ট", sub: "আর্ন রেট, রিডিম মূল্য" },
+    billing: { label: "বিলিং ও প্ল্যান", sub: "বর্তমান প্ল্যান, ব্যবহার, আপগ্রেড" },
   },
 
   mode: {

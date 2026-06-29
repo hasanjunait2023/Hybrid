@@ -15,6 +15,7 @@ export const settingsGeneral = {
     store: { label: "Store profile", sub: "Name, phone, address, policy" },
     staff: { label: "Staff & roles", sub: "Members, owner/admin/staff" },
     loyalty: { label: "Loyalty points", sub: "Earn rate, redeem value" },
+    billing: { label: "Billing & plan", sub: "Current plan, usage, upgrade" },
   },
 
   // Shared mode chip (sandbox/stage/live).

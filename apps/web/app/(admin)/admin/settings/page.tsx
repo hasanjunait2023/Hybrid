@@ -16,6 +16,7 @@ const SECTION_KEYS = [
   { href: "/admin/settings/store", key: "store" },
   { href: "/admin/settings/staff", key: "staff" },
   { href: "/admin/settings/loyalty", key: "loyalty" },
+  { href: "/admin/settings/billing", key: "billing" },
 ] as const;
 
 export default async function SettingsPage() {
