@@ -7,7 +7,7 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [products, categories] = await Promise.all([
+  const [browse, categories] = await Promise.all([
     listMarketplaceProducts({ categorySlug: slug }),
     getMarketplaceCategories(),
   ]);
@@ -16,7 +16,7 @@ export default async function CategoryPage({
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">{category?.nameBn ?? slug}</h1>
-      <ProductGrid products={products} />
+      <ProductGrid products={browse.items} />
     </div>
   );
 }

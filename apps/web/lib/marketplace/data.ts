@@ -4,6 +4,7 @@ import "server-only";
 // anonymous, RLS-on path — world-readable projection only, never asPlatformAdmin).
 // Buyer order history runs under withBuyer.
 import { withPublic, withBuyer } from "@hybrid/db";
+import type { Tx } from "@hybrid/db";
 
 export interface MpListing {
   productId: string;
@@ -65,52 +66,77 @@ function toListing(r: ListingRow): MpListing {
   };
 }
 
-const LIMIT = 60;
+export type MpSort = "relevance" | "newest" | "price_asc" | "price_desc" | "rating";
 
-// Browse / search / category in one query. q → full-text; categorySlug → filter.
+export interface MpListPage {
+  items: MpListing[];
+  /** true when a further page exists (one extra row was fetched to detect it). */
+  hasMore: boolean;
+  page: number;
+  sort: MpSort;
+}
+
+const DEFAULT_PAGE_SIZE = 60;
+const MAX_PAGE_SIZE = 60;
+
+// Build the ORDER BY as a nested sql fragment (postgres.js inlines fragments and
+// merges their params) — `sort` is a closed union, so no user string ever reaches
+// the clause. Relevance only applies to a text search; it falls back to newest
+// for plain browse/category.
+function orderFragment(tx: Tx, sort: MpSort, q: string | null) {
+  switch (sort) {
+    case "price_asc":
+      return tx`price_from asc, rating_avg desc`;
+    case "price_desc":
+      return tx`price_from desc, rating_avg desc`;
+    case "rating":
+      return tx`rating_avg desc, rating_count desc`;
+    case "newest":
+      return tx`synced_at desc`;
+    case "relevance":
+    default:
+      return q
+        ? tx`ts_rank(search_tsv, plainto_tsquery('simple', ${q})) desc, rating_avg desc`
+        : tx`rating_avg desc, synced_at desc`;
+  }
+}
+
+// Browse / search / category in ONE query, with sort + offset pagination.
+// q → full-text; categorySlug → filter; both optional and composable.
 export async function listMarketplaceProducts(opts: {
   q?: string;
   categorySlug?: string;
-} = {}): Promise<MpListing[]> {
-  const q = opts.q?.trim();
-  const cat = opts.categorySlug?.trim();
+  sort?: MpSort;
+  /** 1-based. */
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<MpListPage> {
+  const q = opts.q?.trim() || null;
+  const cat = opts.categorySlug?.trim() || null;
+  const pageSize = Math.min(Math.max(1, Math.floor(opts.pageSize ?? DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE);
+  const page = Math.max(1, Math.floor(opts.page ?? 1));
+  const offset = (page - 1) * pageSize;
+  const sort: MpSort = opts.sort ?? (q ? "relevance" : "newest");
 
   const rows = await withPublic((tx) => {
-    if (q) {
-      return tx<ListingRow[]>`
-        select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
-               price_from, image_url, in_stock, rating_avg, rating_count,
-               is_wholesale, wholesale_only, moq
-          from marketplace_listing
-         where status = 'active' and hidden = false
-           and search_tsv @@ plainto_tsquery('simple', ${q})
-         order by ts_rank(search_tsv, plainto_tsquery('simple', ${q})) desc, rating_avg desc
-         limit ${LIMIT}
-      `;
-    }
-    if (cat) {
-      return tx<ListingRow[]>`
-        select ml.product_id, ml.tenant_id, ml.vendor_slug, ml.slug, ml.title, ml.vendor_name,
-               ml.price_from, ml.image_url, ml.in_stock, ml.rating_avg, ml.rating_count,
-               ml.is_wholesale, ml.wholesale_only, ml.moq
-          from marketplace_listing ml
-          join marketplace_category c on c.id = ml.category_id
-         where ml.status = 'active' and ml.hidden = false and c.slug = ${cat}
-         order by ml.rating_avg desc, ml.synced_at desc
-         limit ${LIMIT}
-      `;
-    }
+    const order = orderFragment(tx, sort, q);
+    // Fetch one extra row to know whether a next page exists.
     return tx<ListingRow[]>`
       select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
              price_from, image_url, in_stock, rating_avg, rating_count,
              is_wholesale, wholesale_only, moq
         from marketplace_listing
        where status = 'active' and hidden = false
-       order by rating_avg desc, synced_at desc
-       limit ${LIMIT}
+         and (${q}::text is null or search_tsv @@ plainto_tsquery('simple', ${q}))
+         and (${cat}::text is null
+              or category_id = (select id from marketplace_category where slug = ${cat}))
+       order by ${order}
+       limit ${pageSize + 1} offset ${offset}
     `;
   });
-  return rows.map(toListing);
+
+  const hasMore = rows.length > pageSize;
+  return { items: rows.slice(0, pageSize).map(toListing), hasMore, page, sort };
 }
 
 export async function getMarketplaceCategories(): Promise<MpCategory[]> {
