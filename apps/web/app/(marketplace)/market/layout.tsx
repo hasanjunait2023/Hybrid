@@ -31,9 +31,16 @@ export default function MarketLayout({ children }: { children: ReactNode }) {
             🛒
           </Link>
           <Link
-            href="/account/orders"
+            href="/account/wishlist"
             className="shrink-0 px-2 py-2 text-sm font-medium"
-            aria-label="আমার অর্ডার"
+            aria-label="উইশলিস্ট"
+          >
+            ♥
+          </Link>
+          <Link
+            href="/account"
+            className="shrink-0 px-2 py-2 text-sm font-medium"
+            aria-label="আমার অ্যাকাউন্ট"
           >
             👤
           </Link>

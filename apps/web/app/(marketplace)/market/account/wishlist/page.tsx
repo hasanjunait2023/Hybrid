@@ -24,7 +24,7 @@ export default async function WishlistPage() {
       {items.length === 0 ? (
         <p className="text-ink-muted">
           উইশলিস্ট খালি।{" "}
-          <Link href="/market" className="text-primary">
+          <Link href="/" className="text-primary">
             কেনাকাটা করুন
           </Link>
         </p>
@@ -33,7 +33,7 @@ export default async function WishlistPage() {
           {items.map((p) => (
             <Link
               key={p.productId}
-              href={`/market/${p.vendorSlug}/${p.productSlug}`}
+              href={`/${p.vendorSlug}/${p.productSlug}`}
               className="flex flex-col overflow-hidden rounded-lg border border-border bg-surface transition hover:shadow-md"
             >
               <div className="aspect-square w-full bg-surface-2">

@@ -37,7 +37,7 @@ export default async function MarketProductPage({
         </div>
         <div className="flex flex-col gap-3">
           <h1 className="text-xl font-bold text-ink">{product.title}</h1>
-          <Link href={`/market/${product.vendorSlug}`} className="text-sm text-ink-muted">
+          <Link href={`/${product.vendorSlug}`} className="text-sm text-ink-muted">
             বিক্রেতা: {product.vendorName}
           </Link>
           <p className="text-2xl font-bold text-primary">{formatBdtBangla(product.priceFrom)}</p>

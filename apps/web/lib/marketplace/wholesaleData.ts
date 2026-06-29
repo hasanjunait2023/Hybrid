@@ -207,6 +207,62 @@ export async function getWholesaleProduct(
   });
 }
 
+// ── Wholesale vendor profile ─────────────────────────────────────────────────
+
+export interface WholesaleVendorProfile {
+  vendorSlug: string;
+  vendorName: string;
+  ratingAvg: number;
+  ratingCount: number;
+  productCount: number;
+}
+
+export async function getWholesaleVendorProfile(
+  vendorSlug: string,
+): Promise<WholesaleVendorProfile | null> {
+  const rows = await withPublic((tx) =>
+    tx<{ vendor_name: string; rating_avg: string; rating_count: string; product_count: string }[]>`
+      select vendor_name,
+             round(avg(rating_avg)::numeric, 2) as rating_avg,
+             coalesce(sum(rating_count), 0)::text as rating_count,
+             count(*)::text as product_count
+        from marketplace_listing
+       where vendor_slug = ${vendorSlug}
+         and status = 'active' and hidden = false
+         and is_wholesale = true
+       group by vendor_name
+    `,
+  );
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    vendorSlug,
+    vendorName: r.vendor_name,
+    ratingAvg: Number(r.rating_avg),
+    ratingCount: Number(r.rating_count),
+    productCount: Number(r.product_count),
+  };
+}
+
+export async function getWholesaleVendorProducts(
+  vendorSlug: string,
+): Promise<WholesaleListing[]> {
+  const rows = await withPublic((tx) =>
+    tx<(ListingRow & { moq: number | null; wholesale_only: boolean })[]>`
+      select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
+             price_from, image_url, in_stock, rating_avg, rating_count,
+             moq, wholesale_only
+        from marketplace_listing
+       where vendor_slug = ${vendorSlug}
+         and status = 'active' and hidden = false
+         and is_wholesale = true
+       order by rating_avg desc, synced_at desc
+       limit 60
+    `,
+  );
+  return rows.map(toListing);
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseTierPrices(raw: unknown): Array<{ min_qty: number; unit_price: number }> {
