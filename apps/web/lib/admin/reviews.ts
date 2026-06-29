@@ -105,10 +105,10 @@ export interface ProductRating {
   count: number;
 }
 
-// Approved-only aggregate for the storefront product page.
+// Approved-only aggregate for the storefront product page. userId=null accepted (public).
 export async function getProductRating(
   tenantId: string,
-  userId: string,
+  userId: string | null,
   productId: string,
 ): Promise<ProductRating> {
   const rows = await withTenant(tenantId, userId, (tx) =>
@@ -139,4 +139,57 @@ export async function getReviewStats(tenantId: string, userId: string): Promise<
   );
   const r = rows[0];
   return { pending: r?.pending ?? 0, approved: r?.approved ?? 0, avgRating: Number(r?.avg ?? 0) };
+}
+
+export interface PublicReview {
+  id: string;
+  customerName: string | null;
+  rating: number;
+  body: string | null;
+  createdAt: string;
+}
+
+// Storefront-facing: approved reviews for a product. userId=null is accepted (public).
+export async function getApprovedProductReviews(
+  tenantId: string,
+  productId: string,
+): Promise<PublicReview[]> {
+  const rows = await withTenant(tenantId, null, (tx) =>
+    tx<{ id: string; customer_name: string | null; rating: number; body: string | null; created_at: string }[]>`
+      select id, customer_name, rating, body, created_at
+      from product_review
+      where product_id = ${productId} and status = 'approved'
+      order by created_at desc
+      limit 20
+    `,
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    customerName: r.customer_name,
+    rating: r.rating,
+    body: r.body,
+    createdAt: r.created_at,
+  }));
+}
+
+// Storefront review submission — always starts as 'pending' (awaiting moderation).
+// userId=null: public write is gated by the INSERT policy on product_review.
+export async function submitStorefrontReview(
+  tenantId: string,
+  input: CreateReviewInput,
+): Promise<{ id: string }> {
+  if (!Number.isInteger(input.rating) || input.rating < 1 || input.rating > 5) {
+    throw new Error("RATING_RANGE");
+  }
+  const rows = await withTenant(tenantId, null, (tx) =>
+    tx<{ id: string }[]>`
+      insert into product_review (tenant_id, product_id, order_id, customer_id, customer_name, rating, body)
+      values (
+        ${tenantId}, ${input.productId}, ${input.orderId ?? null}, ${input.customerId ?? null},
+        ${input.customerName ?? null}, ${input.rating}, ${input.body ?? null}
+      )
+      returning id
+    `,
+  );
+  return { id: rows[0]!.id };
 }

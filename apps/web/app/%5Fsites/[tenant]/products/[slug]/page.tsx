@@ -5,9 +5,11 @@ import {
   getStorefrontProductBySlug,
   getTenantContextBySlug,
 } from "@/lib/storefront/data";
+import { getApprovedProductReviews, getProductRating } from "@/lib/admin/reviews";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
 import { AddToCart } from "./AddToCart";
+import { ReviewSection } from "./ReviewSection";
 
 interface ProductDetailPageProps {
   params: Promise<{ tenant: string; slug: string }>;
@@ -57,12 +59,25 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const product = await getStorefrontProductBySlug(ctx.id, productSlug);
   if (!product) notFound();
 
+  const [reviews, rating] = await Promise.all([
+    getApprovedProductReviews(ctx.id, product.id),
+    getProductRating(ctx.id, null, product.id),
+  ]);
+
   const { locale, d } = await getDict();
   const isDiscounted =
     product.compareAtPrice != null && product.compareAtPrice > product.price;
 
   return (
     <div className="mx-auto max-w-storefront px-4 pb-28 pt-4 md:pb-8">
+      {/* Star rating summary above the product grid */}
+      {rating.count > 0 && (
+        <div className="mb-3 flex items-center gap-1.5 text-sm text-ink-muted">
+          <span className="text-accent">{'★'.repeat(Math.round(rating.average))}{'☆'.repeat(5 - Math.round(rating.average))}</span>
+          <span className="font-semibold text-ink tnum">{rating.average.toFixed(1)}</span>
+          <span>({rating.count} রিভিউ)</span>
+        </div>
+      )}
       <div className="grid gap-6 md:grid-cols-2 md:gap-8">
         {/* Image */}
         <div className="relative aspect-square overflow-hidden rounded-lg border border-border bg-surface-2">
@@ -110,6 +125,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           <AddToCart tenantSlug={slug} product={product} />
         </div>
       </div>
+
+      <ReviewSection
+        tenantSlug={slug}
+        productId={product.id}
+        initialReviews={reviews}
+        avgRating={rating.average}
+        reviewCount={rating.count}
+      />
     </div>
   );
 }
