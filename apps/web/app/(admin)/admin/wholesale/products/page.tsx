@@ -5,7 +5,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { listWholesaleProducts, getWholesaleProductStats } from "@/lib/admin/wholesale";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
-import { PageHeader, StatStrip, StatCard } from "../_ui";
+import { PageHeader, StatStrip, StatCard } from "../../_ui";
 
 // Wholesale product list — shows MOQ, wholesale price, tier pricing.
 export default async function WholesaleProductsPage() {

@@ -5,7 +5,7 @@ import { listLedgerEntries, listB2BCustomers } from "@/lib/admin/wholesale";
 import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
-import { PageHeader } from "../_ui";
+import { PageHeader } from "../../_ui";
 import { CustomerSelector } from "./CustomerSelector";
 import { LedgerClient } from "./LedgerClient";
 

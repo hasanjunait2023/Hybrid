@@ -6,7 +6,7 @@ import { listPurchaseRequests } from "./actions";
 import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
-import { PageHeader, StatStrip, StatCard } from "../_ui";
+import { PageHeader, StatStrip, StatCard } from "../../_ui";
 
 // Purchase requests list — shows all PRs for this wholesaler tenant.
 export default async function PurchaseRequestsPage(props: {

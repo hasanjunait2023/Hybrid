@@ -6,7 +6,7 @@ import { getPurchaseRequest } from "../actions";
 import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
-import { PageHeader, Breadcrumbs } from "../_ui";
+import { PageHeader, Breadcrumbs } from "../../../_ui";
 import { QuoteForm } from "./QuoteForm";
 import { AcceptRejectButtons } from "./AcceptRejectButtons";
 import { ConvertToOrderButton } from "./ConvertToOrderButton";

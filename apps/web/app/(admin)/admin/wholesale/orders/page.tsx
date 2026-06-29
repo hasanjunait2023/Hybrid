@@ -5,7 +5,7 @@ import { listWholesaleOrders, getWholesaleOrderCounts } from "@/lib/admin/wholes
 import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
-import { PageHeader, StatStrip, StatCard } from "../_ui";
+import { PageHeader, StatStrip, StatCard } from "../../_ui";
 
 // Wholesale orders list — filters order_mode='wholesale'.
 export default async function WholesaleOrdersPage() {
