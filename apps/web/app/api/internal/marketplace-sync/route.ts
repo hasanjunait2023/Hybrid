@@ -17,6 +17,8 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { asPlatformAdmin } from "@hybrid/db";
 import { syncMarketplaceListingsForTenant } from "@/lib/marketplace/sync";
+import { enqueueStatusSms } from "@/lib/sms/queue";
+import type { StatusChangeKind } from "@/lib/sms/templates";
 
 export const dynamic = "force-dynamic";
 
@@ -35,20 +37,73 @@ function authorized(req: Request): boolean {
 // Copy each sub-order's live fulfillment/payment status from the tenant `orders`
 // row into the buyer-visible marketplace_suborder snapshot, so buyer order
 // history never has to read tenant `orders`. Matched by the value-link order_id.
+// Detects fulfillment status changes before the bulk update so we can enqueue
+// buyer SMS notifications for shipped / delivered / cancelled transitions.
 async function syncSuborderStatus(): Promise<void> {
-  await asPlatformAdmin(async (tx) => {
-    await tx`
-      update marketplace_suborder mso
-         set status = o.fulfillment_status,
-             payment_status = o.payment_status,
-             updated_at = now()
-        from orders o
-       where o.id = mso.order_id
-         and o.tenant_id = mso.tenant_id
-         and (mso.status is distinct from o.fulfillment_status
-              or mso.payment_status is distinct from o.payment_status)
-    `;
-  });
+  // Snapshot rows that will change — needed to fire targeted SMS after commit.
+  const changed = await asPlatformAdmin((tx) =>
+    tx<{
+      id: string;
+      buyer_phone: string;
+      vendor_name: string;
+      order_number: number;
+      grand_total: string;
+      old_status: string | null;
+      new_status: string;
+    }[]>`
+      select
+        mso.id,
+        mo.contact_phone   as buyer_phone,
+        mso.vendor_name,
+        mso.order_number,
+        mso.grand_total,
+        mso.status         as old_status,
+        o.fulfillment_status as new_status
+      from marketplace_suborder mso
+      join orders o on o.id = mso.order_id and o.tenant_id = mso.tenant_id
+      join marketplace_order mo on mo.id = mso.marketplace_order_id
+      where mso.status is distinct from o.fulfillment_status
+    `,
+  );
+
+  if (changed.length === 0) return;
+
+  // Bulk update — same as before.
+  await asPlatformAdmin((tx) => tx`
+    update marketplace_suborder mso
+       set status = o.fulfillment_status,
+           payment_status = o.payment_status,
+           updated_at = now()
+      from orders o
+     where o.id = mso.order_id
+       and o.tenant_id = mso.tenant_id
+       and (mso.status is distinct from o.fulfillment_status
+            or mso.payment_status is distinct from o.payment_status)
+  `);
+
+  // Enqueue buyer SMS for buyer-visible status transitions. Fire-and-forget per
+  // row — one SMS failure must never block the others.
+  const SMS_STATUSES = new Set<string>(["shipped", "delivered", "cancelled"]);
+  for (const row of changed) {
+    if (!SMS_STATUSES.has(row.new_status)) continue;
+    void enqueueStatusSms(
+      {
+        storeName: row.vendor_name,
+        orderNumber: Number(row.order_number),
+        total: Number(row.grand_total),
+        paymentMethod: "cod",
+        customerName: "",
+        customerPhone: row.buyer_phone,
+        trackingCode: null,
+      },
+      row.new_status as StatusChangeKind,
+    ).catch((err) => {
+      console.error(
+        `[marketplace-sync] SMS enqueue failed for suborder ${row.id}`,
+        err,
+      );
+    });
+  }
 }
 
 // Saga recovery: finalize parents left 'pending' by a mid-checkout crash (the

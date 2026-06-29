@@ -20,6 +20,7 @@ import "server-only";
 import { withBuyer, asPlatformAdmin } from "@hybrid/db";
 import { placeOrder, InsufficientStockError } from "@/lib/commerce/placeOrder";
 import { calculateShipping } from "@/lib/commerce/shipping";
+import { sendMarketplaceBuyerConfirmation } from "@/lib/sms/notify";
 
 export interface MpCartLine {
   tenantId: string;
@@ -248,6 +249,18 @@ export async function placeMarketplaceOrder(
       where id = ${mpOrderId}
     `,
   );
+
+  // Non-blocking confirmation SMS to buyer. Fire-and-forget — checkout has
+  // already committed; a gateway error here must never surface to the buyer.
+  if (successes.length > 0) {
+    void sendMarketplaceBuyerConfirmation(input.contact.phone, {
+      buyerName: input.contact.name,
+      vendorCount: successes.length,
+      grandTotal,
+    }).catch((err) => {
+      console.error("[marketplace-checkout] buyer SMS failed", err);
+    });
+  }
 
   return {
     marketplaceOrderId: mpOrderId,

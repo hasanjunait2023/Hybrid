@@ -9,9 +9,11 @@ import {
   customerOrderConfirmationSms,
   sellerNewOrderAlertSms,
   customerOrderStatusSms,
+  marketplaceBuyerOrderConfirmationSms,
   type OrderNotificationData,
   type OrderStatusNotificationData,
   type StatusChangeKind,
+  type MarketplaceOrderConfirmationData,
 } from "./templates";
 import { notifyOrderPlacedWhatsApp } from "@/lib/whatsapp/notify";
 
@@ -86,5 +88,19 @@ export async function sendOrderStatusNotification(
   await safeSend(
     () => sms.send(input.customerPhone, customerOrderStatusSms(input, kind)),
     `customer ${input.customerPhone} order #${input.orderNumber} status=${kind}`,
+  );
+}
+
+// Marketplace buyer confirmation — fires once after the saga finalises at
+// least one successful sub-order. Non-blocking: failures are swallowed; the
+// checkout has already committed.
+export async function sendMarketplaceBuyerConfirmation(
+  phone: string,
+  data: MarketplaceOrderConfirmationData,
+): Promise<void> {
+  const sms = getSmsAdapter();
+  await safeSend(
+    () => sms.send(phone, marketplaceBuyerOrderConfirmationSms(data)),
+    `marketplace buyer ${phone} (${data.vendorCount} vendors ৳${data.grandTotal})`,
   );
 }
