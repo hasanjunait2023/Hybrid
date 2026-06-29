@@ -17,6 +17,7 @@
 // COD-pending list.
 import { withTenant } from "@hybrid/db";
 import type { CourierAdapter, CourierCreds, CourierProvider } from "@hybrid/couriers";
+import { earnPointsOnDelivery } from "@/lib/loyalty/earn";
 
 interface ActiveShipment {
   id: string;
@@ -115,11 +116,16 @@ async function reconcileOne(
              updated_at = now()
        where id = ${shipment.id}
     `;
-    await tx`
+    const orderRows = await tx<{ grand_total: string }[]>`
       update orders
          set fulfillment_status = ${status.fulfillment}::order_fulfillment_status,
              updated_at = now()
        where id = ${shipment.orderId}
+      returning grand_total
     `;
+    // Earn loyalty points on delivery (idempotent — partial unique index guards replay).
+    if (delivered && orderRows[0]) {
+      void earnPointsOnDelivery(tenantId, tenantId, shipment.orderId, Number(orderRows[0].grand_total)).catch(() => {});
+    }
   });
 }

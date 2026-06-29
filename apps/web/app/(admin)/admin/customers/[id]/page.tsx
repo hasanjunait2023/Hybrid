@@ -3,6 +3,7 @@ import { StatusBadge, PhoneIcon, ChatIcon } from "@hybrid/ui";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getCustomerDetail } from "@/lib/admin/customers";
+import { getLoyaltyProgram, getLoyaltyBalance } from "@/lib/loyalty/earn";
 import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
@@ -23,8 +24,15 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 
-  const customer = await getCustomerDetail(tenantId, session.userId, id);
+  const [customer, loyaltyProgram] = await Promise.all([
+    getCustomerDetail(tenantId, session.userId, id),
+    getLoyaltyProgram(tenantId),
+  ]);
   if (!customer) notFound();
+
+  const loyaltyBalance = (loyaltyProgram.enabled && customer.id)
+    ? await getLoyaltyBalance(tenantId, customer.id).catch(() => null)
+    : null;
 
   const returnRate =
     customer.deliveredCount + customer.returnedCount > 0
@@ -75,7 +83,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </div>
 
         {/* Trust signals */}
-        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4 text-center">
+        <div className={`mt-4 grid gap-3 border-t border-border pt-4 text-center ${loyaltyBalance ? "grid-cols-4" : "grid-cols-3"}`}>
           <Stat label={t.statOrders} value={formatNumber(customer.ordersCount, locale)} />
           <Stat label={t.statSpent} value={formatMoney(customer.totalSpent, locale)} mono />
           <Stat
@@ -83,6 +91,13 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
             value={`${formatNumber(customer.returnedCount, locale)}/${formatNumber(customer.deliveredCount + customer.returnedCount, locale)}`}
             tone={riskyReturns ? "danger" : "default"}
           />
+          {loyaltyBalance ? (
+            <Stat
+              label="পয়েন্ট"
+              value={formatNumber(loyaltyBalance.points, locale)}
+              tone="default"
+            />
+          ) : null}
         </div>
         {riskyReturns && (
           <p className="mt-2 rounded-md bg-danger-weak px-3 py-1.5 text-xs font-semibold text-danger">
