@@ -6,7 +6,7 @@ const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN!; // lvh.me (dev) / myhybrid.co
 export const config = {
   // Node.js runtime: resolveTenantByHost uses postgres.js + ioredis (Node-only).
   runtime: "nodejs",
-  matcher: ["/((?!api/|_next/|_static/|[\w-]+\.\w+).*)"],
+  matcher: ["/((?!api/|_next/|_static/|[\\w-]+\\.\\w+).*)"],
 };
 
 // Auth paths must resolve on the admin/app host without the /admin or /platform
