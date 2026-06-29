@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CheckIcon } from "@hybrid/ui";
+import { ProductGrid } from "@hybrid/ui";
 import {
+  getRelatedProducts,
   getStorefrontProductBySlug,
   getStorefrontProductReviews,
   getTenantContextBySlug,
@@ -60,7 +62,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const product = await getStorefrontProductBySlug(ctx.id, productSlug);
   if (!product) notFound();
 
-  const reviews = await getStorefrontProductReviews(ctx.id, product.id);
+  const [reviews, related] = await Promise.all([
+    getStorefrontProductReviews(ctx.id, product.id),
+    getRelatedProducts(ctx.id, product.id),
+  ]);
 
   const { locale, d } = await getDict();
   const isDiscounted =
@@ -136,6 +141,17 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         locale={locale}
         labels={d.storefront.reviews}
       />
+
+      {related.length > 0 && (
+        <div className="mt-10 border-t border-border pt-2">
+          <ProductGrid
+            lang={locale}
+            heading={d.storefront.products.related}
+            products={related}
+            priorityCount={0}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -12,6 +12,12 @@ export const storefront: typeof EnStorefront = {
   },
   products: {
     allProducts: "সব পণ্য",
+    searchTitle: "খোঁজ ফলাফল",
+    searchPlaceholder: "পণ্য খুঁজুন",
+    searchButton: "খুঁজুন",
+    searchEmpty: "কিছু পাওয়া যায়নি। অন্য শব্দে চেষ্টা করুন।",
+    searchPrompt: "কী খুঁজছেন লিখুন।",
+    related: "এগুলোও দেখতে পারেন",
   },
   product: {
     noImage: "ছবি নেই",

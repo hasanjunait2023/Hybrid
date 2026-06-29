@@ -11,6 +11,12 @@ export const storefront = {
   },
   products: {
     allProducts: "All products",
+    searchTitle: "Search results",
+    searchPlaceholder: "Search products",
+    searchButton: "Search",
+    searchEmpty: "Nothing found. Try another term.",
+    searchPrompt: "Type what you're looking for.",
+    related: "You may also like",
   },
   product: {
     noImage: "No image",

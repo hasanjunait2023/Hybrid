@@ -127,7 +127,7 @@ function renderSection(
               {collections.map((c) => (
                 <li key={c.id}>
                   <a
-                    href={`/products?collection=${encodeURIComponent(c.slug)}`}
+                    href={`/collections/${encodeURIComponent(c.slug)}`}
                     className="flex min-h-11 items-center justify-center rounded-lg border border-border bg-surface px-4 py-6 text-center text-base font-semibold text-ink transition hover:border-primary"
                   >
                     {c.title}
