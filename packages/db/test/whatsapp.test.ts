@@ -61,13 +61,13 @@ beforeAll(async () => {
   if (!process.env.APP_ENCRYPTION_KEY) {
     process.env.APP_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
   }
-  // Seed tenant A with WhatsApp DISABLED + no creds initially.
+  // Reset tenant A's settings to a clean slate (WhatsApp DISABLED + no creds)
+  // WITHOUT destroying the canonical seed. The previous delete-then-recreate
+  // cascade-wiped tenant A's seeded products and owner membership, which
+  // rls.test / staff.test depend on — a serial-order-dependent isolation bug.
+  // This suite only needs tenant A to EXIST with controllable settings.
   await asPlatformAdmin(async (tx) => {
-    await tx`delete from tenant where id = ${TENANT_A}`;
-    await tx`
-      insert into tenant (id, name, slug, status, owner_user_id, default_locale, currency, timezone, settings)
-      values (${TENANT_A}, 'WA Store', 'wa-store', 'active', ${OWNER_A}, 'bn', 'BDT', 'Asia/Dhaka', '{}'::jsonb)
-    `;
+    await tx`update tenant set settings = '{}'::jsonb where id = ${TENANT_A}`;
   });
 });
 
