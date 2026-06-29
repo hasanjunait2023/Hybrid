@@ -23,6 +23,7 @@ const PLATFORM_HOSTS = new Set([
   "hybrid.ecomex.cloud",
   "admin.hybrid.ecomex.cloud",
   "app.hybrid.ecomex.cloud",
+  "bazar.hybrid.ecomex.cloud",
   "cdn.hybrid.ecomex.cloud",
   // Hybrid Pay (self-hosted PipraPay engine) — its own container behind Caddy.
   "pay.hybrid.ecomex.cloud",
