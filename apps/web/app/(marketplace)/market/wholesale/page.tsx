@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { getMarketplaceCategories } from "@/lib/marketplace/data";
 import { listWholesaleProducts } from "@/lib/marketplace/wholesaleData";
+import { getBuyerSession } from "@/lib/marketplace/session";
 import { WholesaleProductCard } from "./WholesaleProductCard";
 
 // Wholesale home — sub-grid + category chips. Bengali-first.
 export default async function WholesaleHome() {
-  const [products, categories] = await Promise.all([
+  const [products, categories, session] = await Promise.all([
     listWholesaleProducts(),
     getMarketplaceCategories(),
+    getBuyerSession(),
   ]);
+  const showPrice = session !== null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -36,7 +39,7 @@ export default async function WholesaleHome() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {products.map((p) => (
-          <WholesaleProductCard key={p.productId} product={p} />
+          <WholesaleProductCard key={p.productId} product={p} showPrice={showPrice} />
         ))}
       </div>
 

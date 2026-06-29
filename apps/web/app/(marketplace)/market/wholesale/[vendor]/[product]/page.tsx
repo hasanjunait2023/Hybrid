@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatBdtBangla } from "@hybrid/ui";
 import { getWholesaleProduct, type WholesaleVariant } from "@/lib/marketplace/wholesaleData";
-import { getBuyerVerifiedType } from "@/lib/marketplace/wholesaleSession";
+import { getBuyerSession } from "@/lib/marketplace/session";
 import { WholesaleAddToCart } from "./WholesaleAddToCart";
 
 // Wholesale PDP — shows tier price table for verified B2B, login prompt for anonymous.
@@ -15,11 +15,8 @@ export default async function WholesaleProductPage({
   const product = await getWholesaleProduct(vendor, productSlug);
   if (!product) notFound();
 
-  const buyerType = await getBuyerVerifiedType();
-  const isVerifiedB2B =
-    buyerType === "retailer" ||
-    buyerType === "distributor" ||
-    buyerType === "wholesaler";
+  const session = await getBuyerSession();
+  const showPrice = session !== null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -46,7 +43,7 @@ export default async function WholesaleProductPage({
           ) : null}
 
           {/* Pricing section */}
-          {isVerifiedB2B ? (
+          {showPrice ? (
             <>
               <p className="text-2xl font-bold text-primary">
                 {formatBdtBangla(product.priceFrom)}

@@ -1,5 +1,6 @@
 import { getMarketplaceCategories } from "@/lib/marketplace/data";
 import { listWholesaleProducts } from "@/lib/marketplace/wholesaleData";
+import { getBuyerSession } from "@/lib/marketplace/session";
 import { WholesaleProductCard } from "../../WholesaleProductCard";
 
 // Wholesale category filter page.
@@ -9,10 +10,12 @@ export default async function WholesaleCategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [products, categories] = await Promise.all([
+  const [products, categories, session] = await Promise.all([
     listWholesaleProducts({ categorySlug: slug }),
     getMarketplaceCategories(),
+    getBuyerSession(),
   ]);
+  const showPrice = session !== null;
   const category = categories.find((c) => c.slug === slug);
 
   return (
@@ -22,7 +25,7 @@ export default async function WholesaleCategoryPage({
       </h1>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {products.map((p) => (
-          <WholesaleProductCard key={p.productId} product={p} />
+          <WholesaleProductCard key={p.productId} product={p} showPrice={showPrice} />
         ))}
       </div>
       {products.length === 0 && (
