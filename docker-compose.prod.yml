@@ -55,6 +55,7 @@ services:
       CRON_SECRET: ${CRON_SECRET}
       AUTH_PROVIDER: ${AUTH_PROVIDER:-dev}
       BLOB_DRIVER: ${BLOB_DRIVER:-local}
+      HYBRIDPAY_BASE_URL: ${HYBRIDPAY_BASE_URL:-https://pay.hybrid.ecomex.cloud}
       SMS_LIVE: 'false'
       ALLOW_DEV_LOGIN: 'false'
       SUPABASE_URL: ${SUPABASE_URL}
