@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
-import { getLandingPage } from "@/lib/admin/landingPages";
+import { getLandingPage, getLpAbStats } from "@/lib/admin/landingPages";
 import { PageHeader } from "../../_ui";
 import { BlockEditor } from "./BlockEditor";
 
@@ -9,7 +9,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-// Landing page block editor (Phase 3 funnel builder).
+// Landing page block editor (Phase 3 funnel builder + Phase 4 A/B test).
 export default async function LandingPageEditPage({ params }: Props) {
   const session = await getSession();
   if (!session) redirect("/dev-login?as=owner-a");
@@ -19,6 +19,7 @@ export default async function LandingPageEditPage({ params }: Props) {
   const { id } = await params;
   const page = await getLandingPage(tenantId, session.userId, id);
   if (!page) notFound();
+  const abStats = await getLpAbStats(tenantId, session.userId, page.slug).catch(() => null);
 
   return (
     <div className="space-y-4">
@@ -34,7 +35,7 @@ export default async function LandingPageEditPage({ params }: Props) {
           </a>
         }
       />
-      <BlockEditor page={page} />
+      <BlockEditor page={page} abStats={abStats ?? undefined} />
     </div>
   );
 }

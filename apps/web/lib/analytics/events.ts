@@ -21,7 +21,7 @@ export type PurchaseEventName = "purchase";
 export type AnalyticsEventName = ClientEventName | PurchaseEventName;
 
 /** Internal analytics_event.type values written to the DB (tenant-scoped). */
-export type InternalEventType = "order.placed" | "product.viewed" | "cart.added";
+export type InternalEventType = "order.placed" | "product.viewed" | "cart.added" | "lp.viewed";
 
 /** A single line on a commerce event (Pixel/GA4 item shape, normalized). */
 export interface AnalyticsItem {

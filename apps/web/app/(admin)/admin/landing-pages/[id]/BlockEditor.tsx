@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { LpBlock, FunnelConfig, LandingPageDetail, PostCheckoutUpsell } from "@/lib/admin/landingPages";
+import type { LpBlock, FunnelConfig, LandingPageDetail, PostCheckoutUpsell, LpAbStats } from "@/lib/admin/landingPages";
 import {
   updateLandingPageAction,
   publishLandingPageAction,
@@ -74,6 +74,7 @@ const INPUT =
 
 interface Props {
   page: LandingPageDetail;
+  abStats?: LpAbStats;
 }
 
 interface Upsell {
@@ -81,7 +82,7 @@ interface Upsell {
   bump_price: number;
 }
 
-export function BlockEditor({ page }: Props) {
+export function BlockEditor({ page, abStats }: Props) {
   const [title, setTitle] = useState(page.title ?? "");
   const [slug, setSlug] = useState(page.slug);
   const [blocks, setBlocks] = useState<LpBlock[]>(page.blocks);
@@ -90,6 +91,10 @@ export function BlockEditor({ page }: Props) {
   const [pcUpsell, setPcUpsell] = useState<PostCheckoutUpsell | null>(
     page.funnelConfig.post_checkout_upsell ?? null,
   );
+  const existingAb = page.funnelConfig.ab_test;
+  const [abEnabled, setAbEnabled] = useState(existingAb?.enabled ?? false);
+  const [abVariantBlocks, setAbVariantBlocks] = useState<LpBlock[]>(existingAb?.variant_blocks ?? []);
+  const [abSplitPct, setAbSplitPct] = useState(existingAb?.split_pct ?? 50);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [status, setStatus] = useState(page.status);
@@ -139,17 +144,21 @@ export function BlockEditor({ page }: Props) {
     setError(null);
     setSaved(false);
     startTransition(async () => {
+      const fc: FunnelConfig = {
+        thank_you_url: thankYouUrl || undefined,
+        upsells: upsells.filter((u) => u.label.trim()).length > 0
+          ? upsells.filter((u) => u.label.trim())
+          : undefined,
+        post_checkout_upsell: pcUpsell?.variant_id.trim() ? pcUpsell : undefined,
+        ab_test: abEnabled && abVariantBlocks.length > 0
+          ? { enabled: true, variant_blocks: abVariantBlocks, split_pct: abSplitPct }
+          : undefined,
+      };
       const res = await updateLandingPageAction(page.id, {
         title: title || undefined,
         slug,
         blocks: JSON.stringify(blocks),
-        funnelConfig: JSON.stringify({
-          thank_you_url: thankYouUrl || undefined,
-          upsells: upsells.filter((u) => u.label.trim()).length > 0
-            ? upsells.filter((u) => u.label.trim())
-            : undefined,
-          post_checkout_upsell: pcUpsell?.variant_id.trim() ? pcUpsell : undefined,
-        }),
+        funnelConfig: JSON.stringify(fc),
       });
       if (!res.ok) { setError(res.error ?? "সংরক্ষণ ব্যর্থ।"); return; }
       setSaved(true);
@@ -316,9 +325,130 @@ export function BlockEditor({ page }: Props) {
         )}
       </div>
 
+      {/* A/B Test panel */}
+      <div className="space-y-3 rounded-lg border border-border bg-surface p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-ink">A/B টেস্ট</p>
+          <button
+            type="button"
+            onClick={() => { setAbEnabled((v) => !v); setSaved(false); }}
+            disabled={pending}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${abEnabled ? "bg-primary" : "bg-border"}`}
+            role="switch"
+            aria-checked={abEnabled}
+          >
+            <span className={`inline-block h-4 w-4 translate-x-1 rounded-full bg-white shadow transition-transform ${abEnabled ? "translate-x-6" : ""}`} />
+          </button>
+        </div>
+        <p className="text-xs text-ink-muted">চালু হলে ভিজিটরদের দুটি সংস্করণে ভাগ করা হবে: Variant A (মূল) ও Variant B (বিকল্প)। প্রতিটির ভিউ ও কনভার্শন ট্র্যাক করা হবে।</p>
+
+        {abEnabled && (
+          <div className="space-y-4 pt-2">
+            {/* Split ratio */}
+            <div className="flex items-center gap-3">
+              <label className="text-xs font-medium text-ink-muted w-28 shrink-0">Variant B ট্রাফিক</label>
+              <input
+                type="range"
+                min={10}
+                max={90}
+                step={10}
+                value={abSplitPct}
+                onChange={(e) => { setAbSplitPct(Number(e.target.value)); setSaved(false); }}
+                className="flex-1"
+              />
+              <span className="w-10 text-right text-xs font-mono text-ink">{abSplitPct}%</span>
+            </div>
+
+            {/* Stats display */}
+            {abStats && (abStats.a.views > 0 || abStats.b.views > 0) && (
+              <div className="grid grid-cols-2 gap-2 rounded-md bg-surface-2 p-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-ink">Variant A (মূল)</p>
+                  <p className="text-xs text-ink-muted">{abStats.a.views} ভিউ · {abStats.aOrders} অর্ডার</p>
+                  <p className="text-sm font-bold text-primary">{(abStats.aConvRate * 100).toFixed(1)}% CVR</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-ink">Variant B</p>
+                  <p className="text-xs text-ink-muted">{abStats.b.views} ভিউ · {abStats.bOrders} অর্ডার</p>
+                  <p className={`text-sm font-bold ${abStats.bConvRate >= abStats.aConvRate ? "text-success" : "text-danger"}`}>
+                    {(abStats.bConvRate * 100).toFixed(1)}% CVR
+                    {abStats.aConvRate > 0 && (
+                      <span className="ml-1 text-xs font-normal text-ink-muted">
+                        ({abStats.bConvRate >= abStats.aConvRate ? "+" : ""}{((abStats.bConvRate - abStats.aConvRate) * 100).toFixed(1)}pp)
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Variant B block editor */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-ink">Variant B ব্লক ({abVariantBlocks.length})</p>
+              {abVariantBlocks.map((block, i) => (
+                <div key={i} className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+                      {BLOCK_LABELS[block.type]}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (i === 0) return;
+                          const next = [...abVariantBlocks];
+                          [next[i - 1], next[i]] = [next[i]!, next[i - 1]!];
+                          setAbVariantBlocks(next); setSaved(false);
+                        }}
+                        disabled={i === 0 || pending}
+                        className="text-xs text-ink-muted hover:text-ink disabled:opacity-30"
+                      >↑</button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (i >= abVariantBlocks.length - 1) return;
+                          const next = [...abVariantBlocks];
+                          [next[i], next[i + 1]] = [next[i + 1]!, next[i]!];
+                          setAbVariantBlocks(next); setSaved(false);
+                        }}
+                        disabled={i === abVariantBlocks.length - 1 || pending}
+                        className="text-xs text-ink-muted hover:text-ink disabled:opacity-30"
+                      >↓</button>
+                      <button
+                        type="button"
+                        onClick={() => { setAbVariantBlocks((prev) => prev.filter((_, idx) => idx !== i)); setSaved(false); }}
+                        disabled={pending}
+                        className="text-xs text-danger hover:underline disabled:opacity-50"
+                      >মুছুন</button>
+                    </div>
+                  </div>
+                  <BlockFields
+                    block={block}
+                    onChange={(b) => { setAbVariantBlocks((prev) => prev.map((x, idx) => idx === i ? b : x)); setSaved(false); }}
+                  />
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(BLOCK_LABELS) as BlockType[]).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => { setAbVariantBlocks((prev) => [...prev, emptyBlock(type)]); setSaved(false); }}
+                    disabled={pending}
+                    className="rounded-md border border-dashed border-primary/40 px-3 py-1.5 text-xs text-primary hover:border-primary disabled:opacity-50"
+                  >
+                    + {BLOCK_LABELS[type]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Blocks */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-ink">ব্লক ({blocks.length})</p>
+        <p className="text-sm font-semibold text-ink">ব্লক A (মূল) ({blocks.length})</p>
         {blocks.map((block, i) => (
           <div key={i} className="rounded-lg border border-border bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">

@@ -257,6 +257,137 @@ export async function getCourierPerformance(
   });
 }
 
+export interface CohortRow {
+  cohortMonth: string; // YYYY-MM
+  cohortSize: number;
+  /** months_since_first → unique active customers in that period */
+  retention: { month: number; customers: number; rate: number }[];
+}
+
+export interface CustomerSegmentsReport {
+  newCustomers: number;
+  returningCustomers: number;
+  repeatRate: number; // 0–1 — store-wide % who reordered
+  newRevenue: number;
+  returningRevenue: number;
+}
+
+// Monthly cohort retention: for each cohort month, what % of customers
+// came back in subsequent months? Limited to the last 6 cohort months.
+export async function getCohortRetention(
+  tenantId: string,
+  userId: string,
+): Promise<CohortRow[]> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ cohort_month: string; months_since: number; customers: number }[]>`
+      with customer_cohorts as (
+        select
+          customer_id,
+          date_trunc('month', min(placed_at) at time zone 'Asia/Dhaka')::date as cohort_month
+        from orders
+        where fulfillment_status <> 'cancelled'
+        group by customer_id
+      ),
+      cohort_activity as (
+        select
+          cc.cohort_month,
+          floor(extract(epoch from (
+            date_trunc('month', o.placed_at at time zone 'Asia/Dhaka') - cc.cohort_month::timestamp
+          )) / (30.4375 * 86400))::int as months_since,
+          count(distinct cc.customer_id)::int as customers
+        from orders o
+        join customer_cohorts cc on cc.customer_id = o.customer_id
+        where o.fulfillment_status <> 'cancelled'
+        group by cc.cohort_month, months_since
+      )
+      select
+        to_char(cohort_month, 'YYYY-MM') as cohort_month,
+        months_since,
+        customers
+      from cohort_activity
+      where cohort_month >= (now() - interval '6 months')::date
+      order by cohort_month, months_since
+    `,
+  );
+
+  // Group by cohort_month
+  const map = new Map<string, { cohortSize: number; byMonth: Map<number, number> }>();
+  for (const r of rows) {
+    if (!map.has(r.cohort_month)) map.set(r.cohort_month, { cohortSize: 0, byMonth: new Map() });
+    const entry = map.get(r.cohort_month)!;
+    entry.byMonth.set(r.months_since, r.customers);
+    if (r.months_since === 0) entry.cohortSize = r.customers;
+  }
+
+  return Array.from(map.entries()).map(([cohortMonth, entry]) => {
+    const { cohortSize, byMonth } = entry;
+    const maxMonth = Math.max(...byMonth.keys(), 0);
+    const retention = Array.from({ length: maxMonth + 1 }, (_, i) => {
+      const customers = byMonth.get(i) ?? 0;
+      return { month: i, customers, rate: cohortSize > 0 ? customers / cohortSize : 0 };
+    });
+    return { cohortMonth, cohortSize, retention };
+  });
+}
+
+// Customer segments for the given date range: new vs returning + repeat rate.
+export async function getCustomerSegments(
+  tenantId: string,
+  userId: string,
+  range: DateRange,
+): Promise<CustomerSegmentsReport> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ segment: string; customers: number; revenue: string }[]>`
+      with active_customers as (
+        select distinct customer_id
+        from orders
+        where (placed_at at time zone 'Asia/Dhaka')::date between ${range.from}::date and ${range.to}::date
+          and fulfillment_status <> 'cancelled'
+      ),
+      first_orders as (
+        select customer_id, min(placed_at) as first_at
+        from orders
+        where fulfillment_status <> 'cancelled'
+        group by customer_id
+      ),
+      segmented as (
+        select
+          ac.customer_id,
+          case
+            when (fo.first_at at time zone 'Asia/Dhaka')::date between ${range.from}::date and ${range.to}::date
+              then 'new'
+            else 'returning'
+          end as segment,
+          coalesce(sum(o.grand_total), 0) as revenue
+        from active_customers ac
+        join first_orders fo on fo.customer_id = ac.customer_id
+        join orders o on o.customer_id = ac.customer_id
+          and (o.placed_at at time zone 'Asia/Dhaka')::date between ${range.from}::date and ${range.to}::date
+          and o.fulfillment_status <> 'cancelled'
+        group by ac.customer_id, segment
+      )
+      select segment, count(*)::int as customers, coalesce(sum(revenue), 0) as revenue
+      from segmented
+      group by segment
+    `,
+  );
+
+  const get = (seg: string) => rows.find((r) => r.segment === seg);
+  const newR = get("new");
+  const retR = get("returning");
+  const newCount = newR?.customers ?? 0;
+  const retCount = retR?.customers ?? 0;
+  const total = newCount + retCount;
+
+  return {
+    newCustomers: newCount,
+    returningCustomers: retCount,
+    repeatRate: total > 0 ? retCount / total : 0,
+    newRevenue: Number(newR?.revenue ?? 0),
+    returningRevenue: Number(retR?.revenue ?? 0),
+  };
+}
+
 export interface FunnelReport {
   productViews: number;
   cartAdds: number;

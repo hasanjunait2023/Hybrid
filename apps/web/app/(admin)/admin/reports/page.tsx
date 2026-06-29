@@ -9,6 +9,8 @@ import {
   getProfitReport,
   getCourierPerformance,
   getFunnelReport,
+  getCohortRetention,
+  getCustomerSegments,
   defaultRange,
   type DateRange,
 } from "@/lib/admin/reports";
@@ -60,7 +62,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const sp = await searchParams;
   const { range, preset } = rangeFor(sp);
 
-  const [sales, top, status, cod, profit, couriers, funnel] = await Promise.all([
+  const [sales, top, status, cod, profit, couriers, funnel, cohort, segments] = await Promise.all([
     getSalesReport(tenantId, session.userId, range),
     getTopProducts(tenantId, session.userId, range, 8),
     getStatusReport(tenantId, session.userId, range),
@@ -68,6 +70,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     getProfitReport(tenantId, session.userId, range),
     getCourierPerformance(tenantId, session.userId, range),
     getFunnelReport(tenantId, session.userId, range),
+    getCohortRetention(tenantId, session.userId).catch(() => []),
+    getCustomerSegments(tenantId, session.userId, range).catch(() => null),
   ]);
 
   const pct = (n: number) => `${formatNumber(Math.round(n * 100), locale)}%`;
@@ -199,6 +203,83 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           </div>
         )}
       </section>
+
+      {/* Customer segments: new vs returning */}
+      {segments && (
+        <section className="rounded-lg border border-border bg-surface p-4">
+          <h2 className="mb-4 text-sm font-bold text-ink">গ্রাহক বিভাগ</h2>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-ink tnum">{formatNumber(segments.newCustomers, locale)}</p>
+              <p className="mt-1 text-xs text-ink-muted">নতুন গ্রাহক</p>
+              <p className="text-xs font-medium text-ink">{formatMoney(segments.newRevenue, locale)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-primary tnum">{formatNumber(segments.returningCustomers, locale)}</p>
+              <p className="mt-1 text-xs text-ink-muted">পুনরায় অর্ডার করেছে</p>
+              <p className="text-xs font-medium text-ink">{formatMoney(segments.returningRevenue, locale)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-success tnum">{pct(segments.repeatRate)}</p>
+              <p className="mt-1 text-xs text-ink-muted">রিপিট রেট</p>
+              <p className="text-xs text-ink-subtle">(ফিরে আসা গ্রাহক)</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-ink tnum">
+                {formatMoney(segments.returningCustomers > 0 ? Math.round(segments.returningRevenue / segments.returningCustomers) : 0, locale)}
+              </p>
+              <p className="mt-1 text-xs text-ink-muted">রিটার্নিং ARPU</p>
+              <p className="text-xs text-ink-subtle">(গড় রাজস্ব/গ্রাহক)</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Cohort retention table */}
+      {cohort.length > 0 && (
+        <section className="overflow-auto rounded-lg border border-border bg-surface">
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="text-sm font-bold text-ink">কোহর্ট রিটেনশন</h2>
+            <p className="mt-0.5 text-xs text-ink-muted">প্রতিটি মাসে নতুন গ্রাহকের কত % পরের মাসেও অর্ডার করেছে</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr className="border-b border-border bg-surface-2">
+                  <th className="px-4 py-2 text-left font-semibold text-ink-muted whitespace-nowrap">কোহর্ট মাস</th>
+                  <th className="px-3 py-2 text-right font-semibold text-ink-muted whitespace-nowrap">সাইজ</th>
+                  {Array.from({ length: Math.max(...cohort.map((c) => c.retention.length), 1) }, (_, i) => (
+                    <th key={i} className="px-3 py-2 text-center font-semibold text-ink-muted whitespace-nowrap">
+                      M+{i}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {cohort.map((row) => (
+                  <tr key={row.cohortMonth} className="border-b border-border last:border-0">
+                    <td className="px-4 py-2 font-medium text-ink whitespace-nowrap">{row.cohortMonth}</td>
+                    <td className="px-3 py-2 text-right font-mono text-ink-muted tnum">{formatNumber(row.cohortSize, locale)}</td>
+                    {row.retention.map((r) => {
+                      const bg = r.month === 0
+                        ? "bg-primary text-white"
+                        : r.rate >= 0.5 ? "bg-success/20 text-success"
+                        : r.rate >= 0.2 ? "bg-warning/20 text-warning"
+                        : r.rate > 0 ? "bg-danger/10 text-danger"
+                        : "text-ink-subtle";
+                      return (
+                        <td key={r.month} className={`px-3 py-2 text-center font-mono tnum ${bg}`}>
+                          {r.rate > 0 ? `${Math.round(r.rate * 100)}%` : "—"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Courier performance */}
       <section className="overflow-hidden rounded-lg border border-border bg-surface">

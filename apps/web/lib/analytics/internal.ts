@@ -76,6 +76,21 @@ export async function writeCartAdded(
   }
 }
 
+// NON-BLOCKING lp.viewed record — fire from LP server component.
+export async function writeLpViewed(
+  tenantId: string,
+  args: { slug: string; abVariant: "a" | "b" },
+): Promise<void> {
+  try {
+    await recordInternalEvent(tenantId, null, {
+      type: "lp.viewed",
+      payload: args,
+    });
+  } catch {
+    // Never block the page render on analytics failure.
+  }
+}
+
 // Post-commit order.placed record. NON-BLOCKING: always resolves, never throws.
 export async function writeOrderPlaced(
   tenantId: string,

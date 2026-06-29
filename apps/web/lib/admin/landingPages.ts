@@ -18,10 +18,19 @@ export interface PostCheckoutUpsell {
   description?: string;
 }
 
+export interface AbTestConfig {
+  enabled: boolean;
+  /** Variant B block tree — variant A uses the main `blocks` field. */
+  variant_blocks: LpBlock[];
+  /** Traffic split for variant B in percent (default 50). */
+  split_pct?: number;
+}
+
 export interface FunnelConfig {
   thank_you_url?: string;
   upsells?: Array<{ label: string; bump_price: number }>;
   post_checkout_upsell?: PostCheckoutUpsell;
+  ab_test?: AbTestConfig;
 }
 
 export interface LandingPageRow {
@@ -182,6 +191,51 @@ export async function archiveLandingPage(
       where id = ${id} and tenant_id = ${tenantId}
     `,
   );
+}
+
+export interface LpAbStats {
+  a: { views: number };
+  b: { views: number };
+  /** Conversion = order.placed events where payload.lp_slug matches this slug. */
+  aOrders: number;
+  bOrders: number;
+  aConvRate: number;
+  bConvRate: number;
+}
+
+/** Aggregate A/B view + conversion counts from analytics_event for a given LP slug. */
+export async function getLpAbStats(
+  tenantId: string,
+  userId: string,
+  lpSlug: string,
+): Promise<LpAbStats> {
+  const rows = await withTenant(tenantId, userId, (tx) =>
+    tx<{ variant: string; views: number; orders: number }[]>`
+      select
+        coalesce(ae.payload->>'abVariant', 'a') as variant,
+        count(*) filter (where ae.type = 'lp.viewed')::int as views,
+        count(*) filter (where ae.type = 'order.placed'
+          and ae.payload->>'lp_slug' = ${lpSlug})::int as orders
+      from analytics_event ae
+      where ae.payload->>'slug' = ${lpSlug}
+         or (ae.type = 'order.placed' and ae.payload->>'lp_slug' = ${lpSlug})
+      group by variant
+    `,
+  );
+  const get = (v: string, key: "views" | "orders") =>
+    rows.find((r) => r.variant === v)?.[key] ?? 0;
+  const aViews = get("a", "views");
+  const bViews = get("b", "views");
+  const aOrders = get("a", "orders");
+  const bOrders = get("b", "orders");
+  return {
+    a: { views: aViews },
+    b: { views: bViews },
+    aOrders,
+    bOrders,
+    aConvRate: aViews > 0 ? aOrders / aViews : 0,
+    bConvRate: bViews > 0 ? bOrders / bViews : 0,
+  };
 }
 
 // Public read — for rendering published pages on the storefront.
