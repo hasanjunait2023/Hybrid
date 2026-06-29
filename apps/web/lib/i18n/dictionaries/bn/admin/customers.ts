@@ -45,6 +45,27 @@ export const customers: typeof En = {
     addresses: "ঠিকানা",
     noAddresses: "কোনো ঠিকানা নেই।",
     defaultBadge: "ডিফল্ট",
+    statAov: "গড় অর্ডার মূল্য",
+    lastOrder: "শেষ অর্ডার",
+    never: "—",
+    dueLabel: "বকেয়া বাকি",
+    timeline: {
+      heading: "কার্যক্রম টাইমলাইন",
+      empty: "কোনো কার্যক্রম নেই।",
+      order: "অর্ডার",
+      payment: "পেমেন্ট",
+      ledger: "হিসাব",
+      note: "নোট",
+      return: "ফেরত",
+    },
+    rfm: {
+      new: "নতুন",
+      champion: "চ্যাম্পিয়ন",
+      loyal: "নিয়মিত",
+      active: "সক্রিয়",
+      at_risk: "ঝুঁকিতে",
+      lost: "হারানো",
+    },
   },
 
   notes: {
