@@ -11,6 +11,11 @@ const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "myhybrid.com";
 const INITIAL: SignupState = {};
 
 interface SignupLabels {
+  typeLabel: string;
+  typeRetailer: string;
+  typeRetailerHint: string;
+  typeWholesaler: string;
+  typeWholesalerHint: string;
   storeNameLabel: string;
   storeNameHint: string;
   storeAddressLabel: string;
@@ -29,6 +34,9 @@ interface SignupLabels {
 export function SignupForm({ labels }: { labels: SignupLabels }) {
   const [state, formAction] = useActionState(signupAction, INITIAL);
   const [slug, setSlug] = useState(state.values?.slug ?? "");
+  const [businessType, setBusinessType] = useState<"retail" | "wholesale">(
+    state.values?.businessType ?? "retail",
+  );
 
   // Cross-host redirect (apex → admin.{ROOT}) must happen client-side; a Server
   // Action redirect() can't switch hosts. We navigate once the action succeeds.
@@ -58,6 +66,29 @@ export function SignupForm({ labels }: { labels: SignupLabels }) {
           {state.errors.form}
         </p>
       ) : null}
+
+      {/* Store type — seller self-selects retailer vs wholesaler. The hidden
+          input carries the choice to the Server Action; the cards toggle it. */}
+      <input type="hidden" name="businessType" value={businessType} />
+      <fieldset>
+        <legend className="bn-body mb-1.5 block text-sm font-semibold text-ink">
+          {labels.typeLabel}
+        </legend>
+        <div className="grid grid-cols-2 gap-2">
+          <TypeCard
+            selected={businessType === "retail"}
+            title={labels.typeRetailer}
+            hint={labels.typeRetailerHint}
+            onSelect={() => setBusinessType("retail")}
+          />
+          <TypeCard
+            selected={businessType === "wholesale"}
+            title={labels.typeWholesaler}
+            hint={labels.typeWholesalerHint}
+            onSelect={() => setBusinessType("wholesale")}
+          />
+        </div>
+      </fieldset>
 
       <Field
         id={storeNameId}
@@ -171,6 +202,35 @@ export function SignupForm({ labels }: { labels: SignupLabels }) {
         {labels.trialNote}
       </p>
     </form>
+  );
+}
+
+function TypeCard({
+  selected,
+  title,
+  hint,
+  onSelect,
+}: {
+  selected: boolean;
+  title: string;
+  hint: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={[
+        "flex min-h-[44px] flex-col items-start gap-0.5 rounded-md border px-3 py-2.5 text-left transition-colors",
+        selected
+          ? "border-primary bg-primary-weak"
+          : "border-border-strong bg-surface hover:bg-surface-2",
+      ].join(" ")}
+    >
+      <span className="bn-body text-sm font-semibold text-ink">{title}</span>
+      <span className="bn-body text-xs text-ink-muted">{hint}</span>
+    </button>
   );
 }
 

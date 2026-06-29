@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { StoreHeader, StoreFooter } from "@hybrid/ui";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
+import { getTenantBusinessTypeBySlug } from "@/lib/tenant/businessType";
 import { getDict } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/provider";
 import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
@@ -20,6 +21,12 @@ export default async function WholesaleLayout({
   const { tenant: slug } = await params;
   const ctx = await getTenantContextBySlug(slug);
   if (!ctx) notFound();
+
+  // Boundary guard: the wholesale storefront only exists for wholesale/both
+  // tenants. Middleware already routes by business_type, but if a retail tenant's
+  // /wholesale path is reached directly it must 404 — not render an empty B2B shell.
+  const businessType = await getTenantBusinessTypeBySlug(slug);
+  if (businessType === "retail") notFound();
 
   const { locale } = await getDict();
 

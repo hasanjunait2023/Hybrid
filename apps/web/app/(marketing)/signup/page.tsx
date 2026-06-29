@@ -73,6 +73,11 @@ export default async function SignupPage() {
           <div className="mt-8">
             <SignupForm
               labels={{
+                typeLabel: d.auth.signup.typeLabel,
+                typeRetailer: d.auth.signup.typeRetailer,
+                typeRetailerHint: d.auth.signup.typeRetailerHint,
+                typeWholesaler: d.auth.signup.typeWholesaler,
+                typeWholesalerHint: d.auth.signup.typeWholesalerHint,
                 storeNameLabel: d.auth.signup.storeNameLabel,
                 storeNameHint: d.auth.signup.storeNameHint,
                 storeAddressLabel: d.auth.signup.storeAddressLabel,
