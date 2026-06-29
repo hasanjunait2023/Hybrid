@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatBdtBangla } from "@hybrid/ui";
-import { getWholesaleProduct } from "@/lib/marketplace/wholesaleData";
+import { getWholesaleProduct, type WholesaleVariant } from "@/lib/marketplace/wholesaleData";
 import { getBuyerVerifiedType } from "@/lib/marketplace/wholesaleSession";
 import { WholesaleAddToCart } from "./WholesaleAddToCart";
 
@@ -97,17 +97,13 @@ export default async function WholesaleProductPage({
 function TierPriceTable({
   variants,
 }: {
-  variants: {
-    id: string;
-    title: string | null;
-    tierPrices: { minQty: number; price: number }[];
-  }[];
+  variants: WholesaleVariant[];
 }) {
   // Collect all unique tier thresholds across variants
   const allTiers = new Set<number>();
   for (const v of variants) {
     for (const t of v.tierPrices) {
-      allTiers.add(t.minQty);
+      allTiers.add(t.min_qty);
     }
   }
   const sortedTiers = [...allTiers].sort((a, b) => a - b);
@@ -130,7 +126,7 @@ function TierPriceTable({
         <tbody>
           {variants.map((v) => {
             const priceMap = new Map(
-              v.tierPrices.map((t) => [t.minQty, t.price]),
+              v.tierPrices.map((t) => [t.min_qty, t.unit_price]),
             );
             return (
               <tr key={v.id} className="border-b border-border last:border-0">
