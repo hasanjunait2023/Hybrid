@@ -8,6 +8,7 @@ import {
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
 import { AddToCart } from "./AddToCart";
+import { OrderViaChat } from "./OrderViaChat";
 
 interface ProductDetailPageProps {
   params: Promise<{ tenant: string; slug: string }>;
@@ -108,6 +109,19 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           )}
 
           <AddToCart tenantSlug={slug} product={product} />
+
+          {/* Chat-order fallback — BD buyers often prefer to confirm on WhatsApp/
+              Messenger. Only renders when the store has a phone or FB page set. */}
+          <OrderViaChat
+            phone={ctx.store.phone}
+            facebookUrl={ctx.store.facebookUrl}
+            productTitle={product.title}
+            labels={{
+              orderOnWhatsapp: d.storefront.product.orderOnWhatsapp,
+              orderOnMessenger: d.storefront.product.orderOnMessenger,
+              chatOrderPrefix: d.storefront.product.chatOrderPrefix,
+            }}
+          />
         </div>
       </div>
     </div>

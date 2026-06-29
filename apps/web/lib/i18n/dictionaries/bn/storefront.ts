@@ -24,6 +24,9 @@ export const storefront: typeof EnStorefront = {
     cart: "কার্ট",
     viewCart: "কার্ট দেখুন",
     price: "মূল্য",
+    orderOnWhatsapp: "হোয়াটসঅ্যাপে অর্ডার করুন",
+    orderOnMessenger: "মেসেঞ্জারে অর্ডার করুন",
+    chatOrderPrefix: "আমি অর্ডার করতে চাই:",
   },
   cart: {
     title: "আপনার কার্ট",

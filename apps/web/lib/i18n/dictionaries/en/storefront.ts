@@ -23,6 +23,9 @@ export const storefront = {
     cart: "Cart",
     viewCart: "View cart",
     price: "Price",
+    orderOnWhatsapp: "Order on WhatsApp",
+    orderOnMessenger: "Order on Messenger",
+    chatOrderPrefix: "I'd like to order:",
   },
   cart: {
     title: "Your cart",
