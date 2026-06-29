@@ -1,0 +1,79 @@
+name: Scheduled CRON jobs
+
+# Billing sweep: trialing→past_due→suspended state machine.
+# Courier sync: Steadfast status poll → order update.
+# Marketplace sync: listing reconciliation safety net.
+#
+# All three endpoints are CRON_SECRET-gated and idempotent — safe to re-run.
+# Times are UTC. Bangladesh is UTC+6.
+
+on:
+  schedule:
+    # Billing sweep — midnight BD time (18:00 UTC). Evaluates every tenant.
+    - cron: "0 18 * * *"
+    # Courier sync — every 2 hours (picks up Steadfast status changes promptly).
+    - cron: "0 */2 * * *"
+    # Marketplace sync — every 6 hours (safety net for listing drift).
+    - cron: "0 */6 * * *"
+  # Allow manual trigger from the Actions UI for debugging.
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which job to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - billing-sweep
+          - courier-sync
+          - marketplace-sync
+
+jobs:
+  billing-sweep:
+    name: Billing sweep
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && (inputs.job == 'billing-sweep' || inputs.job == 'all') ||
+      github.event_name == 'schedule' && startsWith(github.event.schedule, '0 18')
+    steps:
+      - name: Run billing sweep
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST https://hybrid.ecomex.cloud/api/internal/billing-sweep \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --max-time 60)
+          echo "HTTP status: $STATUS"
+          [ "$STATUS" = "200" ] || { echo "Billing sweep failed (HTTP $STATUS)"; exit 1; }
+
+  courier-sync:
+    name: Courier status sync
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && (inputs.job == 'courier-sync' || inputs.job == 'all') ||
+      github.event_name == 'schedule' && startsWith(github.event.schedule, '0 */2')
+    steps:
+      - name: Run courier sync
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST https://hybrid.ecomex.cloud/api/internal/courier-sync \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --max-time 120)
+          echo "HTTP status: $STATUS"
+          [ "$STATUS" = "200" ] || { echo "Courier sync failed (HTTP $STATUS)"; exit 1; }
+
+  marketplace-sync:
+    name: Marketplace listing sync
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && (inputs.job == 'marketplace-sync' || inputs.job == 'all') ||
+      github.event_name == 'schedule' && startsWith(github.event.schedule, '0 */6')
+    steps:
+      - name: Run marketplace sync
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST https://hybrid.ecomex.cloud/api/internal/marketplace-sync \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --max-time 60)
+          echo "HTTP status: $STATUS"
+          [ "$STATUS" = "200" ] || { echo "Marketplace sync failed (HTTP $STATUS)"; exit 1; }
