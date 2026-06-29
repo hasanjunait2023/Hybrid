@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getDict } from "@/lib/i18n/server";
-import { PageHeader } from "../../_ui";
+import { PageHeader } from "../_ui";
 
 // Wholesale dashboard hub — links to all sub-pages.
 export default async function WholesaleDashboardPage() {

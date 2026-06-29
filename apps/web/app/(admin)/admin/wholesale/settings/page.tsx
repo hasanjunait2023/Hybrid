@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getWholesaleSettings } from "@/lib/admin/wholesale";
 import { getDict } from "@/lib/i18n/server";
-import { PageHeader } from "../../_ui";
+import { PageHeader } from "../_ui";
 import { WholesaleSettingsForm } from "./WholesaleSettingsForm";
 
 // Wholesale settings page — tax, payment terms, delivery defaults.

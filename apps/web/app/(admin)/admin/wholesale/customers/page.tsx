@@ -4,7 +4,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { listB2BCustomers, getB2BCustomerStats } from "@/lib/admin/wholesale";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
-import { PageHeader, StatStrip, StatCard } from "../../_ui";
+import { PageHeader, StatStrip, StatCard } from "../_ui";
 
 // B2B customers list — retailers, distributors, wholesalers.
 export default async function WholesaleCustomersPage() {
