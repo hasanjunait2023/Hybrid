@@ -48,6 +48,12 @@ export const customers = {
     lastOrder: "Last order",
     never: "—",
     dueLabel: "Outstanding due",
+    loyaltyLabel: "Loyalty points",
+    pointsUnit: "pts",
+    redeem: "Redeem",
+    redeeming: "Redeeming…",
+    redeemPlaceholder: "Points",
+    redeemDone: "Redeemed ৳",
     timeline: {
       heading: "Activity timeline",
       empty: "No activity yet.",

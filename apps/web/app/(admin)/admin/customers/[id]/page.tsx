@@ -8,6 +8,7 @@ import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { CustomerNotes } from "./CustomerNotes";
 import { MonthlySpendChart, CommunicationLog, Customer360Timeline } from "./CustomerTimeline";
+import { RedeemPoints } from "./RedeemPoints";
 import { Breadcrumbs } from "../../_ui";
 
 // Customer detail (DESIGN §P5). Header with trust signals (orders, spent, COD
@@ -109,8 +110,11 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         {/* Unified activity timeline (Customer 360) */}
         <Customer360Timeline events={customer.timeline} locale={locale} labels={t.timeline} />
 
-        {/* Aside: addresses + notes */}
+        {/* Aside: loyalty + addresses + notes */}
         <aside className="space-y-5">
+          {customer.loyaltyPoints > 0 && (
+            <RedeemPoints customerId={customer.id} balance={customer.loyaltyPoints} t={t} />
+          )}
           <section className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-3 text-sm font-bold text-ink">{t.addresses}</h2>
             {customer.addresses.length === 0 ? (

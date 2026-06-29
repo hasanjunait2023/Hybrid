@@ -306,6 +306,8 @@ export interface Customer360 extends CustomerDetail {
   rfmSegment: RfmSegment;
   /** current outstanding due (বাকি) — latest customer_ledger running balance. */
   ledgerBalance: number;
+  /** loyalty points balance (sum of the loyalty_ledger). */
+  loyaltyPoints: number;
   timeline: Customer360Event[];
 }
 
@@ -378,7 +380,12 @@ export async function getCustomer360(
       order by r.created_at desc limit 50
     `;
 
-    return { agg: agg[0], payments, ledger, notes, returns };
+    const loyalty = await tx<{ balance: number }[]>`
+      select coalesce(sum(points), 0)::int as balance
+        from loyalty_ledger where customer_id = ${customerId}
+    `;
+
+    return { agg: agg[0], payments, ledger, notes, returns, loyalty };
   });
 
   const events: Customer360Event[] = [
@@ -439,6 +446,7 @@ export async function getCustomer360(
     recencyDays,
     rfmSegment: rfmSegment(base.ordersCount, base.totalSpent, recencyDays),
     ledgerBalance: Number(enrich.ledger[0]?.balance ?? 0),
+    loyaltyPoints: enrich.loyalty[0]?.balance ?? 0,
     timeline: events.slice(0, 80),
   };
 }

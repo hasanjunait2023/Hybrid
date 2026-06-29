@@ -49,6 +49,12 @@ export const customers: typeof En = {
     lastOrder: "শেষ অর্ডার",
     never: "—",
     dueLabel: "বকেয়া বাকি",
+    loyaltyLabel: "লয়্যালটি পয়েন্ট",
+    pointsUnit: "পয়েন্ট",
+    redeem: "রিডিম",
+    redeeming: "রিডিম হচ্ছে…",
+    redeemPlaceholder: "পয়েন্ট",
+    redeemDone: "রিডিম হয়েছে ৳",
     timeline: {
       heading: "কার্যক্রম টাইমলাইন",
       empty: "কোনো কার্যক্রম নেই।",
