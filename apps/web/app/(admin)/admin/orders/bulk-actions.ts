@@ -87,20 +87,33 @@ export async function bulkSendToCourier(orderIds: string[]): Promise<BulkResult>
   const failed: { id: string; reason: string }[] = [];
   let succeeded = 0;
 
-  for (const orderId of ids.data) {
-    const res = await sendToCourierCore(
-      auth.tenantId,
-      auth.userId,
-      orderId,
-      binding.adapter,
-      binding.readCreds,
-      { providerName: binding.providerName },
-    );
-    if (res.ok) {
-      succeeded += 1;
-      revalidateTag(`tenant:${auth.tenantId}:order:${orderId}`);
+  // Fan out all consignment POSTs in parallel — each order is an independent
+  // Steadfast/Pathao API call with its own DB transaction. The double-send guard
+  // in sendToCourierCore makes already-sent orders fail cleanly into `failed`.
+  const settled = await Promise.allSettled(
+    ids.data.map((orderId) =>
+      sendToCourierCore(
+        auth.tenantId,
+        auth.userId,
+        orderId,
+        binding.adapter,
+        binding.readCreds,
+        { providerName: binding.providerName },
+      ).then((res) => ({ orderId, res })),
+    ),
+  );
+
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      const { orderId, res } = result.value;
+      if (res.ok) {
+        succeeded += 1;
+        revalidateTag(`tenant:${auth.tenantId}:order:${orderId}`);
+      } else {
+        failed.push({ id: orderId, reason: res.error ?? "ব্যর্থ" });
+      }
     } else {
-      failed.push({ id: orderId, reason: res.error ?? "ব্যর্থ" });
+      failed.push({ id: "unknown", reason: String(result.reason) });
     }
   }
 

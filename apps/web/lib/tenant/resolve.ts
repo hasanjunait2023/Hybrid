@@ -2,7 +2,7 @@
 //
 // Cache key:  domain:{host}
 //   - hit  "MISS" sentinel  -> known-unknown host (short TTL, avoids hammering)
-//   - hit  JSON {id,slug}   -> resolved tenant
+//   - hit  JSON {id,slug,businessType} -> resolved tenant
 //   - miss -> asPlatformAdmin lookup of verified tenant_domain ⋈ tenant
 //
 // Lookups run via asPlatformAdmin (not withTenant): we don't yet know the
@@ -11,9 +11,12 @@
 import { asPlatformAdmin } from "@hybrid/db";
 import { getCache } from "@/lib/redis/client";
 
+export type BusinessType = "retail" | "wholesale" | "both";
+
 export interface ResolvedTenant {
   id: string;
   slug: string;
+  businessType: BusinessType;
 }
 
 const TTL_HIT_SECONDS = 60 * 60; // 1h for resolved hosts
@@ -38,8 +41,8 @@ export async function resolveTenantByHost(host: string): Promise<ResolvedTenant 
   // must not be cached as a valid hit. The billing sweep busts the domain cache
   // on suspension so a previously-cached live hit doesn't outlive going dark.
   const rows = await asPlatformAdmin((tx) =>
-    tx<{ id: string; slug: string }[]>`
-      select t.id, t.slug
+    tx<{ id: string; slug: string; business_type: string }[]>`
+      select t.id, t.slug, coalesce(t.business_type, 'retail') as business_type
       from tenant_domain d
       join tenant t on t.id = d.tenant_id
       where d.domain = ${host} and d.verified = true
@@ -54,7 +57,11 @@ export async function resolveTenantByHost(host: string): Promise<ResolvedTenant 
     return null;
   }
 
-  const resolved: ResolvedTenant = { id: tenant.id, slug: tenant.slug };
+  const resolved: ResolvedTenant = {
+    id: tenant.id,
+    slug: tenant.slug,
+    businessType: (tenant.business_type as BusinessType) ?? "retail",
+  };
   await cacheSet(key(host), JSON.stringify(resolved), TTL_HIT_SECONDS);
   return resolved;
 }

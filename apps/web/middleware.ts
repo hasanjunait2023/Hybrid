@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveTenantByHost } from "@/lib/tenant/resolve";
-import { getTenantBusinessTypeBySlug } from "@/lib/tenant/businessType";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN!; // lvh.me (dev) / myhybrid.com (prod)
 
@@ -70,11 +69,10 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
     return NextResponse.rewrite(new URL("/store-not-found", req.url));
   }
 
-  // Phase 3 — wholesale storefront routing. Detect the tenant's business_type
-  // and route wholesalers to the /wholesale/ sub-storefront instead of the
-  // retail storefront. 'wholesale' and 'both' tenants get the wholesale route;
-  // 'retail' (default) keeps existing behavior.
-  const businessType = await getTenantBusinessTypeBySlug(tenant.slug);
+  // Phase 3 — wholesale storefront routing. business_type is included in the
+  // cached resolveTenantByHost result, so no extra DB call is needed here.
+  // Old cache entries (pre-businessType field) default to 'retail' via ??.
+  const businessType = tenant.businessType ?? "retail";
   if (businessType === "wholesale" || businessType === "both") {
     return NextResponse.rewrite(
       new URL(`/_sites/${tenant.slug}/wholesale${url.pathname}`, req.url),

@@ -263,12 +263,13 @@ export async function saveCollection(
         collectionId = rows[0]!.id;
       }
       await tx`delete from product_collection where collection_id = ${collectionId}`;
-      for (const pid of input.productIds) {
-        await tx`
-          insert into product_collection (tenant_id, product_id, collection_id)
-          values (${auth.tenantId}, ${pid}, ${collectionId})
-          on conflict do nothing
-        `;
+      if (input.productIds.length > 0) {
+        const pids = input.productIds.map((pid) => ({
+          tenant_id: auth.tenantId,
+          product_id: pid,
+          collection_id: collectionId,
+        }));
+        await tx`insert into product_collection ${tx(pids)} on conflict do nothing`;
       }
     });
   } catch (error) {
@@ -333,30 +334,44 @@ async function writeVariants(
   variants: z.infer<typeof VariantSchema>[],
 ): Promise<void> {
   const keptIds: string[] = [];
-  let position = 0;
-  for (const v of variants) {
+
+  // Update existing variants individually (different payloads per row).
+  for (let i = 0; i < variants.length; i++) {
+    const v = variants[i]!;
+    if (!v.id) continue;
     const title = v.title || variantTitleFromOptions(v.options);
-    if (v.id) {
-      await tx`
-        update product_variant
-           set title = ${title}, sku = ${v.sku}, price = ${v.price},
-               inventory_quantity = ${v.inventory}, options = ${tx.json(v.options)},
-               is_active = ${v.isActive}, position = ${position}, updated_at = now()
-         where id = ${v.id} and product_id = ${productId}
-      `;
-      keptIds.push(v.id);
-    } else {
-      const rows = await tx<{ id: string }[]>`
-        insert into product_variant
-          (tenant_id, product_id, title, sku, price, inventory_quantity, options, is_active, position)
-        values (${tenantId}, ${productId}, ${title}, ${v.sku}, ${v.price},
-                ${v.inventory}, ${tx.json(v.options)}, ${v.isActive}, ${position})
-        returning id
-      `;
-      keptIds.push(rows[0]!.id);
-    }
-    position += 1;
+    await tx`
+      update product_variant
+         set title = ${title}, sku = ${v.sku}, price = ${v.price},
+             inventory_quantity = ${v.inventory}, options = ${tx.json(v.options)},
+             is_active = ${v.isActive}, position = ${i}, updated_at = now()
+       where id = ${v.id} and product_id = ${productId}
+    `;
+    keptIds.push(v.id);
   }
+
+  // Batch-insert all new variants in a single round-trip.
+  const newVariants = variants
+    .map((v, i) => ({ ...v, position: i }))
+    .filter((v) => !v.id);
+  if (newVariants.length > 0) {
+    const records = newVariants.map((v) => ({
+      tenant_id: tenantId,
+      product_id: productId,
+      title: v.title || variantTitleFromOptions(v.options),
+      sku: v.sku ?? null,
+      price: v.price,
+      inventory_quantity: v.inventory,
+      options: JSON.stringify(v.options),
+      is_active: v.isActive,
+      position: v.position,
+    }));
+    const inserted = await tx<{ id: string }[]>`
+      insert into product_variant ${tx(records)} returning id
+    `;
+    keptIds.push(...inserted.map((r) => r.id));
+  }
+
   // Deactivate variants no longer in the matrix (keep the row for history).
   if (keptIds.length > 0) {
     await tx`
@@ -377,14 +392,14 @@ async function writeImages(
   productId: string,
   urls: string[],
 ): Promise<void> {
-  let position = 0;
-  for (const url of urls) {
-    await tx`
-      insert into product_image (tenant_id, product_id, url, position)
-      values (${tenantId}, ${productId}, ${url}, ${position})
-    `;
-    position += 1;
-  }
+  if (!urls.length) return;
+  const records = urls.map((url, position) => ({
+    tenant_id: tenantId,
+    product_id: productId,
+    url,
+    position,
+  }));
+  await tx`insert into product_image ${tx(records)}`;
 }
 
 // Replace the image set with the provided (already-uploaded) URLs in order.
@@ -406,12 +421,13 @@ async function writeCollections(
   productId: string,
   collectionIds: string[],
 ): Promise<void> {
-  for (const cid of collectionIds) {
-    await tx`
-      insert into product_collection (tenant_id, product_id, collection_id)
-      values (${tenantId}, ${productId}, ${cid}) on conflict do nothing
-    `;
-  }
+  if (!collectionIds.length) return;
+  const records = collectionIds.map((cid) => ({
+    tenant_id: tenantId,
+    product_id: productId,
+    collection_id: cid,
+  }));
+  await tx`insert into product_collection ${tx(records)} on conflict do nothing`;
 }
 
 async function replaceCollections(

@@ -50,24 +50,28 @@ export async function POST(req: Request): Promise<NextResponse> {
   );
 
   const provider = getSteadfastProvider();
-  let synced = 0;
-  let skipped = 0;
 
-  for (const { tenant_id: tenantId } of tenantRows) {
-    try {
+  const settled = await Promise.allSettled(
+    tenantRows.map(async ({ tenant_id: tenantId }) => {
       const creds = await withTenant(tenantId, null, (tx) => readSteadfastCreds(tx));
       if (!creds) {
-        // No live creds yet — deferred, not a failure.
-        skipped += 1;
         console.warn(`[courier-sync] skip tenant ${tenantId}: courier not configured`);
-        continue;
+        return { tenantId, synced: 0, skipped: true };
       }
       const n = await syncTenantShipments(tenantId, provider, creds);
-      synced += n;
-    } catch (error) {
-      // One tenant's outage never aborts the sweep.
+      return { tenantId, synced: n, skipped: false };
+    }),
+  );
+
+  let synced = 0;
+  let skipped = 0;
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      if (result.value.skipped) skipped += 1;
+      else synced += result.value.synced;
+    } else {
       skipped += 1;
-      console.error(`[courier-sync] tenant ${tenantId} failed`, error);
+      console.error(`[courier-sync] tenant failed`, result.reason);
     }
   }
 

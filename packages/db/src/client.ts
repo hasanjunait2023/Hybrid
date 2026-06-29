@@ -7,7 +7,7 @@ import "dotenv/config";
 // Runtime connection — app_runtime_login (non-superuser) -> RLS is FORCED.
 // prepare:false is required under transaction-mode poolers (pgBouncer/Supavisor).
 export const sql = postgres(process.env.DATABASE_URL!, {
-  max: 10,
+  max: 30,
   idle_timeout: 20,
   prepare: false,
 });
@@ -15,7 +15,7 @@ export const sql = postgres(process.env.DATABASE_URL!, {
 // Direct/superuser connection — postgres -> bypasses RLS.
 // Used only for migrations, seed, type generation, and host lookups.
 export const adminSql = postgres(process.env.DIRECT_URL!, {
-  max: 4,
+  max: 6,
   idle_timeout: 20,
   prepare: false,
 });

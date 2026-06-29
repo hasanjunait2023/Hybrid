@@ -54,17 +54,27 @@ async function syncSuborderStatus(): Promise<void> {
 // Saga recovery: finalize parents left 'pending' by a mid-checkout crash (the
 // orchestrator normally finalizes them itself). Older than 15 min, derive the
 // terminal status from how many sub-orders actually committed.
+// Uses a subquery with LEFT JOIN so the count is computed once per order
+// instead of twice via correlated subqueries.
 async function recoverStalledOrders(): Promise<void> {
   await asPlatformAdmin(async (tx) => {
     await tx`
       update marketplace_order mo
          set status = case
-               when (select count(*) from marketplace_suborder s where s.marketplace_order_id = mo.id) = 0 then 'failed'
-               when (select count(*) from marketplace_suborder s where s.marketplace_order_id = mo.id) < mo.vendor_count then 'partial'
+               when c.cnt = 0 then 'failed'
+               when c.cnt < mo.vendor_count then 'partial'
                else 'confirmed' end,
              updated_at = now()
-       where mo.status = 'pending'
-         and mo.created_at < now() - interval '15 minutes'
+        from (
+          select o.id,
+                 count(s.marketplace_order_id)::int as cnt
+            from marketplace_order o
+            left join marketplace_suborder s on s.marketplace_order_id = o.id
+           where o.status = 'pending'
+             and o.created_at < now() - interval '15 minutes'
+           group by o.id
+        ) c
+       where mo.id = c.id
     `;
   });
 }
@@ -87,7 +97,11 @@ async function rollupRatings(): Promise<void> {
     await tx`
       update marketplace_listing set rating_count = 0, rating_avg = 0
        where rating_count > 0
-         and product_id not in (select product_id from marketplace_review where status = 'approved')
+         and not exists (
+           select 1 from marketplace_review r
+            where r.product_id = marketplace_listing.product_id
+              and r.status = 'approved'
+         )
     `;
   });
 }
@@ -101,29 +115,32 @@ export async function POST(req: Request): Promise<NextResponse> {
     tx<{ id: string }[]>`select id from tenant where status in ('active', 'trial', 'past_due')`,
   );
 
+  // Fan out listing sync across all tenants in parallel; each tenant is isolated.
+  const syncResults = await Promise.allSettled(
+    tenantRows.map(({ id: tenantId }) => syncMarketplaceListingsForTenant(tenantId)),
+  );
+
   let listings = 0;
   let skipped = 0;
-  for (const { id: tenantId } of tenantRows) {
-    try {
-      listings += await syncMarketplaceListingsForTenant(tenantId);
-    } catch (error) {
+  syncResults.forEach((r, i) => {
+    if (r.status === "fulfilled") {
+      listings += r.value;
+    } else {
       skipped += 1;
-      console.error(`[marketplace-sync] tenant ${tenantId} failed`, error);
+      console.error(`[marketplace-sync] tenant ${tenantRows[i]?.id} failed`, r.reason);
     }
-  }
+  });
 
-  // Best-effort maintenance passes (each isolated so one failure never aborts).
-  for (const [label, fn] of [
-    ["ratings rollup", rollupRatings],
-    ["suborder status sync", syncSuborderStatus],
-    ["saga recovery", recoverStalledOrders],
-  ] as const) {
-    try {
-      await fn();
-    } catch (error) {
-      console.error(`[marketplace-sync] ${label} failed`, error);
-    }
-  }
+  // Run maintenance passes in parallel — they write to different tables (no conflicts).
+  await Promise.allSettled([
+    rollupRatings().catch((e) => console.error("[marketplace-sync] ratings rollup failed", e)),
+    syncSuborderStatus().catch((e) =>
+      console.error("[marketplace-sync] suborder status sync failed", e),
+    ),
+    recoverStalledOrders().catch((e) =>
+      console.error("[marketplace-sync] saga recovery failed", e),
+    ),
+  ]);
 
   return NextResponse.json({ ok: true, tenants: tenantRows.length, listings, skipped });
 }
