@@ -8,6 +8,7 @@ import {
   getCodReport,
   getProfitReport,
   getCourierPerformance,
+  getFunnelReport,
   defaultRange,
   type DateRange,
 } from "@/lib/admin/reports";
@@ -59,13 +60,14 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const sp = await searchParams;
   const { range, preset } = rangeFor(sp);
 
-  const [sales, top, status, cod, profit, couriers] = await Promise.all([
+  const [sales, top, status, cod, profit, couriers, funnel] = await Promise.all([
     getSalesReport(tenantId, session.userId, range),
     getTopProducts(tenantId, session.userId, range, 8),
     getStatusReport(tenantId, session.userId, range),
     getCodReport(tenantId, session.userId),
     getProfitReport(tenantId, session.userId, range),
     getCourierPerformance(tenantId, session.userId, range),
+    getFunnelReport(tenantId, session.userId, range),
   ]);
 
   const pct = (n: number) => `${formatNumber(Math.round(n * 100), locale)}%`;
@@ -174,6 +176,30 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         </div>
       </section>
 
+      {/* Storefront conversion funnel */}
+      <section className="rounded-lg border border-border bg-surface p-4">
+        <h2 className="mb-3 text-sm font-bold text-ink">রূপান্তর ফানেল</h2>
+        {funnel.productViews === 0 ? (
+          <p className="text-sm text-ink-muted">এই সময়ে কোনো পণ্য দেখার তথ্য নেই।</p>
+        ) : (
+          <div className="space-y-2">
+            <FunnelRow label="পণ্য দেখেছে" count={funnel.productViews} locale={locale} pct={1} />
+            <FunnelRow label="কার্টে যোগ করেছে" count={funnel.cartAdds} locale={locale} pct={funnel.viewToCartRate} />
+            <FunnelRow label="অর্ডার দিয়েছে" count={funnel.orders} locale={locale} pct={funnel.overallConversionRate} />
+            <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-border">
+              <div className="text-center">
+                <p className="text-base font-bold text-ink tnum">{pct(funnel.viewToCartRate)}</p>
+                <p className="text-xs text-ink-muted">ভিউ → কার্ট</p>
+              </div>
+              <div className="text-center">
+                <p className="text-base font-bold text-ink tnum">{pct(funnel.cartToOrderRate)}</p>
+                <p className="text-xs text-ink-muted">কার্ট → অর্ডার</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Courier performance */}
       <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">{t.courier.heading}</h2>
@@ -218,6 +244,21 @@ function Row({ label, value, tone = "default" }: { label: string; value: string;
     <div className="flex items-center justify-between">
       <dt className="text-ink-muted">{label}</dt>
       <dd className={`font-mono font-semibold tnum ${c}`}>{value}</dd>
+    </div>
+  );
+}
+
+function FunnelRow({ label, count, locale, pct }: { label: string; count: number; locale: string; pct: number }) {
+  const barWidth = `${Math.max(4, Math.round(pct * 100))}%`;
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-sm">
+        <span className="text-ink-muted">{label}</span>
+        <span className="font-mono font-semibold text-ink tnum">{count.toLocaleString(locale === "bn" ? "bn-BD" : "en-US")}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+        <div className="h-full rounded-full bg-primary" style={{ width: barWidth }} />
+      </div>
     </div>
   );
 }

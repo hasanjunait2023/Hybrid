@@ -257,3 +257,47 @@ export async function getCourierPerformance(
   });
 }
 
+export interface FunnelReport {
+  productViews: number;
+  cartAdds: number;
+  orders: number;
+  /** cart adds / product views */
+  viewToCartRate: number;
+  /** orders / cart adds */
+  cartToOrderRate: number;
+  /** orders / product views (full funnel) */
+  overallConversionRate: number;
+}
+
+// Storefront conversion funnel for the date range using the analytics_event table.
+// product.viewed → cart.added → order.placed (internal first-party events).
+export async function getFunnelReport(
+  tenantId: string,
+  userId: string,
+  range: DateRange,
+): Promise<FunnelReport> {
+  return withTenant(tenantId, userId, async (tx) => {
+    const rows = await tx<{
+      views: number;
+      cart_adds: number;
+      orders_placed: number;
+    }[]>`
+      select
+        count(*) filter (where type = 'product.viewed')::int  as views,
+        count(*) filter (where type = 'cart.added')::int      as cart_adds,
+        count(*) filter (where type = 'order.placed')::int    as orders_placed
+      from analytics_event
+      where created_at::date between ${range.from}::date and ${range.to}::date
+    `;
+    const r = rows[0] ?? { views: 0, cart_adds: 0, orders_placed: 0 };
+    return {
+      productViews: r.views,
+      cartAdds: r.cart_adds,
+      orders: r.orders_placed,
+      viewToCartRate: r.views > 0 ? r.cart_adds / r.views : 0,
+      cartToOrderRate: r.cart_adds > 0 ? r.orders_placed / r.cart_adds : 0,
+      overallConversionRate: r.views > 0 ? r.orders_placed / r.views : 0,
+    };
+  });
+}
+

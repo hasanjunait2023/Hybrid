@@ -142,3 +142,61 @@ export async function sendCampaign(
   });
   return { sent, live };
 }
+
+export interface AbandonedCartStats {
+  totalAbandoned: number;
+  recovered: number;
+  recoveryRate: number;
+  pendingReminder: number;
+  firstReminderSent: number;
+  followUpSent: number;
+}
+
+// Abandoned cart stats for the marketing page: how many carts were abandoned,
+// how many converted, how many reminders were sent. Last 30 days.
+export async function getAbandonedCartStats(
+  tenantId: string,
+  userId: string,
+): Promise<AbandonedCartStats> {
+  return withTenant(tenantId, userId, async (tx) => {
+    const rows = await tx<{
+      total_abandoned: number;
+      recovered: number;
+      pending_reminder: number;
+    }[]>`
+      select
+        count(*) filter (where abandoned_at is not null
+          and abandoned_at > now() - interval '30 days')::int as total_abandoned,
+        count(*) filter (where recovered_at is not null
+          and abandoned_at > now() - interval '30 days')::int as recovered,
+        count(*) filter (where abandoned_at is not null
+          and recovered_at is null
+          and abandoned_at > now() - interval '30 days'
+          and not exists (
+            select 1 from cart_reminder cr where cr.cart_id = cart.id
+          ))::int as pending_reminder
+      from cart
+    `;
+    const stat = rows[0] ?? { total_abandoned: 0, recovered: 0, pending_reminder: 0 };
+
+    const reminders = await tx<{ first: number; followup: number }[]>`
+      select
+        count(*) filter (where template_key = 'cart_recovery_first')::int as first,
+        count(*) filter (where template_key = 'cart_recovery_followup')::int as followup
+      from cart_reminder
+      where sent_at > now() - interval '30 days'
+    `;
+    const r = reminders[0] ?? { first: 0, followup: 0 };
+
+    const total = stat.total_abandoned;
+    const rate = total > 0 ? Math.round((stat.recovered / total) * 100) : 0;
+    return {
+      totalAbandoned: total,
+      recovered: stat.recovered,
+      recoveryRate: rate,
+      pendingReminder: stat.pending_reminder,
+      firstReminderSent: r.first,
+      followUpSent: r.followup,
+    };
+  });
+}
