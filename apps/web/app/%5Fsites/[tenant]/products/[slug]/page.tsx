@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import { CheckIcon } from "@hybrid/ui";
 import {
   getStorefrontProductBySlug,
+  getStorefrontProductReviews,
   getTenantContextBySlug,
 } from "@/lib/storefront/data";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
 import { AddToCart } from "./AddToCart";
 import { OrderViaChat } from "./OrderViaChat";
+import { ProductReviews } from "./ProductReviews";
 
 interface ProductDetailPageProps {
   params: Promise<{ tenant: string; slug: string }>;
@@ -57,6 +59,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
   const product = await getStorefrontProductBySlug(ctx.id, productSlug);
   if (!product) notFound();
+
+  const reviews = await getStorefrontProductReviews(ctx.id, product.id);
 
   const { locale, d } = await getDict();
   const isDiscounted =
@@ -124,6 +128,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           />
         </div>
       </div>
+
+      <ProductReviews
+        data={reviews}
+        tenantSlug={slug}
+        productSlug={product.slug}
+        locale={locale}
+        labels={d.storefront.reviews}
+      />
     </div>
   );
 }

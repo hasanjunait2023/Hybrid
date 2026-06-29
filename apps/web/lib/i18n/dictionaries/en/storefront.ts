@@ -27,6 +27,18 @@ export const storefront = {
     orderOnMessenger: "Order on Messenger",
     chatOrderPrefix: "I'd like to order:",
   },
+  reviews: {
+    title: "Reviews",
+    countSuffix: " reviews",
+    none: "No reviews yet. Be the first to review.",
+    writeTitle: "Write a review",
+    nameLabel: "Your name",
+    ratingLabel: "Rating",
+    commentLabel: "Comment (optional)",
+    submit: "Submit",
+    submitting: "Submitting…",
+    thanks: "Thanks! Your review will appear once approved.",
+  },
   cart: {
     title: "Your cart",
     empty: "Your cart is empty",

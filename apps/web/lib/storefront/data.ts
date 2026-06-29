@@ -464,6 +464,65 @@ export async function getStorePage(
   )();
 }
 
+// Approved product reviews + rating for the storefront PDP. Public read
+// (userId=null); only 'approved' rows are ever exposed. Cached + busted by
+// tenant:{id}:reviews (the admin moderate action revalidates that tag).
+export interface StorefrontReview {
+  id: string;
+  customerName: string | null;
+  rating: number;
+  body: string | null;
+  createdAt: string;
+}
+
+export interface StorefrontProductReviews {
+  average: number;
+  count: number;
+  reviews: StorefrontReview[];
+}
+
+export async function getStorefrontProductReviews(
+  tenantId: string,
+  productId: string,
+): Promise<StorefrontProductReviews> {
+  return unstable_cache(
+    async () => {
+      return withTenant(tenantId, null, async (tx) => {
+        const agg = await tx<{ avg: string | null; n: number }[]>`
+          select avg(rating)::numeric(3,2) as avg, count(*)::int as n
+            from product_review
+           where product_id = ${productId} and status = 'approved'
+        `;
+        const rows = await tx<
+          { id: string; customer_name: string | null; rating: number; body: string | null; created_at: string }[]
+        >`
+          select id, customer_name, rating, body, created_at
+            from product_review
+           where product_id = ${productId} and status = 'approved'
+           order by created_at desc
+           limit 20
+        `;
+        return {
+          average: Number(agg[0]?.avg ?? 0),
+          count: agg[0]?.n ?? 0,
+          reviews: rows.map((r) => ({
+            id: r.id,
+            customerName: r.customer_name,
+            rating: r.rating,
+            body: r.body,
+            createdAt: r.created_at,
+          })),
+        } satisfies StorefrontProductReviews;
+      });
+    },
+    [`reviews:${tenantId}:${productId}`],
+    {
+      revalidate: 3600,
+      tags: [`tenant:${tenantId}`, `tenant:${tenantId}:reviews`],
+    },
+  )();
+}
+
 // Active products for a tenant. min(variant.price) is the card price.
 export async function getStorefrontProducts(
   tenantId: string,

@@ -28,7 +28,7 @@ export interface CreateReviewInput {
 
 export async function createReview(
   tenantId: string,
-  userId: string,
+  userId: string | null,
   input: CreateReviewInput,
 ): Promise<{ id: string }> {
   if (!Number.isInteger(input.rating) || input.rating < 1 || input.rating > 5) {

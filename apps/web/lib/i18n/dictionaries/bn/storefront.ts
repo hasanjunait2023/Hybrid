@@ -28,6 +28,18 @@ export const storefront: typeof EnStorefront = {
     orderOnMessenger: "মেসেঞ্জারে অর্ডার করুন",
     chatOrderPrefix: "আমি অর্ডার করতে চাই:",
   },
+  reviews: {
+    title: "রিভিউ",
+    countSuffix: "টি রিভিউ",
+    none: "এখনো কোনো রিভিউ নেই। প্রথম রিভিউটি আপনিই দিন।",
+    writeTitle: "রিভিউ লিখুন",
+    nameLabel: "আপনার নাম",
+    ratingLabel: "রেটিং",
+    commentLabel: "মন্তব্য (ঐচ্ছিক)",
+    submit: "জমা দিন",
+    submitting: "জমা হচ্ছে…",
+    thanks: "ধন্যবাদ! অনুমোদনের পর আপনার রিভিউ দেখা যাবে।",
+  },
   cart: {
     title: "আপনার কার্ট",
     empty: "আপনার কার্ট খালি",
