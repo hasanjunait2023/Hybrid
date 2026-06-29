@@ -47,6 +47,7 @@ const WHOLESALE_ITEMS: NavItem[] = [
 // Secondary surfaces (Wave-2). The mobile bottom-tab grid stays five items, so
 // these live in the desktop sidebar's "More" group and remain reachable there.
 const MORE_ITEMS: NavItem[] = [
+  { href: "/admin/tasks", tKey: "tasks", Icon: CheckCircleIcon, match: "/admin/tasks" },
   { href: "/admin/themes", tKey: "themes", Icon: MenuIcon, match: "/admin/themes" },
   { href: "/admin/returns", tKey: "returns", Icon: UndoIcon, match: "/admin/returns" },
   { href: "/admin/cod", tKey: "cod", Icon: TruckIcon, match: "/admin/cod" },
