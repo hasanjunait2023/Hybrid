@@ -27,7 +27,7 @@ Supabase" plans — those are historical. Full operational runbook: `docs/INFRA_
 |---|---|
 | Host | VPS `72.62.228.196`, Ubuntu, Docker. SSH alias `mt5vps` (root). |
 | Root domain | `hybrid.ecomex.cloud` (Cloudflare wildcard → VPS Caddy, auto-TLS) |
-| App deploy | `/opt/hybrid` (source tree, NOT git) → `docker-compose.prod.yml` + `deploy.sh`. Reverse proxy: **Caddy** (`hybrid-web`, `hybrid-redis`). |
+| App deploy | `/opt/hybrid` (**git checkout on `master`**, origin = `git@github.com:hasanjunait2023/Hybrid.git`) → `docker-compose.prod.yml` + `deploy.sh`. Reverse proxy: **Caddy** (`hybrid-web`, `hybrid-redis`). CI auto-deploys on green push to `master` (`.github/workflows/ci.yml` → SSH → `deploy.sh`). |
 | Database | **self-hosted `supabase-db`** (Supabase Postgres 15) — Hybrid lives in the `postgres` DB `public` schema, alongside Supabase's `auth`/`storage` schemas. `DATABASE_URL=app_runtime_login@supabase-db:5432/postgres`, `DIRECT_URL=postgres@supabase-db:5432/postgres`. RLS UNCHANGED — `withTenant()` still the only tenant path. |
 | Auth | **`AUTH_PROVIDER=supabase`** — Supabase **GoTrue** is the credential authority (users in `auth.users`, managed in Studio). Login verifies against GoTrue, then mints the app's own opaque `hybrid_session` (the password-provider session path in `session.ts`). |
 | Storage | **`BLOB_DRIVER=s3` → Supabase MinIO** (`supabase-minio`), bucket `hybrid-media`, served public-read at `https://cdn.hybrid.ecomex.cloud` (Caddy → MinIO, GetObject-only). |
