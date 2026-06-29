@@ -7,7 +7,7 @@ import { useDict } from "@/lib/i18n/provider";
 
 export function LedgerForm({
   customerId,
-  onDone,
+  onDone: _onDone,
 }: {
   customerId: string;
   onDone?: () => void;

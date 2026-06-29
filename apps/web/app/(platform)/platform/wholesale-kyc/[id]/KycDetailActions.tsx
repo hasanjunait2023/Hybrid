@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@hybrid/ui";
-import { approveKyc, rejectKyc, type PlatformActionResult } from "../actions";
+import { approveKyc, rejectKyc } from "../actions";
 
 interface KycDetailActionsProps {
   tenantId: string;
@@ -15,7 +15,7 @@ interface KycDetailActionsProps {
 export function KycDetailActions({
   tenantId,
   kycStatus,
-  wholesaleApproved,
+  wholesaleApproved: _wholesaleApproved,
 }: KycDetailActionsProps) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export function KycDetailActions({
   if (isFinal) {
     return (
       <div className="flex flex-col items-end gap-1">
-        <span className="inline-flex items-center rounded-full bg-[#f0ede4] px-3 py-1.5 text-[12px] font-semibold text-[var(--pf-muted)]">
+        <span className="inline-flex items-center rounded-full bg-[var(--pf-surface-2)] px-3 py-1.5 text-[12px] font-semibold text-[var(--pf-muted)]">
           {kycStatus === "verified" ? "✓ Approved" : "✗ Rejected"}
         </span>
       </div>
@@ -87,7 +87,7 @@ export function KycDetailActions({
       </div>
 
       {showRejectForm && (
-        <div className="flex w-full flex-col gap-2 rounded-xl border border-[var(--pf-border)] bg-[#fbf9f2] p-3">
+        <div className="flex w-full flex-col gap-2 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-3">
           <label className="text-[12px] font-medium text-[var(--pf-muted)]">
             Rejection reason (optional)
           </label>

@@ -23,7 +23,7 @@ export default async function WholesaleCheckoutPage({
   const paymentNotice =
     payment === "failed" ? "failed" : payment === "invalid" ? "invalid" : null;
   const { d } = await getDict();
-  const t = d.storefront.checkout;
+  const _t = d.storefront.checkout;
 
   return (
     <div>

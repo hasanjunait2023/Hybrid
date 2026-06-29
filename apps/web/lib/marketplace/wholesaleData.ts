@@ -3,7 +3,7 @@ import "server-only";
 // Wholesale read layer (Phase 3). Extends the marketplace data layer with
 // B2B-specific queries. All reads go through withPublic (anonymous catalog) or
 // withBuyer (verified B2B pricing). No raw sql.
-import { withPublic, withBuyer } from "@hybrid/db";
+import { withPublic } from "@hybrid/db";
 import type { MpListing, MpProductDetail, MpVariant } from "./data";
 
 // ── Internal row types ──────────────────────────────────────────────────────

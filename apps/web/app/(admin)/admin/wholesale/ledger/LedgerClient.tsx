@@ -2,7 +2,6 @@
 
 // Client component for ledger page — customer selector + inline forms.
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { LedgerForm } from "./LedgerForm";
 
 export function LedgerClient({ customerId }: { customerId: string }) {

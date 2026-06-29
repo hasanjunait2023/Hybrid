@@ -28,7 +28,7 @@ export default async function WholesaleHome({ params }: WholesaleHomeProps) {
   const ctx = await getTenantContextBySlug(slug);
   if (!ctx) notFound();
 
-  const { locale, d } = await getDict();
+  const { locale, d: _d } = await getDict();
 
   // Fetch wholesale products via withTenant (RLS-scoped, anonymous userId=null)
   const products = await withTenant(ctx.id, null, (tx) =>

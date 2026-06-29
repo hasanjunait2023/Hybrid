@@ -79,8 +79,8 @@ export default async function PlatformStores({
                 href={href}
                 className={`rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${
                   active
-                    ? "bg-[var(--pf-black)] text-[#f6f3ea]"
-                    : "bg-[#fbf9f2] text-[var(--pf-muted)] hover:bg-[#f0ece1]"
+                    ? "bg-[var(--pf-black)] text-[var(--pf-surface-2)]"
+                    : "bg-[var(--pf-surface)] text-[var(--pf-muted)] hover:bg-[var(--pf-surface-2)]"
                 }`}
               >
                 {opt.label}

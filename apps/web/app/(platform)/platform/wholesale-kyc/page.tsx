@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listPendingKycTenants, approveKyc, rejectKyc } from "./actions";
+import { listPendingKycTenants } from "./actions";
 import { KycActions } from "./KycActions";
 
 // Super-admin Wholesale KYC approval queue (Phase 5). Lists every tenant with
@@ -22,14 +22,14 @@ function fmtDate(iso: string): string {
 function kycBadge(status: string) {
   const map: Record<string, string> = {
     pending: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
-    submitted: "bg-[#dbeafe] text-[#1d4ed8]",
-    verified: "bg-[#e6f6ee] text-[var(--pf-success)]",
-    rejected: "bg-[#fde9e8] text-[var(--pf-danger)]",
+    submitted: "bg-[var(--pf-blue-50)] text-[var(--pf-blue-700)]",
+    verified: "bg-[var(--pf-green-50)] text-[var(--pf-success)]",
+    rejected: "bg-[var(--pf-red-50)] text-[var(--pf-danger)]",
   };
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${
-        map[status] ?? "bg-[#f0ede4] text-[var(--pf-muted)]"
+        map[status] ?? "bg-[var(--pf-surface-2)] text-[var(--pf-muted)]"
       }`}
     >
       {status}
@@ -88,8 +88,8 @@ export default async function WholesaleKycPage({
             href={chip.href}
             className={`rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
               chip.active
-                ? "bg-[var(--pf-black)] text-[#f6f3ea]"
-                : "bg-[#fbf9f2] text-[var(--pf-muted)] hover:bg-[#f0ece1]"
+                ? "bg-[var(--pf-black)] text-[var(--pf-surface-2)]"
+                : "bg-[var(--pf-surface)] text-[var(--pf-muted)] hover:bg-[var(--pf-surface-2)]"
             }`}
           >
             {chip.label} ({chip.value})
@@ -140,7 +140,7 @@ export default async function WholesaleKycPage({
                       {t.ownerName ?? t.ownerEmail ?? "—"}
                     </td>
                     <td className="py-3">
-                      <span className="inline-flex items-center rounded-full bg-[#f0ede4] px-2 py-0.5 text-[11px] font-semibold capitalize text-[var(--pf-muted)]">
+                      <span className="inline-flex items-center rounded-full bg-[var(--pf-surface-2)] px-2 py-0.5 text-[11px] font-semibold capitalize text-[var(--pf-muted)]">
                         {t.businessType}
                       </span>
                     </td>

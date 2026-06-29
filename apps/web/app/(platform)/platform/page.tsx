@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getPlatformStats, getWholesaleStats, type PlatformStats, type WholesaleStats } from "@/lib/platform/analytics";
+import { getPlatformStats, getWholesaleStats, type PlatformStats } from "@/lib/platform/analytics";
 import { listTenants, type TenantDirectoryRow } from "@/lib/platform/data";
 import { BoxesIcon, CheckCircleIcon, ReceiptIcon, UsersIcon, TruckIcon } from "@hybrid/ui";
 

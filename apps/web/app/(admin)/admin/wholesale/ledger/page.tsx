@@ -37,9 +37,9 @@ export default async function WholesaleLedgerPage(props: {
   const t = d.admin.wholesale.ledger;
 
   // Compute running balance
-  let runningBalance = 0;
+  let _runningBalance = 0;
   const entriesWithBalance = entries.map((e) => {
-    runningBalance = e.balance;
+    _runningBalance = e.balance;
     return e;
   });
 

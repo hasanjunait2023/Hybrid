@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getKycDetail, approveKyc, rejectKyc } from "../actions";
+import { getKycDetail } from "../actions";
 import { KycDetailActions } from "./KycDetailActions";
 
 // KYC detail page — full view of one tenant's wholesale KYC application.
@@ -22,14 +22,14 @@ function fmtDate(iso: string | null): string {
 function kycBadge(status: string) {
   const map: Record<string, string> = {
     pending: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
-    submitted: "bg-[#dbeafe] text-[#1d4ed8]",
-    verified: "bg-[#e6f6ee] text-[var(--pf-success)]",
-    rejected: "bg-[#fde9e8] text-[var(--pf-danger)]",
+    submitted: "bg-[var(--pf-blue-50)] text-[var(--pf-blue-700)]",
+    verified: "bg-[var(--pf-green-50)] text-[var(--pf-success)]",
+    rejected: "bg-[var(--pf-red-50)] text-[var(--pf-danger)]",
   };
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${
-        map[status] ?? "bg-[#f0ede4] text-[var(--pf-muted)]"
+        map[status] ?? "bg-[var(--pf-surface-2)] text-[var(--pf-muted)]"
       }`}
     >
       {status}
@@ -59,7 +59,7 @@ export default async function KycDetailPage({
       </p>
 
       {/* Header card */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[var(--pf-border)] bg-gradient-to-br from-[#fdf8ec] to-[#fbf3dc] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[var(--pf-border)] bg-gradient-to-br from-[var(--pf-amber-50)] to-[var(--pf-amber-25)] p-5">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--pf-yellow-soft)] text-[18px] font-bold text-[var(--pf-yellow-deep)]">
             {detail.name.slice(0, 1).toUpperCase()}
@@ -133,7 +133,7 @@ export default async function KycDetailPage({
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           doc.verified
-                            ? "bg-[#e6f6ee] text-[var(--pf-success)]"
+                            ? "bg-[var(--pf-green-50)] text-[var(--pf-success)]"
                             : "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]"
                         }`}
                       >
@@ -178,7 +178,7 @@ function Row({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg bg-[#fbf9f2] px-3 py-2.5">
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-[var(--pf-surface)] px-3 py-2.5">
       <dt className="text-[12px] text-[var(--pf-muted)]">{label}</dt>
       <dd
         className={`text-[13px] font-semibold text-[var(--pf-ink)] ${
