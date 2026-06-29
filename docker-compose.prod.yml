@@ -105,7 +105,7 @@ services:
     - hybridpay
     working_dir: /var/www/html
     command: >
-      bash -c "docker-php-ext-install pdo pdo_mysql mysqli > /dev/null 2>&1;
+      bash -c "docker-php-ext-install bcmath pdo pdo_mysql mysqli > /dev/null 2>&1;
       a2enmod rewrite > /dev/null 2>&1; apache2-foreground"
     volumes:
     - ./piprapay:/var/www/html
