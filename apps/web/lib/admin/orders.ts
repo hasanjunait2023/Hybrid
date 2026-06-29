@@ -139,6 +139,9 @@ export interface OrderListRow {
   source: string;
   paymentProvider: string | null;
   placedAt: string;
+  /** Cheap local COD-risk level (R2.2) — blocked / prior bad outcomes for the
+   *  phone. The full network + external score lives on the order detail. */
+  riskLevel: import("@/lib/admin/fraud").RiskLevel;
 }
 
 export async function listOrders(
@@ -169,13 +172,20 @@ export async function listOrders(
         source: string;
         payment_provider: string | null;
         placed_at: string;
+        blocked: boolean;
+        prior_bad: number;
       }[]
     >`
       select
         o.id, o.order_number, o.customer_name, o.customer_phone,
         o.grand_total, o.cod_amount, o.payment_status, o.fulfillment_status,
         o.source, o.placed_at,
-        (select p.provider from payment p where p.order_id = o.id order by p.created_at asc limit 1) as payment_provider
+        (select p.provider from payment p where p.order_id = o.id order by p.created_at asc limit 1) as payment_provider,
+        (o.customer_phone is not null and exists (
+           select 1 from phone_blocklist b where b.phone = o.customer_phone)) as blocked,
+        (select count(*) from orders o2
+           where o2.customer_phone = o.customer_phone and o2.id <> o.id
+             and o2.fulfillment_status in ('cancelled','returned'))::int as prior_bad
       from orders o
       where (${fulfillment}::order_fulfillment_status is null or o.fulfillment_status = ${fulfillment}::order_fulfillment_status)
         and (${payment}::order_payment_status is null or o.payment_status = ${payment}::order_payment_status)
@@ -208,7 +218,12 @@ function mapOrderRow(r: {
   source: string;
   payment_provider: string | null;
   placed_at: string;
+  blocked?: boolean;
+  prior_bad?: number;
 }): OrderListRow {
+  const priorBad = r.prior_bad ?? 0;
+  const riskLevel: import("@/lib/admin/fraud").RiskLevel =
+    r.blocked || priorBad >= 2 ? "high" : priorBad === 1 ? "medium" : "low";
   return {
     id: r.id,
     orderNumber: Number(r.order_number),
@@ -221,6 +236,7 @@ function mapOrderRow(r: {
     source: r.source,
     paymentProvider: r.payment_provider,
     placedAt: r.placed_at,
+    riskLevel,
   };
 }
 

@@ -5,7 +5,7 @@
 // adapter — same pattern as bKash/Steadfast/SMS in this codebase: when the
 // credential is absent it reports `configured:false` and the UI shows the
 // internal signals only (never a fake score).
-import { withTenant } from "@hybrid/db";
+import { withTenant, asPlatformAdmin } from "@hybrid/db";
 
 export interface BlocklistRow {
   id: string;
@@ -48,6 +48,13 @@ export async function blockPhone(
       values (${tenantId}, ${phone}, ${reason ?? null}, ${userId})
       on conflict (tenant_id, phone)
       do update set reason = excluded.reason
+    `;
+    // Feed the cross-tenant fraud network: blocking a number is a signal other
+    // shops benefit from (aggregate only — see cod_risk_signal). Idempotent.
+    await tx`
+      insert into cod_risk_signal (tenant_id, phone, kind)
+      values (${tenantId}, ${phone}, 'block')
+      on conflict do nothing
     `;
   });
 }
@@ -129,6 +136,120 @@ export async function getOrderRiskSignals(
       rtoRate: prior > 0 ? bad / prior : 0,
     };
   });
+}
+
+// ---- Cross-tenant fraud network (Phase R2.2) -------------------------------
+// The differentiator: a phone that burned one Hybrid shop warns the others —
+// but only as a privacy-safe aggregate (count of shops, never which shops, never
+// any order). Stores feed it on cancel / RTO / block; the read is platform-level.
+
+export type RiskKind = "rto" | "cancel" | "block";
+
+// Record a network signal (idempotent on tenant+phone+kind+order). Tenant-scoped
+// write; called best-effort from the order status action and blockPhone.
+export async function recordCodRiskSignal(
+  tenantId: string,
+  userId: string,
+  input: { phone: string; kind: RiskKind; orderId?: string | null },
+): Promise<void> {
+  const phone = input.phone.trim();
+  if (!phone) return;
+  await withTenant(tenantId, userId, async (tx) => {
+    await tx`
+      insert into cod_risk_signal (tenant_id, phone, kind, order_id)
+      values (${tenantId}, ${phone}, ${input.kind}, ${input.orderId ?? null})
+      on conflict do nothing
+    `;
+  });
+}
+
+export interface NetworkPhoneRisk {
+  /** distinct OTHER shops that flagged this phone. */
+  storesFlagged: number;
+  /** total signals from other shops. */
+  signals: number;
+}
+
+// Privacy-safe cross-tenant aggregate. Runs as the platform admin and returns
+// ONLY counts — never which shops, never any order. Excludes the asking tenant
+// so its own history isn't double-counted with the local signals.
+export async function getNetworkPhoneRisk(
+  phone: string,
+  excludeTenantId: string,
+): Promise<NetworkPhoneRisk> {
+  const p = phone.trim();
+  if (!p) return { storesFlagged: 0, signals: 0 };
+  const rows = await asPlatformAdmin((tx) =>
+    tx<{ stores: number; signals: number }[]>`
+      select count(distinct tenant_id)::int as stores, count(*)::int as signals
+        from cod_risk_signal
+       where phone = ${p} and tenant_id <> ${excludeTenantId}
+    `,
+  );
+  return { storesFlagged: rows[0]?.stores ?? 0, signals: rows[0]?.signals ?? 0 };
+}
+
+export type RiskLevel = "low" | "medium" | "high";
+
+export interface PhoneRiskVerdict {
+  level: RiskLevel;
+  /** i18n reason keys, in severity order, for the UI to render. */
+  reasons: string[];
+}
+
+function rank(l: RiskLevel): number {
+  return l === "high" ? 2 : l === "medium" ? 1 : 0;
+}
+
+// Composite scoring over local history + the optional external lookup + the
+// cross-tenant network. Pure — reused by the order detail panel, the order list
+// and (later) the confirm-time guard. Reasons are i18n keys.
+export function scorePhoneRisk(input: {
+  local: OrderRiskSignals;
+  external?: ExternalPhoneRisk;
+  network?: NetworkPhoneRisk;
+}): PhoneRiskVerdict {
+  const { local, external, network } = input;
+  const reasons: string[] = [];
+  let level: RiskLevel = "low";
+  const bump = (l: RiskLevel) => {
+    if (rank(l) > rank(level)) level = l;
+  };
+
+  if (local.blocked) {
+    bump("high");
+    reasons.push("blocked");
+  }
+  if (local.duplicateRecent > 0) {
+    bump("high");
+    reasons.push("duplicate");
+  }
+  if (local.priorOrders >= 2 && local.rtoRate > 0.4) {
+    bump("high");
+    reasons.push("rto");
+  } else if (local.priorOrders >= 2 && local.rtoRate >= 0.2) {
+    bump("medium");
+    reasons.push("rto");
+  }
+  if (network) {
+    if (network.storesFlagged >= 2) {
+      bump("high");
+      reasons.push("network");
+    } else if (network.storesFlagged === 1) {
+      bump("medium");
+      reasons.push("network");
+    }
+  }
+  if (external?.configured && external.successRatio !== undefined) {
+    if (external.successRatio < 0.5) {
+      bump("high");
+      reasons.push("courier");
+    } else if (external.successRatio < 0.7) {
+      bump("medium");
+      reasons.push("courier");
+    }
+  }
+  return { level, reasons };
 }
 
 // ---- External phone-risk lookup (credential-gated adapter) ------------------

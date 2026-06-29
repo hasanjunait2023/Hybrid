@@ -79,6 +79,15 @@ export const ordersDetail = {
     courierSuccess: "Courier success",
     externalDisabled:
       "External fraud-check is off — showing signals from your own order history only.",
+    level: { low: "Low risk", medium: "Medium risk", high: "High risk" },
+    reason: {
+      blocked: "blocked number",
+      duplicate: "duplicate order",
+      rto: "high RTO history",
+      network: "flagged on the network",
+      courier: "low courier success",
+    },
+    networkFlagged: "⚠ Flagged by {n} other shop(s) on Hybrid.",
   },
 
   manualPayment: {
