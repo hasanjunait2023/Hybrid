@@ -31,7 +31,12 @@ function conn(): Redis {
   if (connection) return connection;
   const url = process.env.REDIS_URL;
   if (!url) throw new Error("REDIS_URL is not set");
-  connection = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 3 });
+  connection = new Redis(url, {
+    lazyConnect: true,
+    maxRetriesPerRequest: 3,
+    enableOfflineQueue: false,
+  });
+  connection.on("error", () => {});
   return connection;
 }
 

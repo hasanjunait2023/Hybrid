@@ -7,6 +7,7 @@ import {
   getTenantSlug,
   listCollectionOptions,
 } from "@/lib/theme/data";
+import { getHomePageBlocks } from "@/lib/theme/pageBuilder";
 import { Customizer } from "./Customizer";
 
 // Visual customizer (DESIGN §Q1). Opens on the tenant's draft (created from the
@@ -20,11 +21,12 @@ export default async function CustomizePage() {
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 
-  const [draft, published, slug, collections] = await Promise.all([
+  const [draft, published, slug, collections, homePageData] = await Promise.all([
     getOrCreateDraftTheme(tenantId, session.userId),
     getPublishedTheme(tenantId, session.userId),
     getTenantSlug(tenantId, session.userId),
     listCollectionOptions(tenantId, session.userId),
+    getHomePageBlocks(tenantId, session.userId).catch(() => null),
   ]);
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "lvh.me:3000";
@@ -35,6 +37,7 @@ export default async function CustomizePage() {
   return (
     <Customizer
       initialSettings={draft.settings}
+      initialBlocks={homePageData?.blocks ?? []}
       collections={collections}
       previewUrl={previewUrl}
       hasPublished={hasPublished}

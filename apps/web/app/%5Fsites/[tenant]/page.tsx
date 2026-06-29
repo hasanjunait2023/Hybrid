@@ -9,7 +9,9 @@ import {
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getDict } from "@/lib/i18n/server";
+import { getPublicHomePageBlocks } from "@/lib/theme/pageBuilder";
 import { ThemeSections } from "./ThemeSections";
+import { HomePageBuilder } from "./HomePageBuilder";
 
 interface StorefrontHomeProps {
   params: Promise<{ tenant: string }>;
@@ -35,13 +37,14 @@ export default async function StorefrontHome({
   if (!published) notFound();
 
   const ctx = await resolveContext(slug, published, preview === "1");
-  const [products, collections] = await Promise.all([
+  const [products, collections, builderBlocks] = await Promise.all([
     getStorefrontProducts(ctx.id),
     getStorefrontCollections(ctx.id),
+    getPublicHomePageBlocks(ctx.id).catch(() => null),
   ]);
 
   const isPreview = ctx.settings !== published.settings;
-  const { d } = await getDict();
+  const { locale, d } = await getDict();
 
   return (
     <>
@@ -53,12 +56,22 @@ export default async function StorefrontHome({
           {d.storefront.home.previewBanner}
         </div>
       )}
-      <ThemeSections
-        settings={ctx.settings}
-        storeName={ctx.store.name}
-        products={products}
-        collections={collections}
-      />
+      {builderBlocks && builderBlocks.length > 0 ? (
+        <HomePageBuilder
+          blocks={builderBlocks}
+          products={products}
+          collections={collections}
+          locale={locale}
+          storeName={ctx.store.name}
+        />
+      ) : (
+        <ThemeSections
+          settings={ctx.settings}
+          storeName={ctx.store.name}
+          products={products}
+          collections={collections}
+        />
+      )}
     </>
   );
 }

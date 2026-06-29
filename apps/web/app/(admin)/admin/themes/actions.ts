@@ -21,6 +21,7 @@ import {
 } from "@/lib/theme/data";
 import { validateThemeSettings } from "@/lib/theme/schema";
 import { getThemeEntry } from "@/lib/theme/catalog";
+import { validateBlocks, saveHomePageBlocks } from "@/lib/theme/pageBuilder";
 
 export interface ThemeActionResult {
   ok: boolean;
@@ -78,6 +79,35 @@ export async function publishThemeAction(): Promise<ThemeActionResult> {
     return { ok: true };
   } catch {
     return { ok: false, error: "প্রকাশ করা যায়নি, আবার চেষ্টা করুন।" };
+  }
+}
+
+// Save the page builder home page blocks.
+// `blocksJson` is the serialized HomePageBlocks array from the client.
+export async function saveHomePageAction(
+  blocksJson: string,
+): Promise<ThemeActionResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return auth;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(blocksJson);
+  } catch {
+    return { ok: false, error: "ব্লক ডেটা পড়া যায়নি।" };
+  }
+
+  const check = validateBlocks(parsed);
+  if (!check.ok) {
+    return { ok: false, error: check.error ?? "পেজ ব্লক সঠিক নয়।" };
+  }
+
+  try {
+    await saveHomePageBlocks(auth.tenantId, auth.userId, check.data);
+    revalidateTag(`tenant:${auth.tenantId}:theme`);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "পেজ সেভ করা যায়নি, আবার চেষ্টা করুন।" };
   }
 }
 

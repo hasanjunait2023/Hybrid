@@ -32,6 +32,7 @@ export const themes: typeof En = {
       typography: "ফন্ট",
       content: "কন্টেন্ট",
       sections: "সেকশন",
+      builder: "পেজ বিল্ডার",
     },
     publish: "প্রকাশ করুন",
     customizeButton: "কাস্টমাইজ করুন",

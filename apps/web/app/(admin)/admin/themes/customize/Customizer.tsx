@@ -11,12 +11,14 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@hybrid/ui";
 import type { ThemeSettings } from "@/lib/theme/schema";
+import type { HomePageBlocks } from "@/lib/theme/pageBuilder";
 import { useDict } from "@/lib/i18n/provider";
-import { saveDraftAction, publishThemeAction } from "../actions";
+import { saveDraftAction, publishThemeAction, saveHomePageAction } from "../actions";
 import { ColorControls } from "./controls/ColorControls";
 import { TypographyControls } from "./controls/TypographyControls";
 import { ContentControls } from "./controls/ContentControls";
 import { SectionControls } from "./controls/SectionControls";
+import { PageBuilderControls } from "./controls/PageBuilderControls";
 
 interface CollectionOption {
   id: string;
@@ -25,23 +27,26 @@ interface CollectionOption {
 
 interface CustomizerProps {
   initialSettings: ThemeSettings;
+  initialBlocks: HomePageBlocks;
   collections: CollectionOption[];
   previewUrl: string | null;
   hasPublished: boolean;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
-type Group = "colors" | "typography" | "content" | "sections";
+type Group = "colors" | "typography" | "content" | "sections" | "builder";
 type Device = "mobile" | "desktop";
 
 export function Customizer({
   initialSettings,
+  initialBlocks,
   collections,
   previewUrl,
   hasPublished,
 }: CustomizerProps) {
   const t = useDict().admin.themes;
   const [settings, setSettings] = useState<ThemeSettings>(initialSettings);
+  const [blocks, setBlocks] = useState<HomePageBlocks>(initialBlocks);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [dirty, setDirty] = useState(false);
   const [openGroup, setOpenGroup] = useState<Group | null>("colors");
@@ -54,6 +59,7 @@ export function Customizer({
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const builderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced autosave: persist the draft, then refresh the preview iframe so it
   // shows the latest committed draft (the ?preview route reads the DB draft row).
@@ -74,9 +80,28 @@ export function Customizer({
     }, 600);
   }, []);
 
+  // Page builder autosave — debounced, direct to store_page via saveHomePageAction.
+  const scheduleBuilderSave = useCallback((next: HomePageBlocks) => {
+    setSaveState("saving");
+    if (builderTimer.current) clearTimeout(builderTimer.current);
+    builderTimer.current = setTimeout(async () => {
+      const res = await saveHomePageAction(JSON.stringify(next));
+      if (res.ok) {
+        setSaveState("saved");
+        if (iframeRef.current) {
+          // eslint-disable-next-line no-self-assign
+          iframeRef.current.src = iframeRef.current.src;
+        }
+      } else {
+        setSaveState("error");
+      }
+    }, 800);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (builderTimer.current) clearTimeout(builderTimer.current);
     };
   }, []);
 
@@ -84,6 +109,12 @@ export function Customizer({
     setSettings(next);
     setDirty(true);
     scheduleSave(next);
+  }
+
+  function updateBlocks(next: HomePageBlocks) {
+    setBlocks(next);
+    setDirty(true);
+    scheduleBuilderSave(next);
   }
 
   function handlePublish() {
@@ -138,6 +169,13 @@ export function Customizer({
               <SectionControls
                 sections={settings.sections}
                 onChange={(sections) => update({ ...settings, sections })}
+              />
+            );
+          case "builder":
+            return (
+              <PageBuilderControls
+                blocks={blocks}
+                onChange={updateBlocks}
               />
             );
         }
@@ -385,7 +423,7 @@ function Accordion({
   children: (group: Group) => React.ReactNode;
 }) {
   const t = useDict().admin.themes;
-  const groups: Group[] = ["colors", "typography", "content", "sections"];
+  const groups: Group[] = ["colors", "typography", "content", "sections", "builder"];
   return (
     <div className="space-y-2">
       {groups.map((g) => {

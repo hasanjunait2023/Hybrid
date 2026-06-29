@@ -16,7 +16,15 @@ class IoRedisClient implements CacheClient {
     // lazyConnect: connect on first command, not at construction, so a Redis
     // outage surfaces as a catchable command error (handled in resolve.ts)
     // rather than an unhandled connection error at import time.
-    this.redis = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 2 });
+    this.redis = new Redis(url, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 2,
+      // Fail fast instead of queuing commands during an outage; callers catch.
+      enableOfflineQueue: false,
+    });
+    // Suppress unhandled-error events on connection drop. Command errors surface
+    // through the rejected promise on get/set/del — callers handle them there.
+    this.redis.on("error", () => {});
   }
 
   async get(key: string): Promise<string | null> {

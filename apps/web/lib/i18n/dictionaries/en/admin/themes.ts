@@ -31,6 +31,7 @@ export const themes = {
       typography: "Fonts",
       content: "Content",
       sections: "Sections",
+      builder: "Page Builder",
     },
     publish: "Publish",
     customizeButton: "Customize",
