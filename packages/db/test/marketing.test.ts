@@ -89,7 +89,7 @@ describe("marketing broadcast slice (P2-4)", () => {
     const { id } = await createCampaign(TENANT_A, OWNER_A, {
       channel: "sms",
       audience: "all",
-      message: "A only",
+      message: "শুধু এ-এর জন্য",
     });
     const listB = await listCampaigns(TENANT_B, OWNER_B);
     expect(listB.find((c) => c.id === id)).toBeUndefined();

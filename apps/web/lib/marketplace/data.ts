@@ -55,9 +55,6 @@ function toListing(r: ListingRow): MpListing {
   };
 }
 
-const LISTING_COLS =
-  "product_id, tenant_id, vendor_slug, slug, title, vendor_name, price_from, image_url, in_stock, rating_avg, rating_count";
-
 const LIMIT = 60;
 
 // Browse / search / category in one query. q → full-text; categorySlug → filter.
@@ -71,7 +68,9 @@ export async function listMarketplaceProducts(opts: {
   const rows = await withPublic((tx) => {
     if (q) {
       return tx<ListingRow[]>`
-        select ${tx.unsafe(LISTING_COLS)} from marketplace_listing
+        select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
+               price_from, image_url, in_stock, rating_avg, rating_count
+          from marketplace_listing
          where status = 'active' and hidden = false
            and search_tsv @@ plainto_tsquery('simple', ${q})
          order by ts_rank(search_tsv, plainto_tsquery('simple', ${q})) desc, rating_avg desc
@@ -90,7 +89,9 @@ export async function listMarketplaceProducts(opts: {
       `;
     }
     return tx<ListingRow[]>`
-      select ${tx.unsafe(LISTING_COLS)} from marketplace_listing
+      select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
+             price_from, image_url, in_stock, rating_avg, rating_count
+        from marketplace_listing
        where status = 'active' and hidden = false
        order by rating_avg desc, synced_at desc
        limit ${LIMIT}
@@ -128,7 +129,9 @@ export async function getMarketplaceProduct(
 ): Promise<MpProductDetail | null> {
   return withPublic(async (tx) => {
     const rows = await tx<(ListingRow & { id: string; description: string | null })[]>`
-      select id, ${tx.unsafe(LISTING_COLS)}, description from marketplace_listing
+      select id, product_id, tenant_id, vendor_slug, slug, title, vendor_name,
+             price_from, image_url, in_stock, rating_avg, rating_count, description
+        from marketplace_listing
        where vendor_slug = ${vendorSlug} and slug = ${productSlug}
          and status = 'active' and hidden = false
        limit 1

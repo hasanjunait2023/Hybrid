@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShieldIcon, TruckIcon, CheckCircleIcon } from "@hybrid/ui";
+import { ShieldIcon, TruckIcon, CheckCircleIcon, HybridLogo } from "@hybrid/ui";
 import { getDict } from "@/lib/i18n/server";
+import { adminLoginUrl } from "@/lib/auth/urls";
 import { SignupForm } from "./SignupForm";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 // pitch. Bengali-first throughout; the only Latin is the subdomain/email input.
 export default async function SignupPage() {
   const { d } = await getDict();
+  const loginUrl = await adminLoginUrl();
   return (
     <main className="min-h-screen bg-bg lg:grid lg:grid-cols-[1.1fr_1fr]">
       {/* Brand rail — hidden on mobile to keep the form above the fold */}
@@ -27,8 +29,8 @@ export default async function SignupPage() {
           className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary-hover/60 blur-3xl"
         />
         <div className="relative">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            {d.common.brand}
+          <Link href="/" className="inline-flex">
+            <HybridLogo tone="onDark" />
           </Link>
           <h1 className="bn-heading mt-section max-w-md text-3xl font-bold">
             {d.auth.signup.railHeading}
@@ -58,8 +60,8 @@ export default async function SignupPage() {
       <section className="flex flex-col px-4 py-section sm:px-8 lg:justify-center">
         <div className="mx-auto w-full max-w-md">
           {/* Mobile-only brand mark (rail is desktop-only) */}
-          <Link href="/" className="text-lg font-bold tracking-tight text-ink lg:hidden">
-            {d.common.brand}
+          <Link href="/" className="inline-flex lg:hidden">
+            <HybridLogo />
           </Link>
           <h2 className="bn-heading mt-6 text-2xl font-bold text-ink lg:mt-0">
             {d.auth.signup.formHeading}
@@ -77,12 +79,21 @@ export default async function SignupPage() {
                 storeAddressHint: d.auth.signup.storeAddressHint,
                 suggestionsLabel: d.auth.signup.suggestionsLabel,
                 emailLabel: d.auth.signup.emailLabel,
+                passwordLabel: d.auth.signup.passwordLabel,
+                passwordHint: d.auth.signup.passwordHint,
                 submit: d.auth.signup.submit,
                 submitting: d.auth.signup.submitting,
                 trialNote: d.auth.signup.trialNote,
               }}
             />
           </div>
+
+          <p className="bn-body mt-6 text-center text-sm text-ink-muted">
+            {d.auth.signup.haveAccount}{" "}
+            <a href={loginUrl} className="font-semibold text-primary hover:underline">
+              {d.auth.signup.loginCta}
+            </a>
+          </p>
         </div>
       </section>
     </main>

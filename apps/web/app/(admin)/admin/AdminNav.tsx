@@ -16,7 +16,7 @@ import {
   ChatIcon,
   CheckCircleIcon,
 } from "@hybrid/ui";
-import { cn } from "@hybrid/ui";
+import { cn, HybridLogo } from "@hybrid/ui";
 import { useDict } from "@/lib/i18n/provider";
 import type { Messages } from "@/lib/i18n/dictionaries";
 
@@ -70,7 +70,7 @@ export function AdminNav({
     return (
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
         <div className="flex h-14 items-center gap-2 border-b border-border px-5">
-          <span className="text-lg font-bold text-ink">{d.common.brand}</span>
+          <HybridLogo size="sm" />
           <span className="rounded-full bg-primary-weak px-2 py-0.5 text-2xs font-semibold text-primary">
             {d.admin.shell.badge}
           </span>

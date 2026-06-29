@@ -1,116 +1,417 @@
-import { getPlatformStats } from "@/lib/platform/analytics";
-import { getDict } from "@/lib/i18n/server";
-import { formatMoney, formatNumber } from "@/lib/i18n/format";
-import type { Locale } from "@/lib/i18n/config";
+import Link from "next/link";
+import { getPlatformStats, type PlatformStats } from "@/lib/platform/analytics";
+import { listTenants, type TenantDirectoryRow } from "@/lib/platform/data";
+import { BoxesIcon, CheckCircleIcon, ReceiptIcon, UsersIcon } from "@hybrid/ui";
 
-// Platform dashboard (tenant roadmap PP1-A1). Hybrid's own business view across
-// every tenant: MRR/ARR, GMV, signups, churn, plan mix. Authz via the layout
-// (getPlatformAdmin). Operator-facing → Latin numerals.
+// Platform owner dashboard — "Homies-Lab" console skin (operator-facing, Latin
+// numerals, English). Hybrid's business across every tenant: store counts,
+// MRR/ARR/ARPU, GMV, signups, conversion, lifecycle. Authz via the layout.
 export const dynamic = "force-dynamic";
 
+const DHAKA = "Asia/Dhaka";
+
 export default async function PlatformDashboard() {
-  const s = await getPlatformStats();
-  const maxSignup = Math.max(1, ...s.signupSeries.map((d) => d.count));
+  const [s, tenants] = await Promise.all([getPlatformStats(), listTenants()]);
 
-  const { locale, d } = await getDict();
-  const t = d.platform.dashboard;
+  const dateStr = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: DHAKA,
+  }).format(new Date());
+
+  const total = s.tenants.total;
+  const liveRate = total > 0 ? Math.round((s.liveStores / total) * 100) : 0;
+  const convBase = s.tenants.active + s.tenants.trial;
+  const conversion = convBase > 0 ? Math.round((s.tenants.active / convBase) * 100) : 0;
+  const arpu = s.tenants.active > 0 ? Math.round(s.mrr / s.tenants.active) : 0;
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-xl font-bold text-ink">{t.title}</h1>
-      <nav className="flex flex-wrap gap-2">
-        {[
-          { href: "/platform/tenants", label: d.platform.nav.tenants },
-          { href: "/platform/billing", label: d.platform.nav.billing },
-          { href: "/platform/plans", label: d.platform.nav.plans },
-          { href: "/platform/finance", label: d.platform.nav.finance },
-          { href: "/platform/team", label: d.platform.nav.team },
-        ].map((l) => (
-          <a key={l.href} href={l.href} className="rounded-md border border-border-strong px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface-2">
-            {l.label}
-          </a>
-        ))}
-      </nav>
+    <div className="flex flex-col gap-4 sm:gap-5">
+      {/* Top bar */}
+      <div className="flex items-center justify-between">
+        <p className="text-[13px] font-semibold text-[var(--pf-muted)]">
+          Home <span className="px-1 text-[var(--pf-subtle)]">/</span>
+          <span className="text-[var(--pf-ink)]">Dashboard</span>
+        </p>
+        <div className="hidden items-center gap-2 sm:flex">
+          <IconButton><CalendarGlyph className="h-4 w-4" /></IconButton>
+          <IconButton><ShareGlyph className="h-4 w-4" /></IconButton>
+        </div>
+      </div>
 
-      {/* Revenue + scale KPIs */}
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label={t.mrr} value={formatMoney(s.mrr, locale)} sub={`${t.arr} ${formatMoney(s.arr, locale)}`} accent />
-        <Stat label={t.gmv30d} value={formatMoney(s.gmv30d, locale)} sub={`${formatNumber(s.orders30d, locale)} ${t.ordersUnit}`} />
-        <Stat label={t.liveStores} value={formatNumber(s.liveStores, locale)} sub={`${formatNumber(s.tenants.total, locale)} ${t.totalSuffix}`} />
-        <Stat label={t.signups30d} value={formatNumber(s.signups30d, locale)} />
-      </section>
-
-      {/* Tenant lifecycle breakdown */}
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Mini label={t.lifecycle.trial} value={s.tenants.trial} tone="warning" locale={locale} />
-        <Mini label={t.lifecycle.active} value={s.tenants.active} tone="success" locale={locale} />
-        <Mini label={t.lifecycle.pastDue} value={s.tenants.pastDue} tone="warning" locale={locale} />
-        <Mini label={t.lifecycle.suspended} value={s.tenants.suspended} tone="danger" locale={locale} />
-        <Mini label={t.lifecycle.cancelled} value={s.tenants.cancelled} tone="danger" locale={locale} />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-3">
-        {/* Signups chart */}
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-xs lg:col-span-2">
-          <h2 className="mb-4 text-sm font-bold text-ink">{t.signupsChart}</h2>
-          <div className="flex h-36 items-end gap-1.5">
-            {s.signupSeries.map((d) => {
-              const pct = d.count > 0 ? Math.max(8, (d.count / maxSignup) * 100) : 2;
-              return (
-                <div key={d.day} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                  <div className="flex w-full flex-1 items-end">
-                    <div
-                      className={`w-full rounded-t-sm ${d.count > 0 ? "bg-primary" : "bg-primary-weak"}`}
-                      style={{ height: `${pct}%` }}
-                      title={`${d.day}: ${d.count}`}
-                    />
-                  </div>
-                  <span className="text-2xs leading-none text-ink-subtle tnum">
-                    {new Date(d.day + "T00:00:00+06:00").getUTCDate()}
-                  </span>
-                </div>
-              );
-            })}
+      {/* Hero panel: title + gauge + KPI stats (no greeting) */}
+      <section className="pf-rise relative overflow-hidden rounded-[20px] border border-[var(--pf-border)] bg-gradient-to-br from-[#fdf8ec] to-[#fbf3dc] p-5 sm:p-6 lg:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div className="min-w-0">
+            <h1 className="text-[26px] font-bold leading-tight tracking-tight text-[var(--pf-ink)] sm:text-[32px]">
+              Platform overview
+            </h1>
+            <p className="mt-1.5 text-[14px] font-medium text-[var(--pf-muted)]">{dateStr}</p>
           </div>
+          <Gauge value={liveRate} label="Live store rate" />
         </div>
 
-        {/* MRR by plan */}
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-xs">
-          <h2 className="mb-3 text-sm font-bold text-ink">{t.mrrByPlan}</h2>
-          {s.mrrByPlan.length === 0 ? (
-            <p className="py-4 text-center text-sm text-ink-muted">{t.noActiveSubscriptions}</p>
-          ) : (
-            <ul className="space-y-2">
-              {s.mrrByPlan.map((p) => (
-                <li key={p.plan} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="text-ink">{p.plan}<span className="ml-1 text-ink-subtle">· {formatNumber(p.tenants, locale)}</span></span>
-                  <span className="font-mono font-semibold text-ink tnum">{formatMoney(p.mrr, locale)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5 border-t border-[var(--pf-border)] pt-5 lg:grid-cols-4">
+          <Stat icon={<BoxesIcon className="h-4 w-4" />} value={fmt(total)} label="Total Stores" />
+          <Stat icon={<CheckCircleIcon className="h-4 w-4" />} value={fmt(s.liveStores)} label="Live Stores" />
+          <Stat icon={<ReceiptIcon className="h-4 w-4" />} value={money(s.mrr)} label="MRR" />
+          <Stat icon={<UsersIcon className="h-4 w-4" />} value={fmt(s.signups30d)} label="Signups (30d)" />
         </div>
+      </section>
+
+      {/* Key business metrics */}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Metric value={`${conversion}%`} label="Trial → Paid" hint="Conversion rate" accent />
+        <Metric value={money(arpu)} label="ARPU" hint="Avg revenue / live store" />
+        <Metric value={money(s.arr)} label="ARR" hint="Annual recurring revenue" />
+        <Metric value={money(s.gmv30d)} label="GMV (30d)" hint={`${fmt(s.orders30d)} orders`} />
+      </section>
+
+      {/* Middle grid */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-4"><ScheduleCard tenants={tenants.slice(0, 3)} /></div>
+        <div className="flex flex-col gap-4 lg:col-span-5">
+          <KpiCard rate={conversion} series={s.signupSeries} />
+          <LifecycleRow t={s.tenants} />
+        </div>
+        <div className="lg:col-span-3"><StatusCard s={s} /></div>
+      </section>
+
+      {/* Plan mix + recent stores */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-5"><PlanMix rows={s.mrrByPlan} mrr={s.mrr} /></div>
+        <div className="lg:col-span-7"><StoresTable rows={tenants.slice(0, 6)} /></div>
       </section>
     </div>
   );
 }
 
-function Stat({ label, value, sub, accent = false }: { label: string; value: string; sub?: string; accent?: boolean }) {
+/* ---------- formatting ---------- */
+function fmt(n: number): string {
+  return new Intl.NumberFormat("en-US").format(n);
+}
+function money(n: number): string {
+  return `৳${new Intl.NumberFormat("en-US").format(Math.round(n))}`;
+}
+
+/* ---------- hero pieces ---------- */
+function Stat({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
-    <div className={`rounded-lg border p-4 shadow-xs ${accent ? "border-primary bg-primary-weak" : "border-border bg-surface"}`}>
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-bold leading-none tnum ${accent ? "text-primary" : "text-ink"}`}>{value}</p>
-      {sub && <p className="mt-1.5 text-2xs text-ink-subtle">{sub}</p>}
+    <div className="flex items-center gap-3">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[var(--pf-ink)] shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[22px] font-bold leading-none text-[var(--pf-ink)]">{value}</span>
+        <span className="mt-1 block text-[13px] font-medium text-[var(--pf-muted)]">{label}</span>
+      </span>
     </div>
   );
 }
 
-function Mini({ label, value, tone, locale }: { label: string; value: number; tone: "success" | "warning" | "danger"; locale: Locale }) {
-  const c = tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-danger";
+function Metric({ value, label, hint, accent = false }: { value: string; label: string; hint: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-3 text-center shadow-xs">
-      <p className={`font-mono text-xl font-bold tnum ${c}`}>{formatNumber(value, locale)}</p>
-      <p className="mt-0.5 text-2xs text-ink-muted">{label}</p>
+    <div className={`rounded-2xl border p-4 ${accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[#fdf4d4] to-[#fbe6a8]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}>
+      <p className="text-[24px] font-bold leading-none text-[var(--pf-ink)]">{value}</p>
+      <p className="mt-2 text-[13px] font-semibold text-[var(--pf-ink)]">{label}</p>
+      <p className="mt-0.5 text-[12px] text-[var(--pf-muted)]">{hint}</p>
     </div>
   );
+}
+
+function Gauge({ value, label }: { value: number; label: string }) {
+  const R = 52;
+  const C = 2 * Math.PI * R;
+  const SPAN = 0.75;
+  const track = C * SPAN;
+  const prog = track * (Math.min(100, Math.max(0, value)) / 100);
+  return (
+    <div className="relative flex flex-col items-center">
+      <div className="relative h-[120px] w-[120px] sm:h-[128px] sm:w-[128px]">
+        <svg viewBox="0 0 120 120" className="h-full w-full" style={{ transform: "rotate(135deg)" }}>
+          <circle cx="60" cy="60" r={R} fill="none" stroke="#efe3c4" strokeWidth="11" strokeLinecap="round" strokeDasharray={`${track} ${C}`} />
+          <circle cx="60" cy="60" r={R} fill="none" stroke="var(--pf-yellow)" strokeWidth="11" strokeLinecap="round" strokeDasharray={`${prog} ${C}`} />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[26px] font-bold leading-none text-[var(--pf-ink)]">{value}%</span>
+        </div>
+      </div>
+      <span className="-mt-1 max-w-[128px] text-center text-[12px] font-medium text-[var(--pf-muted)]">{label}</span>
+    </div>
+  );
+}
+
+/* ---------- schedule / recent signups ---------- */
+function ScheduleCard({ tenants }: { tenants: TenantDirectoryRow[] }) {
+  return (
+    <div className="pf-rise flex h-full flex-col rounded-[18px] border border-[var(--pf-border)] bg-[var(--pf-panel)] p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[15px] font-bold text-[var(--pf-ink)]">Recent signups</h2>
+        <Dots />
+      </div>
+      <div className="mt-3 flex gap-1.5">
+        <Pill active>Latest</Pill>
+        <Pill>Trials</Pill>
+        <Pill>Active</Pill>
+      </div>
+      <div className="mt-3 flex flex-col gap-2.5">
+        {tenants.length === 0 ? (
+          <p className="py-6 text-center text-[13px] text-[var(--pf-muted)]">No stores yet.</p>
+        ) : (
+          tenants.map((t) => (
+            <div key={t.id} className="rounded-2xl bg-[var(--pf-cream)] p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[14px] font-semibold leading-snug text-[var(--pf-ink)]">{t.name}</p>
+                <Avatar name={t.name} />
+              </div>
+              <p className="mt-0.5 text-[12.5px] text-[var(--pf-muted)]">{t.planName ?? "No plan"} · {t.status}</p>
+              <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-white px-2 py-1 text-[11.5px] font-medium text-[var(--pf-muted)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--pf-yellow)]" />
+                {t.slug} · {shortDate(t.createdAt)}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      <Link href="/platform/tenants" className="mt-auto pt-3 text-[13px] font-semibold text-[var(--pf-yellow-deep)] hover:underline">
+        View all stores →
+      </Link>
+    </div>
+  );
+}
+
+/* ---------- KPI line chart ---------- */
+function KpiCard({ rate, series }: { rate: number; series: PlatformStats["signupSeries"] }) {
+  const max = Math.max(1, ...series.map((d) => d.count));
+  const n = Math.max(1, series.length - 1);
+  const W = 320, H = 96;
+  const pts = series.map((d, i) => {
+    const x = (i / n) * W;
+    const y = H - (d.count / max) * (H - 10) - 4;
+    return [x, y] as const;
+  });
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const area = `${line} L${W},${H} L0,${H} Z`;
+
+  return (
+    <div className="pf-rise rounded-[18px] border border-[var(--pf-border)] bg-[var(--pf-panel)] p-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[26px] font-bold leading-none text-[var(--pf-ink)]">{rate}%</p>
+          <p className="mt-1 text-[13px] font-medium text-[var(--pf-muted)]">Trial → Paid conversion</p>
+        </div>
+        <Link href="/platform/finance" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--pf-border)] text-[var(--pf-muted)] hover:bg-[#fbf9f2]">
+          <ArrowUpRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 h-24 w-full" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="pfArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--pf-yellow)" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="var(--pf-yellow)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#pfArea)" />
+        <path d={line} fill="none" stroke="var(--pf-yellow-deep)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div className="mt-1 flex justify-between text-[11px] font-medium text-[var(--pf-subtle)]">
+        <span>{series.length ? dayLabel(series[0]!.day) : ""}</span>
+        <span>14-day signups</span>
+        <span>{series.length ? dayLabel(series[series.length - 1]!.day) : ""}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- lifecycle quick cards ---------- */
+function LifecycleRow({ t }: { t: PlatformStats["tenants"] }) {
+  const items = [
+    { label: "Trial", value: t.trial },
+    { label: "Active", value: t.active },
+    { label: "Past due", value: t.pastDue },
+    { label: "Suspended", value: t.suspended },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {items.map((it) => (
+        <div key={it.label} className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-3.5">
+          <span className="block h-1.5 w-1.5 rounded-full bg-[var(--pf-yellow)]" />
+          <p className="mt-2 text-[20px] font-bold leading-none text-[var(--pf-ink)]">{fmt(it.value)}</p>
+          <p className="mt-1 text-[12px] font-medium text-[var(--pf-muted)]">{it.label}</p>
+          <Link href="/platform/tenants" className="mt-1.5 inline-block text-[11px] font-semibold text-[var(--pf-yellow-deep)] hover:underline">
+            View →
+          </Link>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- store status bars ---------- */
+function StatusCard({ s }: { s: PlatformStats }) {
+  const total = Math.max(1, s.tenants.total);
+  const bars = [
+    { label: "Active", value: s.tenants.active, cls: "bg-[var(--pf-yellow)]" },
+    { label: "Trial", value: s.tenants.trial, cls: "bg-[var(--pf-black)]" },
+    { label: "Suspended", value: s.tenants.suspended, cls: "bg-[#d8d2c2]" },
+  ];
+  return (
+    <div className="pf-rise flex h-full flex-col rounded-[18px] border border-[var(--pf-border)] bg-[var(--pf-panel)] p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[15px] font-bold text-[var(--pf-ink)]">Store status</h2>
+        <Dots />
+      </div>
+      <div className="mt-1">
+        <p className="text-[26px] font-bold leading-none text-[var(--pf-ink)]">{fmt(s.liveStores)}</p>
+        <p className="mt-1 text-[13px] font-medium text-[var(--pf-muted)]">Live stores</p>
+      </div>
+      <div className="mt-4 flex flex-1 items-center">
+        <div className="flex w-full items-end justify-around gap-3">
+          {bars.map((b) => {
+            const pct = Math.round((b.value / total) * 100);
+            return (
+              <div key={b.label} className="flex w-full flex-col items-center gap-2">
+                <span className="text-[13px] font-bold text-[var(--pf-ink)]">{pct}%</span>
+                <div className="flex h-[140px] w-full items-end">
+                  <div className={`w-full rounded-xl ${b.cls}`} style={{ height: `${Math.max(6, pct)}%` }} />
+                </div>
+                <span className="text-[11.5px] font-medium text-[var(--pf-muted)]">{b.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- plan mix ---------- */
+function PlanMix({ rows, mrr }: { rows: PlatformStats["mrrByPlan"]; mrr: number }) {
+  const totalMrr = Math.max(1, mrr);
+  return (
+    <div className="pf-rise flex h-full flex-col rounded-[18px] border border-[var(--pf-border)] bg-[var(--pf-panel)] p-4 lg:p-5">
+      <h2 className="text-[15px] font-bold text-[var(--pf-ink)]">Revenue by plan</h2>
+      <p className="mt-0.5 text-[12.5px] text-[var(--pf-muted)]">MRR contribution across active plans.</p>
+      {rows.length === 0 ? (
+        <p className="flex-1 py-10 text-center text-[13px] text-[var(--pf-muted)]">No active subscriptions yet.</p>
+      ) : (
+        <ul className="mt-4 space-y-3.5">
+          {rows.map((p) => {
+            const pct = Math.round((p.mrr / totalMrr) * 100);
+            return (
+              <li key={p.plan}>
+                <div className="flex items-center justify-between text-[13px]">
+                  <span className="font-semibold text-[var(--pf-ink)]">{p.plan} <span className="font-normal text-[var(--pf-muted)]">· {fmt(p.tenants)} stores</span></span>
+                  <span className="font-mono font-semibold text-[var(--pf-ink)]">{money(p.mrr)}</span>
+                </div>
+                <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-[#f0ece1]">
+                  <div className="h-full rounded-full bg-[var(--pf-yellow)]" style={{ width: `${Math.max(3, pct)}%` }} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ---------- recent stores table ---------- */
+function StoresTable({ rows }: { rows: TenantDirectoryRow[] }) {
+  return (
+    <div className="pf-rise h-full rounded-[18px] border border-[var(--pf-border)] bg-[var(--pf-panel)] p-4 lg:p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[15px] font-bold text-[var(--pf-ink)]">Recent stores</h2>
+        <Link href="/platform/tenants" className="text-[13px] font-semibold text-[var(--pf-yellow-deep)] hover:underline">
+          See all →
+        </Link>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] border-collapse text-left">
+          <thead>
+            <tr className="text-[11px] uppercase tracking-wide text-[var(--pf-subtle)]">
+              <th className="pb-2 font-semibold">Store</th>
+              <th className="pb-2 font-semibold">Plan</th>
+              <th className="pb-2 font-semibold">Status</th>
+              <th className="pb-2 font-semibold">Created</th>
+            </tr>
+          </thead>
+          <tbody className="text-[13px]">
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t border-[var(--pf-border)]">
+                <td className="py-3">
+                  <span className="flex items-center gap-2.5">
+                    <Avatar name={r.name} />
+                    <span className="min-w-0">
+                      <Link href={`/platform/tenants/${r.id}`} className="block font-semibold text-[var(--pf-ink)] hover:underline">{r.name}</Link>
+                      <span className="block font-mono text-[11px] text-[var(--pf-subtle)]">{r.slug}</span>
+                    </span>
+                  </span>
+                </td>
+                <td className="py-3 text-[var(--pf-muted)]">{r.planName ?? "—"}</td>
+                <td className="py-3"><StatusBadge status={r.status} /></td>
+                <td className="py-3 text-[var(--pf-muted)]">{shortDate(r.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    active: "bg-[#e6f6ee] text-[var(--pf-success)]",
+    trial: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
+    past_due: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]",
+    suspended: "bg-[#fde9e8] text-[var(--pf-danger)]",
+    cancelled: "bg-[#f0ede4] text-[var(--pf-muted)]",
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${map[status] ?? "bg-[#f0ede4] text-[var(--pf-muted)]"}`}>
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
+/* ---------- shared atoms ---------- */
+function Pill({ children, active = false }: { children: React.ReactNode; active?: boolean }) {
+  return (
+    <span className={`rounded-full px-3 py-1 text-[12px] font-semibold ${active ? "bg-[var(--pf-black)] text-[#f6f3ea]" : "bg-[#fbf9f2] text-[var(--pf-muted)]"}`}>
+      {children}
+    </span>
+  );
+}
+function Avatar({ name }: { name: string }) {
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--pf-yellow-soft)] text-[12px] font-bold text-[var(--pf-yellow-deep)]">
+      {name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+function Dots() {
+  return (
+    <button type="button" className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--pf-subtle)] hover:bg-[#fbf9f2]" aria-label="More">
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
+    </button>
+  );
+}
+function IconButton({ children }: { children: React.ReactNode }) {
+  return <button type="button" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-muted)] hover:bg-[#fbf9f2]">{children}</button>;
+}
+function CalendarGlyph({ className }: { className?: string }) {
+  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5" /><path d="M3 9h18M8 2.5v4M16 2.5v4" /></svg>;
+}
+function ShareGlyph({ className }: { className?: string }) {
+  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M8 8l4-4 4 4M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" /></svg>;
+}
+function ArrowUpRight({ className }: { className?: string }) {
+  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M8 7h9v9" /></svg>;
+}
+
+/* ---------- date helpers ---------- */
+function shortDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: DHAKA }).format(new Date(iso));
+}
+function dayLabel(iso: string): string {
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: DHAKA }).format(new Date(iso + "T00:00:00+06:00"));
 }

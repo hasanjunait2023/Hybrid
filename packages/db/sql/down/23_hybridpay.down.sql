@@ -1,0 +1,13 @@
+-- ============================================================================
+-- 23_hybridpay.down.sql — rollback for 23_hybridpay.sql.
+--
+-- Postgres has no `ALTER TYPE ... DROP VALUE`, so an added enum value cannot be
+-- removed without recreating the type and rewriting every column that uses it
+-- (payment.provider, payment_account.provider). That is destructive and not
+-- worth automating for a single unused-on-rollback value. To truly remove it:
+--   1) ensure no rows reference 'hybridpay' (delete payment_account/payment rows),
+--   2) recreate payment_provider without 'hybridpay' and re-point both columns.
+-- Intentionally a no-op; documented above.
+-- ============================================================================
+
+-- no-op

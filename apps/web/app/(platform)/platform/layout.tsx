@@ -1,39 +1,73 @@
+import "./platform.css";
 import type { ReactNode } from "react";
+import type { Metadata, Viewport } from "next";
 import { redirect } from "next/navigation";
+import { asPlatformAdmin } from "@hybrid/db";
+import { HybridLogo } from "@hybrid/ui";
 import { getPlatformAdmin } from "@/lib/platform/auth";
+import { loginPath } from "@/lib/auth/urls";
 import { getDict } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/provider";
-import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
+import { PlatformSidebar } from "./PlatformSidebar";
+import { PlatformBottomNav } from "./PlatformBottomNav";
+import { PwaRegister } from "./PwaRegister";
 
-// Auth-gated shell: must run per request so the session is evaluated at runtime
-// (never statically prerendered into a baked redirect). getPlatformAdmin reads
-// cookies; force-dynamic guarantees the gate is not cached.
+// Auth-gated super-admin shell (blueprint S-PLATFORM). app.{root} -> /platform.
+// Middleware rewrites the host but does NOT gate by role, so this layout enforces
+// authz: only app_user.is_platform_admin reaches any /platform page. force-dynamic
+// so the cookie-based gate is evaluated per request, never prerendered. The
+// "Homies-Lab" console skin lives in platform.css, scoped under .platform-shell.
+// Mobile: the sidebar collapses (hidden < lg); a sticky top bar + bottom tab nav
+// take over, and the SW registers so the console installs as a PWA.
 export const dynamic = "force-dynamic";
 
-// Super-admin shell (blueprint S-PLATFORM). app.{root} -> /platform. The
-// middleware rewrites the host but does NOT gate by role, so the layout enforces
-// authz: only app_user.is_platform_admin reaches any /platform page. A logged-in
-// non-admin (e.g. a store owner) is bounced to their admin; an anonymous visitor
-// to dev-login. Operator-facing → utilitarian/dense, Latin numerals (DESIGN §2).
+export const metadata: Metadata = {
+  title: "Hybrid Admin",
+  appleWebApp: { capable: true, title: "Hybrid Admin", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f5c518",
+  width: "device-width",
+  initialScale: 1,
+};
+
+async function resolveAdminName(userId: string): Promise<string> {
+  const rows = await asPlatformAdmin((tx) =>
+    tx<{ full_name: string | null; email: string | null }[]>`
+      select full_name, email from app_user where id = ${userId} limit 1
+    `,
+  );
+  const r = rows[0];
+  return r?.full_name?.trim() || r?.email?.split("@")[0] || "Admin";
+}
+
 export default async function PlatformLayout({ children }: { children: ReactNode }) {
   const admin = await getPlatformAdmin();
-  if (!admin) redirect("/dev-login?as=admin");
+  if (!admin) redirect(loginPath("admin"));
 
-  const { locale, d } = await getDict();
+  const { locale } = await getDict();
+  const name = await resolveAdminName(admin.userId);
 
   return (
     <LocaleProvider locale={locale}>
-      <div className="min-h-screen bg-bg">
-        <header className="sticky top-0 z-sticky border-b border-border bg-surface">
-          <div className="mx-auto flex h-14 max-w-admin items-center gap-3 px-4">
-            <span className="text-base font-bold text-ink">{d.platform.shell.title}</span>
-            <span className="ml-auto flex items-center gap-3">
-              <span className="font-mono text-2xs text-ink-subtle">{d.platform.shell.superAdmin}</span>
-              <LanguageToggle />
+      <PwaRegister />
+      <div className="platform-shell flex min-h-screen">
+        <PlatformSidebar adminName={name} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Mobile top bar (sidebar is hidden < lg) */}
+          <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-2.5 lg:hidden">
+            <HybridLogo size="sm" />
+            <span className="rounded-full bg-[var(--pf-yellow-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--pf-yellow-deep)]">Admin</span>
+            <span className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
+              {name.slice(0, 1).toUpperCase()}
             </span>
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-admin px-4 py-6">{children}</main>
+          </header>
+          <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden px-4 py-4 pb-24 sm:px-5 lg:px-8 lg:py-6 lg:pb-8">
+            {children}
+          </main>
+        </div>
+        <PlatformBottomNav />
       </div>
     </LocaleProvider>
   );

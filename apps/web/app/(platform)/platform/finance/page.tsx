@@ -4,8 +4,8 @@ import { formatMoney } from "@/lib/i18n/format";
 import { ExpenseForm, DeleteExpense } from "./ExpenseControls";
 
 // Platform finance / P&L (PP1-B2). Revenue (paid invoices) − expenses, by
-// category, plus receivables. Range presets. Authz via layout; writes gated to
-// super-admin/accountant in the actions.
+// category, plus receivables. Range presets. "Homies-Lab" console skin. Authz
+// via layout; writes gated to super-admin/accountant in the actions.
 export const dynamic = "force-dynamic";
 
 interface FinancePageProps {
@@ -35,20 +35,28 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
   const tx = d.platform.finance;
 
   return (
-    <div className="space-y-5">
-      <div>
-        <a href="/platform" className="text-sm font-medium text-ink-muted hover:text-primary">{d.platform.common.backToDashboard}</a>
-        <h1 className="mt-1 text-xl font-bold text-ink">{tx.title}</h1>
-        <p className="text-2xs text-ink-subtle">{range.from} — {range.to}</p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <p className="text-[13px] font-medium text-[var(--pf-muted)]">
+        Home <span className="px-1 text-[var(--pf-subtle)]">/</span>
+        <span className="text-[var(--pf-ink)]">Finance</span>
+      </p>
 
-      <div className="flex gap-2">
-        {[{ r: "7", label: tx.range7 }, { r: "30", label: tx.range30 }, { r: "90", label: tx.range90 }].map((p) => (
-          <a key={p.r} href={`/platform/finance?r=${p.r}`}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${preset === p.r ? "bg-primary text-ink-on-primary" : "border border-border bg-surface text-ink-muted hover:bg-surface-2"}`}>
-            {p.label}
-          </a>
-        ))}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[26px] font-bold tracking-tight text-[var(--pf-ink)]">{tx.title}</h1>
+          <p className="mt-1 font-mono text-[12px] text-[var(--pf-muted)]">{range.from} — {range.to}</p>
+        </div>
+        <div className="flex gap-1.5">
+          {[{ r: "7", label: tx.range7 }, { r: "30", label: tx.range30 }, { r: "90", label: tx.range90 }].map((p) => (
+            <a
+              key={p.r}
+              href={`/platform/finance?r=${p.r}`}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${preset === p.r ? "bg-[var(--pf-black)] text-[#f6f3ea]" : "border border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-muted)] hover:bg-[#fbf9f2]"}`}
+            >
+              {p.label}
+            </a>
+          ))}
+        </div>
       </div>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -59,21 +67,20 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        {/* Expense entry + list */}
-        <div className="space-y-4 lg:col-span-2">
+        <div className="flex flex-col gap-4 lg:col-span-2">
           <ExpenseForm />
-          <div className="overflow-hidden rounded-lg border border-border bg-surface">
-            <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">{tx.expenseList}</h2>
+          <div className="overflow-hidden rounded-[18px] border border-[var(--pf-border)] bg-[var(--pf-panel)]">
+            <h2 className="border-b border-[var(--pf-border)] px-4 py-3 text-[14px] font-bold text-[var(--pf-ink)]">{tx.expenseList}</h2>
             {expenses.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-ink-muted">{tx.noExpenses}</p>
+              <p className="px-4 py-8 text-center text-[13px] text-[var(--pf-muted)]">{tx.noExpenses}</p>
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-[var(--pf-border)]">
                 {expenses.map((e) => (
                   <li key={e.id} className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-2xs font-semibold text-ink-muted">{e.category}</span>
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{e.vendor ?? e.note ?? "—"}</span>
-                    <span className="font-mono text-xs text-ink-subtle tnum">{e.incurredOn}</span>
-                    <span className="font-mono text-sm font-semibold text-danger tnum">{formatMoney(e.amount, locale)}</span>
+                    <span className="rounded-full bg-[#fbf9f2] px-2 py-0.5 text-[11px] font-semibold text-[var(--pf-muted)]">{e.category}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--pf-ink)]">{e.vendor ?? e.note ?? "—"}</span>
+                    <span className="font-mono text-[12px] text-[var(--pf-subtle)]">{e.incurredOn}</span>
+                    <span className="font-mono text-[13px] font-semibold text-[var(--pf-danger)]">{formatMoney(e.amount, locale)}</span>
                     <DeleteExpense id={e.id} />
                   </li>
                 ))}
@@ -82,17 +89,19 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
           </div>
         </div>
 
-        {/* Expense by category */}
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-xs">
-          <h2 className="mb-3 text-sm font-bold text-ink">{tx.expenseByCategory}</h2>
+        <div className="rounded-[18px] border border-[var(--pf-border)] bg-[var(--pf-panel)] p-4">
+          <h2 className="mb-3 text-[14px] font-bold text-[var(--pf-ink)]">{tx.expenseByCategory}</h2>
           {ov.expenseByCategory.length === 0 ? (
-            <p className="py-4 text-center text-sm text-ink-muted">{tx.noData}</p>
+            <p className="py-4 text-center text-[13px] text-[var(--pf-muted)]">{tx.noData}</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-2.5">
               {ov.expenseByCategory.map((c) => (
-                <li key={c.category} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="text-ink">{c.category}</span>
-                  <span className="font-mono font-semibold text-ink tnum">{formatMoney(c.amount, locale)}</span>
+                <li key={c.category} className="flex items-center justify-between gap-2 text-[13px]">
+                  <span className="flex items-center gap-2 text-[var(--pf-ink)]">
+                    <span className="h-2 w-2 rounded-[3px] bg-[var(--pf-yellow)]" />
+                    {c.category}
+                  </span>
+                  <span className="font-mono font-semibold text-[var(--pf-ink)]">{formatMoney(c.amount, locale)}</span>
                 </li>
               ))}
             </ul>
@@ -104,12 +113,12 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 }
 
 function Stat({ label, value, sub, tone, accent = false }: { label: string; value: string; sub?: string; tone?: "success" | "danger"; accent?: boolean }) {
-  const c = accent ? (tone === "danger" ? "text-danger" : "text-primary") : tone === "success" ? "text-success" : tone === "danger" ? "text-danger" : "text-ink";
+  const c = tone === "success" ? "text-[var(--pf-success)]" : tone === "danger" ? "text-[var(--pf-danger)]" : "text-[var(--pf-ink)]";
   return (
-    <div className={`rounded-lg border p-4 shadow-xs ${accent ? "border-primary bg-primary-weak" : "border-border bg-surface"}`}>
-      <p className="text-xs text-ink-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-bold leading-none tnum ${c}`}>{value}</p>
-      {sub && <p className="mt-1.5 text-2xs text-ink-subtle">{sub}</p>}
+    <div className={`rounded-2xl border p-4 ${accent ? "border-[var(--pf-yellow)] bg-gradient-to-br from-[#fdf4d4] to-[#fbe6a8]" : "border-[var(--pf-border)] bg-[var(--pf-panel)]"}`}>
+      <p className="text-[12px] text-[var(--pf-muted)]">{label}</p>
+      <p className={`mt-1.5 text-[22px] font-bold leading-none ${accent ? "text-[var(--pf-ink)]" : c}`}>{value}</p>
+      {sub && <p className="mt-1.5 text-[11px] text-[var(--pf-subtle)]">{sub}</p>}
     </div>
   );
 }

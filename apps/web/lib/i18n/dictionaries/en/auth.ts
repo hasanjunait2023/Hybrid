@@ -30,9 +30,13 @@ export const auth = {
       "Everyone will see your store at this address. You can add a custom domain later.",
     suggestionsLabel: "These are available:",
     emailLabel: "Email address",
+    passwordLabel: "Password",
+    passwordHint: "At least 8 characters. You'll log in with this later.",
     submit: "Create my store",
     submitting: "Creating…",
     trialNote: "By starting you get a 14-day free trial — no card needed.",
+    haveAccount: "Already have an account?",
+    loginCta: "Log in",
   },
 
   storeNotFound: {

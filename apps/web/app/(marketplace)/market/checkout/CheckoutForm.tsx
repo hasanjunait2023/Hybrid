@@ -21,6 +21,12 @@ export function CheckoutForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<CheckoutResult | null>(null);
+  // Stable per checkout session (lazy init = once per mount), NOT per click.
+  // A double-tap or post-error retry replays the SAME key so the server-side
+  // buyer_id+idempotency_key dedup fires; regenerating it per submit (the old
+  // bug) let a duplicate submit create a second parent order + double inventory
+  // decrement. A fresh cart/checkout remounts this form → new key.
+  const [idemKey] = useState(() => crypto.randomUUID());
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -41,7 +47,7 @@ export function CheckoutForm() {
         variantId: l.variantId,
         quantity: l.quantity,
       })),
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: idemKey,
     });
     setBusy(false);
     if (!res.ok) {

@@ -264,7 +264,7 @@ export async function createManualOrder(
       items: input.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
       paymentMethod: input.paymentMethod,
       note: input.note || null,
-      source: input.source as Parameters<typeof placeOrder>[0]["source"],
+      source: input.source,
       shippingTotal: input.shippingTotal,
     });
 

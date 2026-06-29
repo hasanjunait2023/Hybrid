@@ -20,6 +20,19 @@ function isAuthPath(pathname: string): boolean {
   );
 }
 
+// Map a subdomain request onto its route-group prefix. The admin/platform shells
+// are served at the SUBDOMAIN ROOT (admin.{ROOT}/orders -> /admin/orders), so a
+// bare or root-relative path gets the prefix prepended. But the in-app nav links
+// are authored WITH the prefix (href="/admin/orders"), so a click lands on
+// admin.{ROOT}/admin/orders — we must NOT prepend a second prefix there (that
+// produced /admin/admin/orders -> 404). Accept both forms: if the path is already
+// under the prefix, pass it through unchanged; otherwise prepend it.
+function withPrefix(pathname: string, prefix: string): string {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ? pathname
+    : `${prefix}${pathname}`;
+}
+
 export default async function middleware(req: NextRequest): Promise<NextResponse> {
   const url = req.nextUrl;
   const host = (req.headers.get("host") ?? "").split(":")[0] ?? "";
@@ -39,12 +52,12 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
   if (sub === "app") {
     // Auth routes pass through untouched; everything else is the platform app.
     if (isAuthPath(url.pathname)) return NextResponse.next();
-    return NextResponse.rewrite(new URL(`/platform${url.pathname}`, req.url));
+    return NextResponse.rewrite(new URL(withPrefix(url.pathname, "/platform"), req.url));
   }
   if (sub === "admin") {
     // Auth routes pass through untouched; everything else is the admin app.
     if (isAuthPath(url.pathname)) return NextResponse.next();
-    return NextResponse.rewrite(new URL(`/admin${url.pathname}`, req.url));
+    return NextResponse.rewrite(new URL(withPrefix(url.pathname, "/admin"), req.url));
   }
   if (sub === "bazar") {
     // The cross-vendor marketplace. Static subdomain — no DB lookup needed.

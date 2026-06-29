@@ -1,205 +1,143 @@
 /* =============================================================================
- * Hybrid marketing landing — "Bengali editorial commerce".
+ * Hybrid marketing landing — "Bazaar Modern" showroom (DESIGN.md §2).
  *
- * Direction: premium, atmospheric, confident. Warm paper base for trust bands;
- * dark ink hero/closing bands with a glowing purple gradient-mesh + film grain
- * that echoes the logo glow. Dramatic SCALE CONTRAST between tiny tracked
- * all-caps eyebrows and oversized editorial headlines is the signature.
+ * Direction: persuasive, confident, Bengali, spacious. Warm paper base
+ * (--color-bg) for the reading bands; FLAT INDIGO panels (--color-primary) for
+ * the hero + closing band (DESIGN §6.2 — never dark, never purple). Marigold
+ * (--color-accent) carries the energy. Dramatic SCALE CONTRAST between small
+ * tracked Latin eyebrows and oversized headlines is the signature.
  *
- * Typography:
- *   - Bangla display + body  → Noto Serif Bengali (var --font-noto-serif-bengali)
- *   - Latin display headlines → Fraunces, variable opsz (var --font-noto-serif)
- *   - Wordmark / eyebrows / UI labels / EN body → Poppins (var --font-poppins)
+ * Typography (two families only, DESIGN §4):
+ *   - All Bangla (display + body)  → Hind Siliguri (var --font-bangla)
+ *   - Latin display / wordmark / eyebrows / EN body → Inter Tight (var --font-latin)
+ *   Bangla letter-spacing is ALWAYS 0 (§4.3); tracking is Latin-only.
  *
- * All font variables are provided by app/(marketing)/layout.tsx — admin and
- * storefront never see these classes. Brand purple is overridden ONLY under
- * .marketing-root; COD green stays the dedicated trust signal (not overridden).
- * Every motion is compositor-friendly (transform/opacity/filter) and gated
- * behind prefers-reduced-motion.
+ * The surface inherits the GLOBAL Bazaar Modern tokens — no brand overrides
+ * here. Every motion is compositor-friendly (transform/opacity/filter) and
+ * gated behind prefers-reduced-motion.
  * ========================================================================== */
 
 /* ---------------------------------------------------------------------------
- * 1. Brand palette + tokens — SCOPED to the marketing landing only.
+ * 1. Surface root. Inherits global tokens (indigo primary, marigold accent,
+ *    warm paper bg). Only pins the warm-paper background for the landing.
  * ------------------------------------------------------------------------- */
 .marketing-root {
-  --color-primary: #5a19e6; /* primary purple — CTAs, links, focus */
-  --color-primary-hover: #4a14c4; /* deep purple hover */
-  --color-primary-active: #2d0ca6; /* deepest purple active */
-  --color-primary-weak: #ece7fd; /* light purple tint surface */
-  --color-accent: #7b3ff2; /* light purple accent */
-  --color-ink: #0d0b1f; /* near-black brand ink */
-
-  /* Local brand atmosphere tokens (not part of the global token contract). */
-  --brand-ink: #0d0b1f;
-  --brand-ink-2: #15102e; /* lifted dark surface on the ink bands */
-  --brand-violet: #7b3ff2;
-  --brand-violet-bright: #9d6bff;
-  --brand-paper: #f5f5f7;
-
-  /* Re-point the shadcn bridges so primitives using them follow the brand. */
-  --primary: var(--color-primary);
-  --accent: var(--color-accent);
-  --ring: var(--color-primary);
-
-  /* Slightly warmer paper than the app default, for the trust bands. */
-  --color-bg: #f6f5fa;
-
   background-color: var(--color-bg);
 }
 
-/* Refined purple focus ring across the whole landing (overrides the global
- * indigo focus shadow within marketing only). */
-.marketing-root :focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--color-bg),
-    0 0 0 4px var(--color-primary);
-  border-radius: var(--radius-sm);
-}
-.marketing-root .on-ink :focus-visible {
-  box-shadow:
-    0 0 0 2px var(--brand-ink),
-    0 0 0 4px var(--brand-violet-bright);
-}
+/* Focus rings inherit the global indigo --shadow-focus (globals.css). */
 
 /* ---------------------------------------------------------------------------
- * 2. Typography — the backbone. Editorial serif display, tracked eyebrows.
+ * 2. Typography — the backbone. Hind Siliguri display, tracked Latin eyebrows.
  * ------------------------------------------------------------------------- */
 
-/* Display family is language-driven. Bangla → Noto Serif Bengali. */
+/* Display family: Hind Siliguri for Bangla — heavier weight, no tracking. */
 .font-serif-display {
-  font-family: var(--font-noto-serif-bengali), "Noto Serif Bengali", serif;
+  font-family: var(--font-bangla), "Hind Siliguri", "Noto Sans Bengali", sans-serif;
   line-height: var(--leading-bangla-tight);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   font-weight: 700;
 }
 
-/* English documents swap to Fraunces with optical sizing + tighter tracking
- * and a touch more contrast (heavier weight) at display scale. */
+/* English documents swap the display family to the Latin workhorse (Inter
+ * Tight), where a touch of negative tracking is appropriate at display scale. */
 :lang(en) .font-serif-display {
-  font-family: var(--font-noto-serif), Georgia, serif;
-  font-optical-sizing: auto;
-  font-weight: 600;
+  font-family: var(--font-latin), "Inter Tight", system-ui, sans-serif;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.02;
+  line-height: 1.05;
 }
 
-/* The signature oversized editorial headline. Huge on desktop, with dramatic
- * scale contrast against the tracked eyebrow above it. */
+/* The signature oversized headline. Huge on desktop, with dramatic scale
+ * contrast against the tracked eyebrow above it. Sizes from DESIGN §5. */
 .display-hero {
-  font-size: clamp(2.75rem, 1.2rem + 7.4vw, 6.5rem);
-  line-height: 1.02;
-}
-:lang(bn) .display-hero {
-  line-height: 1.12; /* Bangla needs more leading at scale */
   font-size: clamp(2.5rem, 1.4rem + 6vw, 5.25rem);
+  line-height: var(--leading-bangla-tight); /* Bangla needs leading at scale */
+}
+:lang(en) .display-hero {
+  font-size: clamp(2.75rem, 1.2rem + 7.4vw, 6.5rem);
+  line-height: 1.04;
 }
 
 .display-section {
-  font-size: clamp(2rem, 1.2rem + 3.4vw, 3.75rem);
-  line-height: 1.05;
-}
-:lang(bn) .display-section {
-  line-height: 1.18;
   font-size: clamp(1.85rem, 1.2rem + 2.8vw, 3.25rem);
+  line-height: var(--leading-bangla-tight);
+}
+:lang(en) .display-section {
+  font-size: clamp(2rem, 1.2rem + 3.4vw, 3.75rem);
+  line-height: 1.08;
 }
 
-/* English headlines get an italic-serif emphasis span for editorial flavour. */
+/* English headlines get a subtle italic emphasis span for editorial flavour. */
 :lang(en) .display-emphasis {
   font-style: italic;
   font-weight: 500;
 }
 
-/* Brand wordmark: "Hybrid" in Poppins. Used only by the HybridLogo lockup. */
+/* Brand wordmark: "Hybrid" — always Latin (Inter Tight). */
 .brand-wordmark {
-  font-family: var(--font-poppins), system-ui, sans-serif;
-  font-weight: 600;
+  font-family: var(--font-latin), "Inter Tight", system-ui, sans-serif;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-/* Small uppercase tracked eyebrow — the counterweight to the huge headlines. */
+/* Small uppercase eyebrow — the counterweight to the huge headlines.
+ * Bangla default: Hind Siliguri, NO tracking (§4.3). */
 .eyebrow {
-  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-family: var(--font-bangla), "Hind Siliguri", sans-serif;
   font-weight: 600;
   font-size: 0.6875rem;
-  letter-spacing: 0.22em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
-
-/* Footer / hero tagline eyebrow (kept name for HybridLogo compatibility). */
-.brand-tagline {
-  font-family: var(--font-poppins), system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.18em;
+/* Latin eyebrows get the tracked all-caps treatment. */
+:lang(en) .eyebrow {
+  font-family: var(--font-latin), "Inter Tight", system-ui, sans-serif;
+  letter-spacing: 0.2em;
 }
 
-/* English body + UI labels ride Poppins (clean, not a system font, not Inter).
- * Bangla body stays on .bn-body (Noto Serif Bengali via the global token). */
+/* Footer / hero tagline eyebrow. Bangla default: no tracking. */
+.brand-tagline {
+  font-family: var(--font-bangla), "Hind Siliguri", sans-serif;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+:lang(en) .brand-tagline {
+  font-family: var(--font-latin), "Inter Tight", system-ui, sans-serif;
+  letter-spacing: 0.16em;
+}
+
+/* For English, the body copy (.bn-body) swaps to the Latin workhorse so an
+ * all-English page reads in Inter Tight, not Hind Siliguri's Latin. */
 :lang(en) .marketing-root,
 .marketing-root :lang(en) {
-  --font-bangla: var(--font-poppins), system-ui, sans-serif;
+  --font-bangla: var(--font-latin), "Inter Tight", system-ui, sans-serif;
 }
 
 /* ---------------------------------------------------------------------------
- * 3. Atmosphere — the dark ink bands: purple gradient-mesh + film grain.
+ * 3. Indigo bands — the hero + closing panels (DESIGN §6.2: flat indigo,
+ *    white text). No dark surface, no purple mesh, no film grain.
  * ------------------------------------------------------------------------- */
-
-/* Ink band base. Children that sit on it should carry `.on-ink` (for the
- * focus-ring swap). The mesh + grain are pseudo-elements so content stays crisp. */
 .ink-band {
   position: relative;
   isolation: isolate;
-  background-color: var(--brand-ink);
-  color: #f5f5f7;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
   overflow: hidden;
 }
 
-/* Glowing purple radial mesh — echoes the logo bloom. Layered radials, offset
- * and asymmetric so it never reads as a flat center gradient. */
-.ink-band::before {
-  content: "";
-  position: absolute;
-  inset: -20% -10% -20% -10%;
-  z-index: -2;
-  background:
-    radial-gradient(42% 55% at 78% 18%, rgba(157, 107, 255, 0.42), transparent 62%),
-    radial-gradient(48% 60% at 12% 8%, rgba(123, 63, 242, 0.34), transparent 60%),
-    radial-gradient(60% 80% at 50% 118%, rgba(90, 25, 230, 0.32), transparent 64%);
-  filter: saturate(118%);
-}
-
-/* Film grain overlay — a tiny tiled SVG noise, very low opacity, screen-blended.
- * Adds texture/atmosphere without touching layout. */
-.ink-band::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  opacity: 0.5;
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
-  pointer-events: none;
-}
-
-/* Muted text colors on the ink band. */
+/* Muted text colors on the indigo band. */
 .ink-band .ink-muted {
-  color: rgba(245, 245, 247, 0.72);
+  color: rgba(255, 255, 255, 0.78);
 }
 .ink-band .ink-subtle {
-  color: rgba(245, 245, 247, 0.55);
+  color: rgba(255, 255, 255, 0.6);
 }
 
-/* Thin purple top accent hairline across the very top of the page. */
+/* Thin marigold accent rule across the very top of the page (energy, §2). */
 .brand-topline {
   height: 3px;
-  background: linear-gradient(
-    90deg,
-    var(--color-primary-active),
-    var(--brand-violet),
-    var(--brand-violet-bright),
-    var(--brand-violet)
-  );
+  background: var(--color-accent);
 }
 
 /* Decorative hairline divider used between paper sections. */
@@ -214,26 +152,10 @@
 }
 
 /* ---------------------------------------------------------------------------
- * 4. Bloom — a soft purple glow plate placed behind the hero mock / logo motif.
- * ------------------------------------------------------------------------- */
-.bloom {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(60px);
-  background: radial-gradient(
-    circle,
-    rgba(123, 63, 242, 0.55),
-    rgba(90, 25, 230, 0.18) 55%,
-    transparent 72%
-  );
-  pointer-events: none;
-}
-
-/* ---------------------------------------------------------------------------
- * 5. Ghosted editorial numerals for how-it-works (huge, faint, overlapping).
+ * 4. Ghosted oversized numerals for how-it-works (huge, faint, overlapping).
  * ------------------------------------------------------------------------- */
 .ghost-numeral {
-  font-family: var(--font-noto-serif-bengali), var(--font-noto-serif), serif;
+  font-family: var(--font-bangla), "Hind Siliguri", sans-serif;
   font-weight: 700;
   line-height: 0.8;
   font-size: clamp(5rem, 4rem + 10vw, 11rem);
@@ -243,39 +165,39 @@
 }
 
 /* ---------------------------------------------------------------------------
- * 6. Designed interaction states.
+ * 5. Designed interaction states.
  * ------------------------------------------------------------------------- */
 
-/* Primary CTA glow + lift. Scoped to wrappers that carry .cta-glow. */
+/* Primary CTA lift. Scoped to wrappers that carry .cta-glow. */
 .cta-glow > button {
-  box-shadow: 0 8px 24px -8px rgba(90, 25, 230, 0.5);
+  box-shadow: 0 8px 24px -8px rgba(29, 78, 216, 0.4);
   transition:
     transform var(--duration-fast, 180ms) ease,
     box-shadow var(--duration-fast, 180ms) ease;
 }
 .cta-glow > button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 34px -8px rgba(90, 25, 230, 0.62);
+  box-shadow: 0 14px 34px -8px rgba(29, 78, 216, 0.52);
 }
 
-/* Closing-CTA / hero buttons that sit on the dark ink band: force a white
- * button + deep-purple ink so the CTA pops with AA contrast. */
+/* Closing-CTA / hero buttons that sit on the indigo band: white button with
+ * deep-indigo ink so the CTA pops with AA contrast. */
 .cta-on-band > button {
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   color: var(--color-primary-active);
-  box-shadow: 0 10px 30px -10px rgba(157, 107, 255, 0.6);
+  box-shadow: 0 10px 30px -10px rgba(29, 78, 216, 0.45);
   transition:
     transform var(--duration-fast, 180ms) ease,
     box-shadow var(--duration-fast, 180ms) ease,
     background-color var(--duration-fast, 180ms) ease;
 }
 .cta-on-band > button:hover {
-  background-color: #f3effe;
+  background-color: var(--color-primary-weak);
   transform: translateY(-2px);
-  box-shadow: 0 16px 40px -10px rgba(157, 107, 255, 0.75);
+  box-shadow: 0 16px 40px -10px rgba(29, 78, 216, 0.55);
 }
 
-/* Secondary "ghost" button on the dark band: outlined, fills on hover. */
+/* Secondary "ghost" button on the indigo band: outlined, fills on hover. */
 .btn-on-ink {
   display: inline-flex;
   align-items: center;
@@ -286,21 +208,21 @@
   border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 1.0625rem;
-  color: #f5f5f7;
-  border: 1px solid rgba(245, 245, 247, 0.28);
-  background: rgba(245, 245, 247, 0.04);
+  color: var(--color-text-on-primary);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
   transition:
     background-color var(--duration-fast, 180ms) ease,
     border-color var(--duration-fast, 180ms) ease,
     transform var(--duration-fast, 180ms) ease;
 }
 .btn-on-ink:hover {
-  background: rgba(245, 245, 247, 0.12);
-  border-color: rgba(157, 107, 255, 0.7);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.6);
   transform: translateY(-1px);
 }
 
-/* Card lift + border-glow (features, testimonials, pricing). */
+/* Card lift + border accent (features, testimonials, pricing). */
 .lift-card {
   transition:
     transform var(--duration-base, 260ms) ease,
@@ -312,15 +234,15 @@
   transform: translateY(-4px);
   border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
   box-shadow:
-    0 18px 40px -22px rgba(45, 12, 166, 0.4),
-    0 2px 0 0 color-mix(in srgb, var(--color-primary) 20%, transparent);
+    var(--shadow-lg),
+    0 2px 0 0 color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
-/* Popular pricing card: permanently lifted + glowing, not just a badge. */
+/* Popular pricing card: permanently lifted + indigo ring, not just a badge. */
 .pop-card {
   border-color: var(--color-primary);
   box-shadow:
-    0 28px 60px -28px rgba(90, 25, 230, 0.5),
+    var(--shadow-lg),
     0 0 0 1px var(--color-primary);
   transform: translateY(-6px);
 }
@@ -330,9 +252,9 @@
   }
 }
 
-/* Feature image frame: soft long shadow + subtle hover scale on the inner img. */
+/* Feature image frame: soft warm long shadow + subtle hover scale on the img. */
 .frame-shadow {
-  box-shadow: 0 40px 80px -40px rgba(45, 12, 166, 0.45);
+  box-shadow: var(--shadow-lg);
 }
 .frame-shadow img {
   transition: transform var(--duration-slow, 400ms) ease;
@@ -341,8 +263,7 @@
   transform: scale(1.03);
 }
 
-/* Partner wordmarks: grayscale → brand color on hover (already color-on-hover
- * in the component; this adds a gentle lift). */
+/* Partner wordmarks: gentle lift on hover (color handled in the component). */
 .partner-pill {
   transition:
     color var(--duration-base, 260ms) ease,
@@ -353,7 +274,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * 7. Orchestrated hero page-load reveal (eyebrow→headline→sub→CTA→mock).
+ * 6. Orchestrated hero page-load reveal (eyebrow→headline→sub→CTA→mock).
  * ------------------------------------------------------------------------- */
 @keyframes hybrid-rise {
   from {
@@ -374,17 +295,6 @@
     transform: translateY(-8px);
   }
 }
-@keyframes hybrid-bloom-pulse {
-  0%,
-  100% {
-    opacity: 0.85;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.06);
-  }
-}
 
 .reveal {
   opacity: 0;
@@ -396,20 +306,16 @@
 .float-slow {
   animation: hybrid-float 6s ease-in-out infinite;
 }
-.bloom-pulse {
-  animation: hybrid-bloom-pulse 7s ease-in-out infinite;
-}
 
 /* ---------------------------------------------------------------------------
- * 8. prefers-reduced-motion — kill ALL motion, reveal everything immediately.
+ * 7. prefers-reduced-motion — kill ALL motion, reveal everything immediately.
  * ------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .reveal {
     opacity: 1;
     animation: none;
   }
-  .float-slow,
-  .bloom-pulse {
+  .float-slow {
     animation: none;
   }
   .cta-glow > button:hover,

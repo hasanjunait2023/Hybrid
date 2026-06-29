@@ -12,7 +12,7 @@
 //      buyer A never sees buyer B's orders; a tenant context sees none; a vendor
 //      sees only its own commission.
 // ============================================================================
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { withTenant, asPlatformAdmin, withBuyer } from "../src/index";
 
 const TENANT_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa000a";
@@ -22,17 +22,31 @@ const OWNER_B = "11111111-1111-1111-1111-111111111002";
 const BUYER_A = "cccccccc-cccc-cccc-cccc-ccccccccc00a";
 const BUYER_B = "cccccccc-cccc-cccc-cccc-ccccccccc00b";
 
-async function firstProductId(tenantId: string): Promise<string> {
-  const rows = await asPlatformAdmin((tx) =>
-    tx<{ id: string }[]>`select id from product where tenant_id = ${tenantId} order by id limit 1`,
-  );
-  return rows[0]!.id;
+// Own a dedicated product per tenant (the marketplace_listing FK target) rather
+// than borrowing a shared seed row: every db test file shares one ephemeral
+// Postgres (fileParallelism:false), and an earlier suite's broad product delete
+// could otherwise remove the seed row this suite relied on, failing it
+// non-deterministically. afterAll removes them so no product-count drift leaks
+// to count-asserting suites.
+const PROD_A_SLUG = "mp-rls-probe-a";
+const PROD_B_SLUG = "mp-rls-probe-b";
+
+async function ensureProduct(tenantId: string, slug: string): Promise<string> {
+  return asPlatformAdmin(async (tx) => {
+    await tx`delete from product where tenant_id = ${tenantId} and slug = ${slug}`;
+    const rows = await tx<{ id: string }[]>`
+      insert into product (tenant_id, title, slug, status)
+      values (${tenantId}, 'MP RLS probe', ${slug}, 'active')
+      returning id
+    `;
+    return rows[0]!.id;
+  });
 }
 
 describe("Marketplace RLS isolation", () => {
   beforeAll(async () => {
-    const prodA = await firstProductId(TENANT_A);
-    const prodB = await firstProductId(TENANT_B);
+    const prodA = await ensureProduct(TENANT_A, PROD_A_SLUG);
+    const prodB = await ensureProduct(TENANT_B, PROD_B_SLUG);
 
     await asPlatformAdmin(async (tx) => {
       // Clean slate (local re-runs).
@@ -72,6 +86,18 @@ describe("Marketplace RLS isolation", () => {
           (${TENANT_A}, 100, 0.05, 5),
           (${TENANT_B}, 200, 0.05, 10)
       `;
+    });
+  });
+
+  afterAll(async () => {
+    await asPlatformAdmin(async (tx) => {
+      await tx`delete from marketplace_commission where tenant_id in (${TENANT_A}, ${TENANT_B})`;
+      await tx`delete from marketplace_suborder where buyer_id in (${BUYER_A}, ${BUYER_B})`;
+      await tx`delete from marketplace_order where buyer_id in (${BUYER_A}, ${BUYER_B})`;
+      await tx`delete from marketplace_listing where tenant_id in (${TENANT_A}, ${TENANT_B})`;
+      await tx`delete from marketplace_customer where id in (${BUYER_A}, ${BUYER_B})`;
+      await tx`delete from product where tenant_id = ${TENANT_A} and slug = ${PROD_A_SLUG}`;
+      await tx`delete from product where tenant_id = ${TENANT_B} and slug = ${PROD_B_SLUG}`;
     });
   });
 

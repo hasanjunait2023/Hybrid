@@ -34,7 +34,6 @@ export function CartIsland() {
               <li key={l.variantId} className="flex gap-3 border-b border-border p-3 last:border-0">
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded bg-surface-2">
                   {l.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={l.imageUrl} alt={l.title} className="h-full w-full object-cover" />
                   ) : null}
                 </div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { HybridLogo } from "@hybrid/ui";
 import { getDict } from "@/lib/i18n/server";
 import { LoginForm } from "./LoginForm";
 
@@ -16,7 +17,7 @@ export default async function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-sm">
-        <h1 className="mb-1 text-2xl font-bold text-ink">{d.common.brand}</h1>
+        <HybridLogo size="lg" className="mb-3" />
         <p className="mb-6 text-sm text-ink-muted">{d.auth.login.heading}</p>
         <LoginForm
           labels={{

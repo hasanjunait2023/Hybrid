@@ -17,7 +17,6 @@ export function ProductGrid({ products }: { products: MpListing[] }) {
         >
           <div className="aspect-square w-full bg-surface-2">
             {p.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={p.imageUrl} alt={p.title} className="h-full w-full object-cover" />
             ) : null}
           </div>

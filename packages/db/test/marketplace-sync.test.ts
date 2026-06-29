@@ -3,9 +3,12 @@
 // (apps/web/lib/marketplace/sync.ts) against the embedded Postgres: a tenant's
 // catalog change projects into the world-readable marketplace_listing tables.
 //
-// Uses an EXISTING seed product (mutated then restored in afterAll) rather than
-// a new one, so the TENANT_A product COUNT never drifts — other suites
-// (rls.test) assert that count.
+// Owns a DEDICATED product (created in beforeAll, removed in afterAll) instead
+// of borrowing a shared seed row. The suite runs against one ephemeral Postgres
+// shared by every db test file (fileParallelism:false); borrowing a seed
+// product let an earlier suite's broad delete remove it out from under us,
+// failing this suite non-deterministically. Created+deleted within this suite =
+// zero net product-count drift for count-asserting suites (e.g. rls.test).
 // ============================================================================
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { asPlatformAdmin } from "../src/index";
@@ -15,11 +18,20 @@ import {
 } from "@/lib/marketplace/sync";
 
 const TENANT_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa000a";
-// Seed product "A — Canvas Sneaker" (variant price 1299, stock 60).
-const PROD = "a0000003-0000-0000-0000-0000000000a3";
+// Suite-owned product under TENANT_A (vendor slug "store-a"). Dedicated id/slug
+// so no other suite touches it.
+const PROD = "d0000003-0000-0000-0000-00000000d003";
+const PROD_SLUG = "mp-sync-probe";
 const ORIG_PRICE = 1299;
 
 let varId = "";
+
+async function dropOwnRows(tx: import("../src/index").Tx): Promise<void> {
+  await tx`delete from marketplace_listing_variant where product_id = ${PROD}`;
+  await tx`delete from marketplace_listing where product_id = ${PROD}`;
+  await tx`delete from product_variant where product_id = ${PROD}`;
+  await tx`delete from product where id = ${PROD}`;
+}
 
 async function listing(): Promise<
   { status: string; price_from: string; in_stock: boolean; vendor_slug: string } | null
@@ -44,19 +56,23 @@ async function variantCount(): Promise<number> {
 
 describe("Marketplace listing sync", () => {
   beforeAll(async () => {
-    const rows = await asPlatformAdmin((tx) =>
-      tx<{ id: string }[]>`select id from product_variant where product_id = ${PROD} limit 1`,
-    );
-    varId = rows[0]!.id;
+    await asPlatformAdmin(async (tx) => {
+      await dropOwnRows(tx); // idempotent for local re-runs
+      await tx`
+        insert into product (id, tenant_id, title, slug, status, description)
+        values (${PROD}, ${TENANT_A}, 'MP Sync Probe', ${PROD_SLUG}, 'active', 'sync test')
+      `;
+      const rows = await tx<{ id: string }[]>`
+        insert into product_variant (tenant_id, product_id, title, price, position, inventory_quantity)
+        values (${TENANT_A}, ${PROD}, 'Default', ${ORIG_PRICE}, 0, 60)
+        returning id
+      `;
+      varId = rows[0]!.id;
+    });
   });
 
   afterAll(async () => {
-    // Restore the seed product to its original state + drop the projected rows.
-    await asPlatformAdmin(async (tx) => {
-      await tx`update product set status = 'active' where id = ${PROD}`;
-      await tx`update product_variant set price = ${ORIG_PRICE} where id = ${varId}`;
-      await tx`delete from marketplace_listing where product_id = ${PROD}`;
-    });
+    await asPlatformAdmin(dropOwnRows);
   });
 
   it("1. syncing an active product creates a listing", async () => {

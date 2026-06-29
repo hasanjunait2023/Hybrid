@@ -22,7 +22,6 @@ export default async function MarketProductPage({
       <div className="grid gap-5 md:grid-cols-2">
         <div className="aspect-square w-full overflow-hidden rounded-lg bg-surface-2">
           {product.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={product.imageUrl} alt={product.title} className="h-full w-full object-cover" />
           ) : null}
         </div>

@@ -18,7 +18,6 @@ import "server-only";
 //   * Best-effort: never throws to the caller (the admin mutation must not fail
 //     because a projection write hiccuped). The reconcile cron repairs misses.
 import { withTenant, asPlatformAdmin } from "@hybrid/db";
-import type { Tx } from "@hybrid/db";
 
 interface VariantSource {
   id: string;

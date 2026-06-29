@@ -42,6 +42,7 @@ export interface MarketingMessages {
     how: string;
     faq: string;
     cta: string;
+    login: string;
   };
 
   hero: {
@@ -125,6 +126,7 @@ const en: MarketingMessages = {
     how: "How it works",
     faq: "FAQ",
     cta: "Start free",
+    login: "Log in",
   },
 
   hero: {
@@ -304,6 +306,7 @@ const bn: MarketingMessages = {
     how: "কীভাবে কাজ করে",
     faq: "জিজ্ঞাসা",
     cta: "ফ্রি শুরু করুন",
+    login: "লগ ইন",
   },
 
   hero: {

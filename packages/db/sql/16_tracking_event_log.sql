@@ -43,12 +43,15 @@ create index if not exists tracking_event_log_status_idx
 -- 16.2 RLS — tenant isolation; platform admin escape hatch via app.is_platform_admin().
 -- ---------------------------------------------------------------------------
 alter table tracking_event_log enable row level security;
+-- FORCE so even the table owner (postgres / asPlatformAdmin's BYPASSRLS aside)
+-- is subject to policies — matches the core tables in 02_policies.sql.
+alter table tracking_event_log force row level security;
 
 drop policy if exists tracking_event_log_tenant_isolation on tracking_event_log;
 create policy tracking_event_log_tenant_isolation
   on tracking_event_log
   using (tenant_id = app.current_tenant_id()::uuid or app.is_platform_admin())
-  with check (tenant_id = app.current_tenant_id()::uuid);
+  with check (tenant_id = app.current_tenant_id()::uuid or app.is_platform_admin());
 
 -- Grants
 grant select, insert on tracking_event_log to app_runtime;

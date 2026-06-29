@@ -7,7 +7,7 @@
 // page-level gate alone — a Server Action is a public endpoint). Tenant ids are
 // validated as UUIDs at the boundary. Errors are friendly Bengali, no leaks.
 import { z } from "zod";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPlatformAdmin } from "@/lib/platform/auth";
 import { setTenantStatus, getTenantOwnerUserId } from "@/lib/platform/data";
@@ -85,8 +85,14 @@ export async function impersonateTenantOwner(
   const value = signDevCookie(ownerId);
   const store = await cookies();
   const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+  // `secure` from the actual connection protocol, NOT a hardcoded true: this
+  // path is gated to non-production (above) and runs over http on localhost,
+  // where a `secure` cookie would be silently dropped and break impersonation.
+  // On an HTTPS staging box it correctly marks the cookie secure.
+  const isHttps = (await headers()).get("x-forwarded-proto") === "https";
   store.set(DEV_SESSION_COOKIE, value, {
     httpOnly: true,
+    secure: isHttps,
     sameSite: "lax",
     path: "/",
     ...(root ? { domain: `.${root}` } : {}),

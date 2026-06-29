@@ -23,7 +23,15 @@ import type { Tx } from "@hybrid/db";
 import { upsertCustomerByPhone } from "./customer";
 
 export type PaymentMethod = "cod" | "bkash";
-export type OrderSource = "storefront" | "manual";
+// Mirrors the `order_source` Postgres enum (01_schema.sql) exactly. Kept in
+// sync with the DB so callers (admin manual/messenger entry, landing pages, API)
+// don't need `as` casts to satisfy the type.
+export type OrderSource =
+  | "storefront"
+  | "manual"
+  | "landing_page"
+  | "messenger"
+  | "api";
 // Sales channel. 'storefront' = the tenant's own store (default, unchanged).
 // 'marketplace' = a sub-order created by the cross-vendor bazaar checkout.
 export type OrderChannel = "storefront" | "marketplace";
