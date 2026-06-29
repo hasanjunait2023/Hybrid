@@ -100,6 +100,7 @@ export default async function PlatformStores({
               <thead>
                 <tr className="text-[11px] uppercase tracking-wide text-[var(--pf-subtle)]">
                   <th className="pb-2.5 font-semibold">Store</th>
+                  <th className="pb-2.5 font-semibold">Type</th>
                   <th className="pb-2.5 font-semibold">Owner</th>
                   <th className="pb-2.5 font-semibold">Plan</th>
                   <th className="pb-2.5 font-semibold">Subscription</th>
@@ -122,6 +123,7 @@ export default async function PlatformStores({
                         </span>
                       </span>
                     </td>
+                    <td className="py-3"><TypeBadge type={t.businessType} /></td>
                     <td className="py-3 text-[var(--pf-muted)]">{t.ownerName ?? t.ownerEmail ?? "—"}</td>
                     <td className="py-3 text-[var(--pf-muted)]">{t.planName ?? "—"}</td>
                     <td className="py-3 capitalize text-[var(--pf-muted)]">{t.subscriptionStatus ?? "—"}</td>
@@ -152,6 +154,23 @@ function Avatar({ name }: { name: string }) {
   return (
     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--pf-yellow-soft)] text-[12px] font-bold text-[var(--pf-yellow-deep)]">
       {name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
+// Each tenant's business type — the "who goes where" record. Retail tenants are
+// routed to the retail storefront/dashboard; wholesale (and both) to the B2B
+// surfaces. Shown so the owner can confirm every store's routing at a glance.
+function TypeBadge({ type }: { type: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    retail: { label: "Retail · B2C", cls: "bg-[var(--pf-success-weak)] text-[var(--pf-success)]" },
+    wholesale: { label: "Wholesale · B2B", cls: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]" },
+    both: { label: "Both", cls: "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]" },
+  };
+  const s = map[type] ?? { label: type, cls: "bg-[var(--pf-muted-weak)] text-[var(--pf-muted)]" };
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.cls}`}>
+      {s.label}
     </span>
   );
 }
