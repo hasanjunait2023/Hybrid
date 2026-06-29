@@ -37,8 +37,9 @@ function toListing(r: ListingRow): WholesaleListing {
     inStock: r.in_stock,
     ratingAvg: Number(r.rating_avg),
     ratingCount: r.rating_count,
-    moq: r.moq,
+    isWholesale: true,
     wholesaleOnly: r.wholesale_only,
+    moq: r.moq,
   };
 }
 
@@ -118,7 +119,7 @@ export async function listWholesaleProducts(opts: {
 
 export interface WholesaleVariant extends MpVariant {
   wholesalePrice: number | null;
-  tierPrices: TierPrice[];
+  tierPrices: Array<{ min_qty: number; unit_price: number }>;
   moq: number | null;
 }
 
@@ -192,14 +193,18 @@ export async function getWholesaleProduct(
       inStock: row.in_stock,
       ratingAvg: Number(row.rating_avg),
       ratingCount: row.rating_count,
-      description: row.description,
-      moq: row.moq,
+      isWholesale: true,
       wholesaleOnly: row.wholesale_only,
+      moq: row.moq,
+      description: row.description,
       variants: variantRows.map((v) => ({
         id: v.id,
         title: v.title,
         price: Number(v.price),
         inStock: v.in_stock,
+        wholesalePrice: v.wholesale_price ? Number(v.wholesale_price) : null,
+        tierPrices: parseTierPrices(v.tier_prices),
+        moq: v.moq,
       })),
       wholesaleVariants,
     };
