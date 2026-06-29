@@ -123,11 +123,6 @@ export interface WholesaleVariant extends MpVariant {
   moq: number | null;
 }
 
-export interface TierPrice {
-  minQty: number;
-  price: number;
-}
-
 export interface WholesaleProductDetail extends MpProductDetail {
   moq: number | null;
   wholesaleOnly: boolean;
@@ -213,15 +208,15 @@ export async function getWholesaleProduct(
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function parseTierPrices(raw: unknown): TierPrice[] {
+function parseTierPrices(raw: unknown): Array<{ min_qty: number; unit_price: number }> {
   if (!raw || !Array.isArray(raw)) return [];
   return raw
-    .filter((t: unknown): t is { minQty?: number; price?: number } =>
+    .filter((t: unknown): t is { min_qty?: number; unit_price?: number } =>
       typeof t === "object" && t !== null,
     )
     .map((t) => ({
-      minQty: t.minQty ?? 0,
-      price: t.price ?? 0,
+      min_qty: t.min_qty ?? 0,
+      unit_price: t.unit_price ?? 0,
     }))
-    .sort((a, b) => a.minQty - b.minQty);
+    .sort((a, b) => a.min_qty - b.min_qty);
 }
