@@ -10,9 +10,18 @@ export type LpBlock =
   | { type: "image"; url: string; alt: string }
   | { type: "cta"; text: string; url: string };
 
+export interface PostCheckoutUpsell {
+  variant_id: string;
+  title: string;
+  price: number;
+  image_url?: string;
+  description?: string;
+}
+
 export interface FunnelConfig {
   thank_you_url?: string;
   upsells?: Array<{ label: string; bump_price: number }>;
+  post_checkout_upsell?: PostCheckoutUpsell;
 }
 
 export interface LandingPageRow {

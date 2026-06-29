@@ -28,13 +28,16 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
   const { d } = await getDict();
   const t = d.storefront.checkout;
 
-  // If arriving via a landing-page funnel, load the upsells from the published LP.
-  const lpUpsells =
-    lpSlug
-      ? await getPublishedLandingPage(ctx.id, null, lpSlug).then(
-          (lp) => lp?.funnelConfig.upsells ?? [],
-        )
-      : [];
+  // If arriving via a landing-page funnel, load upsells + post-checkout upsell config.
+  let lpUpsells: Array<{ label: string; bump_price: number }> = [];
+  let postCheckoutUpsellPath: string | null = null;
+  if (lpSlug) {
+    const lp = await getPublishedLandingPage(ctx.id, null, lpSlug);
+    lpUpsells = lp?.funnelConfig.upsells ?? [];
+    if (lp?.funnelConfig.post_checkout_upsell?.variant_id) {
+      postCheckoutUpsellPath = `/lp/${lpSlug}/upsell`;
+    }
+  }
 
   return (
     <div>
@@ -57,6 +60,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
         paymentNotice={paymentNotice}
         lpSlug={lpSlug ?? null}
         upsells={lpUpsells}
+        postCheckoutUpsellPath={postCheckoutUpsellPath}
       />
     </div>
   );

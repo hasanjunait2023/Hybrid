@@ -27,6 +27,8 @@ interface CheckoutFormProps {
   lpSlug?: string | null;
   /** Order-bump upsells loaded from the LP's funnel_config. Empty for regular checkout. */
   upsells?: Array<{ label: string; bump_price: number }>;
+  /** When set, redirect here after COD order success instead of /order/{n}. */
+  postCheckoutUpsellPath?: string | null;
 }
 
 // Storefront shows one online option, "Hybrid Pay" (it subsumes bKash/Nagad —
@@ -40,6 +42,7 @@ export function CheckoutForm({
   paymentNotice,
   lpSlug,
   upsells = [],
+  postCheckoutUpsellPath,
 }: CheckoutFormProps) {
   const d = useDict();
   const locale = useLocale();
@@ -167,10 +170,14 @@ export function CheckoutForm({
       return;
     }
 
-    // COD — order confirmed; go to the success/track page. Carry the phone so
-    // the gated page renders immediately (it's the buyer's own number = token).
+    // COD — order confirmed. If a post-checkout upsell path is configured (LP
+    // funnel multi-step), go there; otherwise go to the order confirmation page.
     cart.clear();
-    window.location.href = `/order/${result.orderNumber}?phone=${encodeURIComponent(phoneDigits)}`;
+    if (postCheckoutUpsellPath) {
+      window.location.href = `${postCheckoutUpsellPath}/${result.orderNumber}?phone=${encodeURIComponent(phoneDigits)}`;
+    } else {
+      window.location.href = `/order/${result.orderNumber}?phone=${encodeURIComponent(phoneDigits)}`;
+    }
   }
 
   const confirmLabel =

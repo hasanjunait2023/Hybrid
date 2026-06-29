@@ -3,10 +3,11 @@ import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listPlans, checkPlanLimit } from "@/lib/platform/plans";
 import { asPlatformAdmin } from "@hybrid/db";
+import { getTenantOwnerPhone } from "./actions";
+import { UpgradePlanButton } from "./UpgradePlanButton";
 
 // Tenant billing & plan page. Shows current plan, live usage vs. limits,
-// and the plan catalog for self-serve upgrade. bKash upgrade payment is
-// handled by the platform operator (Phase 3+ full-self-serve).
+// and the plan catalog for self-serve upgrade via bKash (Phase 3).
 async function getTenantSubscription(tenantId: string) {
   return asPlatformAdmin(async (tx) => {
     const rows = await tx<{
@@ -55,19 +56,27 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: "bg-surface-2 text-ink-muted",
 };
 
-export default async function BillingPage() {
+interface BillingPageProps {
+  searchParams: Promise<{ billing?: string }>;
+}
+
+export default async function BillingPage({ searchParams }: BillingPageProps) {
   const session = await getSession();
   if (!session) redirect("/dev-login?as=owner-a");
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 
-  const [sub, plans, productLimit, orderLimit, domainLimit, staffLimit] = await Promise.all([
+  const sp = await searchParams;
+  const billingOutcome = sp.billing ?? null;
+
+  const [sub, plans, productLimit, orderLimit, domainLimit, staffLimit, ownerPhone] = await Promise.all([
     getTenantSubscription(tenantId),
     listPlans(),
     checkPlanLimit(tenantId, "product"),
     checkPlanLimit(tenantId, "order"),
     checkPlanLimit(tenantId, "domain"),
     checkPlanLimit(tenantId, "staff"),
+    getTenantOwnerPhone(),
   ]);
 
   const status = sub?.status ?? "trial";
@@ -79,6 +88,23 @@ export default async function BillingPage() {
         ← সেটিংস
       </a>
       <h1 className="text-xl font-bold text-ink">বিলিং ও প্ল্যান</h1>
+
+      {/* Payment outcome banner */}
+      {billingOutcome === "activated" && (
+        <div className="rounded-lg border border-success bg-success-weak px-4 py-3 text-sm font-medium text-success">
+          প্ল্যান আপগ্রেড সফল হয়েছে! আপনার নতুন সীমা এখনই কার্যকর।
+        </div>
+      )}
+      {billingOutcome === "failed" && (
+        <div className="rounded-lg border border-danger bg-danger-weak px-4 py-3 text-sm font-medium text-danger">
+          পেমেন্ট সফল হয়নি। আবার চেষ্টা করুন বা support@hybrid.ecomex.cloud -এ যোগাযোগ করুন।
+        </div>
+      )}
+      {billingOutcome === "cancelled" && (
+        <div className="rounded-lg border border-warning bg-warning-weak px-4 py-3 text-sm font-medium text-warning">
+          পেমেন্ট বাতিল করা হয়েছে।
+        </div>
+      )}
 
       {/* Current subscription */}
       <section className="rounded-lg border border-border bg-surface p-4">
@@ -148,20 +174,20 @@ export default async function BillingPage() {
                     <li>✓ {plan.maxStaff} স্টাফ অ্যাকাউন্ট</li>
                   </ul>
                 </div>
-                {!isCurrent && (
-                  <a
-                    href={`mailto:support@hybrid.ecomex.cloud?subject=প্ল্যান আপগ্রেড: ${plan.name}&body=আমার স্টোর আইডি: ${tenantId}%0A%0A${plan.name} প্ল্যানে আপগ্রেড করতে চাই।`}
-                    className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-                  >
-                    আপগ্রেড করুন
-                  </a>
+                {!isCurrent && plan.priceBdt > 0 && (
+                  <UpgradePlanButton
+                    planId={plan.id}
+                    planName={plan.name}
+                    priceBdt={plan.priceBdt}
+                    defaultPhone={ownerPhone}
+                  />
                 )}
               </div>
             </div>
           );
         })}
         <p className="text-xs text-ink-muted">
-          আপগ্রেড করতে support@hybrid.ecomex.cloud -এ যোগাযোগ করুন অথবা উপরের বাটন ক্লিক করুন।
+          বিকাশে পেমেন্ট সম্পন্ন হলে প্ল্যান স্বয়ংক্রিয়ভাবে সক্রিয় হবে। সহায়তার জন্য support@hybrid.ecomex.cloud -এ যোগাযোগ করুন।
         </p>
       </section>
     </div>

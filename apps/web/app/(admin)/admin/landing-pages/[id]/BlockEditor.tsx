@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { LpBlock, FunnelConfig, LandingPageDetail } from "@/lib/admin/landingPages";
+import type { LpBlock, FunnelConfig, LandingPageDetail, PostCheckoutUpsell } from "@/lib/admin/landingPages";
 import {
   updateLandingPageAction,
   publishLandingPageAction,
@@ -87,6 +87,9 @@ export function BlockEditor({ page }: Props) {
   const [blocks, setBlocks] = useState<LpBlock[]>(page.blocks);
   const [thankYouUrl, setThankYouUrl] = useState(page.funnelConfig.thank_you_url ?? "");
   const [upsells, setUpsells] = useState<Upsell[]>(page.funnelConfig.upsells ?? []);
+  const [pcUpsell, setPcUpsell] = useState<PostCheckoutUpsell | null>(
+    page.funnelConfig.post_checkout_upsell ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [status, setStatus] = useState(page.status);
@@ -145,6 +148,7 @@ export function BlockEditor({ page }: Props) {
           upsells: upsells.filter((u) => u.label.trim()).length > 0
             ? upsells.filter((u) => u.label.trim())
             : undefined,
+          post_checkout_upsell: pcUpsell?.variant_id.trim() ? pcUpsell : undefined,
         }),
       });
       if (!res.ok) { setError(res.error ?? "সংরক্ষণ ব্যর্থ।"); return; }
@@ -244,6 +248,72 @@ export function BlockEditor({ page }: Props) {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* Post-checkout one-click upsell */}
+      <div className="space-y-3 rounded-lg border border-border bg-surface p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-ink">পোস্ট-চেকআউট আপসেল (অর্ডারের পরে অফার)</p>
+          {pcUpsell ? (
+            <button
+              type="button"
+              onClick={() => { setPcUpsell(null); setSaved(false); }}
+              disabled={pending}
+              className="text-xs text-danger hover:underline disabled:opacity-50"
+            >
+              মুছুন
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setPcUpsell({ variant_id: "", title: "", price: 0 });
+                setSaved(false);
+              }}
+              disabled={pending}
+              className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+            >
+              + যোগ করুন
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-ink-muted">অর্ডার কনফার্মের সাথে সাথে বায়ারকে একটি বিশেষ অফার দেখানো হবে। "YES" ক্লিক করলে নতুন অর্ডার তৈরি হবে।</p>
+        {pcUpsell && (
+          <div className="space-y-2">
+            <input
+              className={INPUT}
+              placeholder="ভেরিয়েন্ট UUID (product_variant.id)"
+              value={pcUpsell.variant_id}
+              onChange={(e) => { setPcUpsell({ ...pcUpsell, variant_id: e.target.value }); setSaved(false); }}
+            />
+            <input
+              className={INPUT}
+              placeholder="অফারের শিরোনাম (যেমন: প্রিমিয়াম কভার)"
+              value={pcUpsell.title}
+              onChange={(e) => { setPcUpsell({ ...pcUpsell, title: e.target.value }); setSaved(false); }}
+            />
+            <input
+              type="number"
+              min={0}
+              className={INPUT}
+              placeholder="বিশেষ মূল্য (৳)"
+              value={pcUpsell.price || ""}
+              onChange={(e) => { setPcUpsell({ ...pcUpsell, price: Number(e.target.value) }); setSaved(false); }}
+            />
+            <input
+              className={INPUT}
+              placeholder="ছোট বিবরণ (ঐচ্ছিক)"
+              value={pcUpsell.description ?? ""}
+              onChange={(e) => { setPcUpsell({ ...pcUpsell, description: e.target.value || undefined }); setSaved(false); }}
+            />
+            <input
+              className={INPUT}
+              placeholder="ছবির URL (ঐচ্ছিক)"
+              value={pcUpsell.image_url ?? ""}
+              onChange={(e) => { setPcUpsell({ ...pcUpsell, image_url: e.target.value || undefined }); setSaved(false); }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Blocks */}
