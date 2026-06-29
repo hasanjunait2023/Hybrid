@@ -43,7 +43,7 @@ export function WholesaleSettingsForm({
 
     startTransition(async () => {
       const result = await saveWholesaleSettings(null, fd);
-      if (result && !result.ok) setError(result.error ?? t.saveFailed);
+      if (result && !result.ok) setError(result.error ?? "Failed to save.");
       else if (result?.ok) {
         setSaved(true);
         router.refresh();
