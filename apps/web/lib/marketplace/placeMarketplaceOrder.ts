@@ -133,6 +133,29 @@ export async function placeMarketplaceOrder(
 
   for (const [tenantId, vendorLines] of groups) {
     try {
+      // Enforce MOQ (minimum order quantity) before placing sub-orders.
+      const variantIds = vendorLines.map((l) => l.variantId);
+      const moqRows = await asPlatformAdmin((tx) =>
+        tx<{ id: string; moq: number | null }[]>`
+          select id, moq
+          from marketplace_listing_variant
+          where id = any(${variantIds})
+            and tenant_id = ${tenantId}
+        `,
+      );
+      const moqMap = new Map(moqRows.map((r) => [r.id, r.moq ?? 1]));
+      const moqViolation = vendorLines.find((l) => l.quantity < (moqMap.get(l.variantId) ?? 1));
+      if (moqViolation) {
+        failures.push({
+          tenantId,
+          vendorName: "",
+          status: "failed",
+          reason: "below_moq",
+          failedVariantId: moqViolation.variantId,
+        });
+        continue;
+      }
+
       const quote = await calculateShipping(tenantId, null, {
         items: vendorLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
         destDivision: input.shipTo.division,

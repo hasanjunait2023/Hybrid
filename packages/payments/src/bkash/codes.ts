@@ -24,7 +24,8 @@ export function mapBkashState(body: {
 
   switch (transactionStatus) {
     case "Completed":
-      return "success";
+      // Require explicit 0000 statusCode — "Completed" without it is not trustworthy.
+      return statusCode === SUCCESS_CODE ? "success" : "failed";
     case "Cancelled":
       return "cancelled";
     case "Failed":

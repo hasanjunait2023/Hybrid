@@ -425,43 +425,49 @@ export async function getStorefrontProducts(
 ): Promise<StorefrontProduct[]> {
   return unstable_cache(
     async () => {
-      const rows = await withTenant(tenantId, null, (tx) =>
-        tx<
-          {
-            id: string;
-            title: string;
-            slug: string;
-            price: string | null;
-            compare_at_price: string | null;
-            inventory_quantity: number | null;
-          }[]
-        >`
-          select
-            p.id,
-            p.title,
-            p.slug,
-            (
-              select min(v.price)
-              from product_variant v
-              where v.product_id = p.id and v.is_active = true
-            ) as price,
-            (
-              select v.compare_at_price
-              from product_variant v
-              where v.product_id = p.id and v.is_active = true
-              order by v.price asc
-              limit 1
-            ) as compare_at_price,
-            (
-              select coalesce(sum(v.inventory_quantity), 0)
-              from product_variant v
-              where v.product_id = p.id and v.is_active = true
-            ) as inventory_quantity
-          from product p
-          where p.status = 'active'
-          order by p.created_at desc
-        `,
-      );
+      const [rows, codEnabled] = await withTenant(tenantId, null, async (tx) => {
+        const [productRows, codRows] = await Promise.all([
+          tx<
+            {
+              id: string;
+              title: string;
+              slug: string;
+              price: string | null;
+              compare_at_price: string | null;
+              inventory_quantity: number | null;
+            }[]
+          >`
+            select
+              p.id,
+              p.title,
+              p.slug,
+              (
+                select min(v.price)
+                from product_variant v
+                where v.product_id = p.id and v.is_active = true
+              ) as price,
+              (
+                select v.compare_at_price
+                from product_variant v
+                where v.product_id = p.id and v.is_active = true
+                order by v.price asc
+                limit 1
+              ) as compare_at_price,
+              (
+                select coalesce(sum(v.inventory_quantity), 0)
+                from product_variant v
+                where v.product_id = p.id and v.is_active = true
+              ) as inventory_quantity
+            from product p
+            where p.status = 'active'
+            order by p.created_at desc
+          `,
+          tx<{ is_enabled: boolean }[]>`
+            select is_enabled from payment_account where provider = 'cod' limit 1
+          `,
+        ]);
+        return [productRows, codRows[0]?.is_enabled ?? false] as const;
+      });
 
       return rows.map((r) => ({
         id: r.id,
@@ -470,7 +476,7 @@ export async function getStorefrontProducts(
         price: r.price != null ? Number(r.price) : 0,
         compareAtPrice: r.compare_at_price != null ? Number(r.compare_at_price) : null,
         inStock: (r.inventory_quantity ?? 0) > 0,
-        codEnabled: true,
+        codEnabled,
       }));
     },
     [`products:${tenantId}`],
