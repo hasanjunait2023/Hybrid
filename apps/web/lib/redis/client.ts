@@ -17,6 +17,18 @@ class IoRedisClient implements CacheClient {
     // outage surfaces as a catchable command error (handled in resolve.ts)
     // rather than an unhandled connection error at import time.
     this.redis = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 2 });
+    // Swallow the connect-time 'error' event so a Redis outage doesn't print
+    // "Unhandled error event" spam on the console. Per-command errors still
+    // surface through `await` in get/set/del (caught by callers, e.g.
+    // resolve.ts degrades to no-cache). Retries are bounded by
+    // maxRetriesPerRequest above.
+    this.redis.on("error", (err) => {
+      // Single-line, low-noise — only first error after a disconnect really
+      // matters; ioredis will keep retrying in the background.
+      console.warn(
+        `[redis] connection error (degraded to no-cache): ${err.message}`,
+      );
+    });
   }
 
   async get(key: string): Promise<string | null> {

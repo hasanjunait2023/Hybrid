@@ -15,6 +15,7 @@ import { getActiveTenantId } from "@/lib/admin/data";
 import { getBlobStore, BlobValidationError } from "@/lib/storage";
 import { slugify } from "@/lib/admin/format";
 import { syncMarketplaceListing } from "@/lib/marketplace/sync";
+import { purgeCacheTags } from "@/lib/cache/cloudflare";
 
 export interface ActionResult {
   ok: boolean;
@@ -35,15 +36,22 @@ async function authTenant(): Promise<
 }
 
 function bustProductTags(tenantId: string, productId?: string): void {
-  revalidateTag(`tenant:${tenantId}`);
-  revalidateTag(`tenant:${tenantId}:products`);
-  revalidateTag(`tenant:${tenantId}:dashboard`);
+  const tags = [
+    `tenant:${tenantId}`,
+    `tenant:${tenantId}:products`,
+    `tenant:${tenantId}:dashboard`,
+  ];
   if (productId) {
-    revalidateTag(`tenant:${tenantId}:product:${productId}`);
+    tags.push(`tenant:${tenantId}:product:${productId}`);
     // Project the change into the world-readable marketplace catalog. Best-effort
     // (sync swallows its own errors); the marketplace-sync cron is the safety net.
     void syncMarketplaceListing(tenantId, productId);
   }
+  for (const tag of tags) revalidateTag(tag);
+  // Edge cache purge — URL-based (free-tier CF-compatible), no-op until
+  // CF_API_TOKEN + CF_ZONE_ID are set (Boss needs to apply
+  // infra/cloudflare/cloudflare-cache-setup.sh first).
+  void purgeCacheTags(tags);
 }
 
 // Postgres unique-violation code. The slug unique constraint surfaces as 23505.
@@ -281,6 +289,10 @@ export async function saveCollection(
 
   revalidateTag(`tenant:${auth.tenantId}:collections`);
   revalidateTag(`tenant:${auth.tenantId}:products`);
+  void purgeCacheTags([
+    `tenant:${auth.tenantId}:collections`,
+    `tenant:${auth.tenantId}:products`,
+  ]);
   return { ok: true };
 }
 
@@ -297,6 +309,7 @@ export async function deleteCollection(
     await tx`delete from collection where id = ${id.data}`;
   });
   revalidateTag(`tenant:${auth.tenantId}:collections`);
+  void purgeCacheTags([`tenant:${auth.tenantId}:collections`]);
   redirect("/admin/collections");
 }
 
