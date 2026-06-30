@@ -62,6 +62,7 @@ export const admin = {
     collections: "Collections",
     shipping: "Shipping & delivery",
     landingPages: "Landing pages",
+    integrations: "Integrations",
   },
 
   dashboard: {
