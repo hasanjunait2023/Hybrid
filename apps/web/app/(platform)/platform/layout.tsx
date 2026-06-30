@@ -8,6 +8,7 @@ import { getPlatformAdmin } from "@/lib/platform/auth";
 import { loginPath } from "@/lib/auth/urls";
 import { getDict } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/provider";
+import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
 import { PlatformSidebar } from "./PlatformSidebar";
 import { PlatformBottomNav } from "./PlatformBottomNav";
 import { PwaRegister } from "./PwaRegister";
@@ -59,9 +60,12 @@ export default async function PlatformLayout({ children }: { children: ReactNode
           <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-2.5 lg:hidden">
             <HybridLogo size="sm" />
             <span className="rounded-full bg-[var(--pf-yellow-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--pf-yellow-deep)]">Admin</span>
-            <span className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
-              {name.slice(0, 1).toUpperCase()}
-            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <LanguageToggle />
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
+                {name.slice(0, 1).toUpperCase()}
+              </span>
+            </div>
           </header>
           <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden px-4 py-4 pb-24 sm:px-5 lg:px-8 lg:py-6 lg:pb-8">
             {children}

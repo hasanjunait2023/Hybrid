@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HomeIcon, BoxesIcon, ChatIcon, ReceiptIcon, UsersIcon } from "@hybrid/ui";
+import { useDict } from "@/lib/i18n/provider";
 
 // Mobile bottom tab bar for the super-admin console (lg:hidden). The desktop
 // sidebar is hidden < lg; these 5 tabs cover the primary destinations. Active
 // state from the browser path (host-mapped to /platform by middleware).
-const TABS = [
-  { href: "/platform", label: "Home", Icon: HomeIcon },
-  { href: "/platform/tenants", label: "Stores", Icon: BoxesIcon },
-  { href: "/platform/sales", label: "Sales", Icon: ChatIcon },
-  { href: "/platform/finance", label: "Finance", Icon: ReceiptIcon },
-  { href: "/platform/team", label: "Team", Icon: UsersIcon },
+type LabelKey = keyof ReturnType<typeof useDict>["platform"]["nav"];
+const TABS: { href: string; labelKey: LabelKey; Icon: (p: { className?: string }) => React.ReactElement }[] = [
+  { href: "/platform", labelKey: "dashboard", Icon: HomeIcon },
+  { href: "/platform/tenants", labelKey: "tenants", Icon: BoxesIcon },
+  { href: "/platform/sales", labelKey: "roadmapSales", Icon: ChatIcon },
+  { href: "/platform/finance", labelKey: "finance", Icon: ReceiptIcon },
+  { href: "/platform/team", labelKey: "team", Icon: UsersIcon },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -22,6 +24,7 @@ function isActive(pathname: string, href: string): boolean {
 
 export function PlatformBottomNav() {
   const pathname = usePathname();
+  const n = useDict().platform.nav;
   return (
     <nav
       aria-label="Primary"
@@ -38,7 +41,7 @@ export function PlatformBottomNav() {
             <span className={`flex h-8 w-12 items-center justify-center rounded-full ${active ? "bg-[var(--pf-yellow-soft)] text-[var(--pf-yellow-deep)]" : "text-[var(--pf-muted)]"}`}>
               <t.Icon className="h-[18px] w-[18px]" />
             </span>
-            {t.label}
+            {n[t.labelKey]}
           </Link>
         );
       })}
