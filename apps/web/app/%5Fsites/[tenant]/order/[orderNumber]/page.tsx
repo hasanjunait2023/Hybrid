@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+// Must be dynamic — searchParams (phone) is only available at request time.
+export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
 import {
   CheckCircleIcon,
