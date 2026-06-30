@@ -18,6 +18,7 @@ import {
   sendRefundNotification,
   sendAutoCancelNotification,
   sendOrderEditedNotification,
+  sendCartRecoveryNotification,
 } from "../sms/notify";
 import {
   type OrderStatusNotificationData,
@@ -28,6 +29,7 @@ const QUEUE_NAME = "sms-status";
 const QUEUE_NAME_REFUND = "sms-refund";
 const QUEUE_NAME_AUTO_CANCEL = "sms-auto-cancel";
 const QUEUE_NAME_ORDER_EDITED = "sms-order-edited";
+const QUEUE_NAME_CART_RECOVERY = "sms-cart-recovery";
 
 type StatusSmsJob = {
   data: OrderStatusNotificationData;
@@ -51,6 +53,13 @@ type OrderEditedSmsJob = {
   tenantId: string;
 };
 
+type CartRecoverySmsJob = {
+  cartId: string;
+  tenantId: string;
+  attempt: 1 | 2 | 3;
+  recoveryUrl: string;
+};
+
 let registered = false;
 function ensureRegistered(): void {
   if (registered) return;
@@ -66,6 +75,9 @@ function ensureRegistered(): void {
   });
   registerHandler<OrderEditedSmsJob>(QUEUE_NAME_ORDER_EDITED, async (job) => {
     await sendOrderEditedNotification(job);
+  });
+  registerHandler<CartRecoverySmsJob>(QUEUE_NAME_CART_RECOVERY, async (job) => {
+    await sendCartRecoveryNotification(job);
   });
 }
 
@@ -122,4 +134,19 @@ export async function enqueueOrderEditedSms(job: {
 }): Promise<string> {
   ensureRegistered();
   return enqueue<OrderEditedSmsJob>(QUEUE_NAME_ORDER_EDITED, job);
+}
+
+/**
+ * Enqueue a cart-recovery SMS (O16). Sent by the cart-recovery cron
+ * after it picks an abandoned cart and stamps the recovery_attempts
+ * counter. Non-blocking so a gateway hiccup never blocks the sweep.
+ */
+export async function enqueueCartRecoverySms(job: {
+  cartId: string;
+  tenantId: string;
+  attempt: 1 | 2 | 3;
+  recoveryUrl: string;
+}): Promise<string> {
+  ensureRegistered();
+  return enqueue<CartRecoverySmsJob>(QUEUE_NAME_CART_RECOVERY, job);
 }

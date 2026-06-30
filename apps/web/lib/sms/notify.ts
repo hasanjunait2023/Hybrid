@@ -12,6 +12,7 @@ import {
   customerRefundSms,
   customerOrderAutoCancelledSms,
   customerOrderEditedSms,
+  customerCartRecoverySms,
   type OrderNotificationData,
   type OrderStatusNotificationData,
   type StatusChangeKind,
@@ -356,4 +357,81 @@ export async function sendOrderEditedNotification(input: {
     status: result.ok ? "sent" : "failed",
     error: result.error,
   }).catch((err) => console.error("[sms-log] order-edited log write failed:", err));
+}
+
+// O16 — Cart-recovery notification. Called by the cart-recovery sweep
+// after it picks an abandoned cart and stamps the recovery_attempts
+// counter. The actual cadence (1h / 24h / 72h) and the recovery URL
+// are computed by the sweep; this function just sends the message and
+// writes the sms_log row. Same non-blocking / best-effort contract as
+// the rest of the SMS surface — a gateway hiccup never blocks the
+// cron.
+export async function sendCartRecoveryNotification(input: {
+  cartId: string;
+  tenantId: string;
+  attempt: 1 | 2 | 3;
+  recoveryUrl: string;
+}): Promise<void> {
+  const { cartId, tenantId, attempt, recoveryUrl } = input;
+  let phone: string | null = null;
+  let storeName = "Hybrid";
+  let cartTotal = 0;
+  let itemCount = 0;
+  try {
+    const { withTenant } = await import("@hybrid/db");
+    const rows = await withTenant(tenantId, null, (tx) =>
+      tx<
+        {
+          customer_phone: string;
+          store_name: string;
+          cart_total: string;
+          item_count: number;
+        }[]
+      >`
+        select
+          c.phone as customer_phone,
+          t.name as store_name,
+          c.total as cart_total,
+          coalesce(jsonb_array_length(c.items), 0) as item_count
+        from cart c
+        join tenant t on t.id = c.tenant_id
+        where c.id = ${cartId}
+        limit 1
+      `,
+    );
+    const row = rows[0];
+    if (row) {
+      phone = row.customer_phone;
+      storeName = row.store_name;
+      cartTotal = Number(row.cart_total);
+      itemCount = row.item_count;
+    }
+  } catch (err) {
+    console.warn("[sms] cart-recovery lookup failed:", err);
+  }
+  if (!phone) {
+    console.warn(`[sms] cart-recovery: no phone found for cart ${cartId}`);
+    return;
+  }
+  const sms = getSmsAdapter();
+  const msg = customerCartRecoverySms({
+    storeName,
+    cartTotal,
+    itemCount,
+    recoveryUrl,
+    attempt,
+  });
+  const result = await safeSend(
+    () => sms.send(phone!, msg),
+    `customer ${phone} cart-recovery attempt #${attempt} (৳${cartTotal})`,
+  );
+  void logSms({
+    tenantId,
+    customerId: null,
+    phone,
+    templateKey: `customer.cart.recovery_${attempt}h`,
+    body: msg,
+    status: result.ok ? "sent" : "failed",
+    error: result.error,
+  }).catch((err) => console.error("[sms-log] cart-recovery log write failed:", err));
 }

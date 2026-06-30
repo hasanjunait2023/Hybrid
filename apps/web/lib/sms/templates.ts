@@ -222,3 +222,47 @@ export function customerOrderEditedSms(
 ): string {
   return `${input.storeName} — আপনার অর্ডার #${toBnDigits(input.orderNumber)} আপডেট করা হয়েছে। নতুন সর্বমোট ${bnTaka(input.newTotal)}। কোনো প্রশ্ন থাকলে আমাদের জানান।`;
 }
+
+// =============================================================================
+// O16 — Cart-recovery (abandoned cart) notifications (sprint 3)
+// =============================================================================
+// Customer-facing message: "you left items in your cart, here's the link
+// to come back and finish ordering." Three messages per cart, one per
+// configured delay hour:
+//   * 1h  — soft nudge ("we saved your cart")
+//   * 24h — medium ("your cart is waiting, stock may be limited")
+//   * 72h — last chance ("final reminder before we release the items")
+//
+// The sweep is in lib/marketing/cartRecovery.ts; this file just renders
+// the text. We keep all Bengali copy here so the merchant can audit the
+// actual message bodies without grepping the sweep code.
+// =============================================================================
+
+export interface CartRecoveryCustomerInput {
+  /** Display store name (Bangla or Latin as stored). */
+  storeName: string;
+  /** Cart subtotal in taka (Latin number from the DB). */
+  cartTotal: number;
+  /** Number of distinct line items in the cart. */
+  itemCount: number;
+  /** Absolute recovery URL — the sweep builds this from cart.recovery_token. */
+  recoveryUrl: string;
+  /** Which of the 3 nudges this is — drives the copy. */
+  attempt: 1 | 2 | 3;
+}
+
+export function customerCartRecoverySms(
+  input: CartRecoveryCustomerInput,
+): string {
+  const itemPart =
+    input.itemCount === 1
+      ? "১টি পণ্য"
+      : `${toBnDigits(input.itemCount)}টি পণ্য`;
+  if (input.attempt === 1) {
+    return `${input.storeName} — আপনার কার্টে ${itemPart} (${bnTaka(input.cartTotal)}) রয়েছে। অর্ডার সম্পূর্ণ করুন: ${input.recoveryUrl}`;
+  }
+  if (input.attempt === 2) {
+    return `${input.storeName} — ${itemPart} এখনো কার্টে আছে। স্টক সীমিত হতে পারে। আজই অর্ডার করুন: ${input.recoveryUrl}`;
+  }
+  return `${input.storeName} — শেষ সুযোগ: ${itemPart} ${bnTaka(input.cartTotal)} কার্টে আছে। আজ রাতের মধ্যে অর্ডার করুন: ${input.recoveryUrl}`;
+}
