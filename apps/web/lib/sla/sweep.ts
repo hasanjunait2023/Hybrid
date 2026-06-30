@@ -91,7 +91,7 @@ export async function runSlaSweep(input: SlaSweepInput): Promise<SlaSweepResult>
       from orders o
       left join lateral (
         select au.phone
-        from auth.users au
+        from app_user au
         join tenant_member tm on tm.user_id = au.id
         where tm.tenant_id = o.tenant_id
           and tm.role = 'owner'
