@@ -645,6 +645,7 @@ function mapProductCard(r: {
   price: string | null;
   compare_at_price: string | null;
   inventory_quantity: number | null;
+  image_url?: string | null;
 }): StorefrontProduct {
   return {
     id: r.id,
@@ -654,6 +655,7 @@ function mapProductCard(r: {
     compareAtPrice: r.compare_at_price != null ? Number(r.compare_at_price) : null,
     inStock: (r.inventory_quantity ?? 0) > 0,
     codEnabled: true,
+    imageUrl: r.image_url ?? null,
   };
 }
 
@@ -673,7 +675,8 @@ export async function searchStorefrontProducts(
       select p.id, p.title, p.slug,
         (select min(v.price) from product_variant v where v.product_id = p.id and v.is_active = true) as price,
         (select v.compare_at_price from product_variant v where v.product_id = p.id and v.is_active = true order by v.price asc limit 1) as compare_at_price,
-        (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity
+        (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity,
+        (select i.url from product_image i where i.product_id = p.id order by i.position asc limit 1) as image_url
       from product p
       where p.status = 'active' and p.title ilike ${like}
       order by p.created_at desc
@@ -721,7 +724,8 @@ export async function getStorefrontProductsByCollection(
           select p.id, p.title, p.slug,
             (select min(v.price) from product_variant v where v.product_id = p.id and v.is_active = true) as price,
             (select v.compare_at_price from product_variant v where v.product_id = p.id and v.is_active = true order by v.price asc limit 1) as compare_at_price,
-            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity
+            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity,
+            (select i.url from product_image i where i.product_id = p.id order by i.position asc limit 1) as image_url
           from product p
           join product_collection pc on pc.product_id = p.id
           where p.status = 'active' and pc.collection_id = ${collectionId}
@@ -749,7 +753,8 @@ export async function getRelatedProducts(
           select distinct p.id, p.title, p.slug,
             (select min(v.price) from product_variant v where v.product_id = p.id and v.is_active = true) as price,
             (select v.compare_at_price from product_variant v where v.product_id = p.id and v.is_active = true order by v.price asc limit 1) as compare_at_price,
-            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity
+            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity,
+            (select i.url from product_image i where i.product_id = p.id order by i.position asc limit 1) as image_url
           from product p
           join product_collection pc on pc.product_id = p.id
           where p.status = 'active' and p.id <> ${productId}
@@ -765,7 +770,8 @@ export async function getRelatedProducts(
           select p.id, p.title, p.slug,
             (select min(v.price) from product_variant v where v.product_id = p.id and v.is_active = true) as price,
             (select v.compare_at_price from product_variant v where v.product_id = p.id and v.is_active = true order by v.price asc limit 1) as compare_at_price,
-            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity
+            (select coalesce(sum(v.inventory_quantity), 0) from product_variant v where v.product_id = p.id and v.is_active = true) as inventory_quantity,
+            (select i.url from product_image i where i.product_id = p.id order by i.position asc limit 1) as image_url
           from product p
           where p.status = 'active' and p.id <> ${productId}
           order by p.created_at desc
