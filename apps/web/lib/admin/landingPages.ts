@@ -136,16 +136,16 @@ export async function updateLandingPage(
   id: string,
   input: UpdateLandingPageInput,
 ): Promise<void> {
-  const blocks = JSON.stringify(input.blocks ?? []);
-  const funnelConfig = JSON.stringify(input.funnelConfig ?? {});
+  const blocks = input.blocks != null ? JSON.stringify(input.blocks) : null;
+  const funnelConfig = input.funnelConfig != null ? JSON.stringify(input.funnelConfig) : null;
   await withTenant(tenantId, userId, (tx) =>
     tx`
       update landing_page set
-        slug = coalesce(${input.slug ?? null}, slug),
-        title = coalesce(${input.title ?? null}, title),
-        blocks = ${blocks}::jsonb,
-        funnel_config = ${funnelConfig}::jsonb,
-        updated_at = now()
+        slug         = coalesce(${input.slug ?? null}, slug),
+        title        = coalesce(${input.title ?? null}, title),
+        blocks       = coalesce(${blocks}::jsonb, blocks),
+        funnel_config = coalesce(${funnelConfig}::jsonb, funnel_config),
+        updated_at   = now()
       where id = ${id} and tenant_id = ${tenantId}
     `,
   );

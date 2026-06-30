@@ -125,7 +125,7 @@ async function reconcileOne(
     `;
     // Earn loyalty points on delivery (idempotent — partial unique index guards replay).
     if (delivered && orderRows[0]) {
-      void earnPointsOnDelivery(tenantId, tenantId, shipment.orderId, Number(orderRows[0].grand_total)).catch(() => {});
+      void earnPointsOnDelivery(tenantId, null, shipment.orderId, Number(orderRows[0].grand_total)).catch(() => {});
     }
   });
 }

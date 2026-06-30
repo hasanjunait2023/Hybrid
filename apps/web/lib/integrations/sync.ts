@@ -69,8 +69,8 @@ export async function runInventoryExport(
 
     // Fetch all variants with their current inventory from Hybrid
     const variants = await withTenant(tenantId, null, (tx) =>
-      tx<{ id: string; inventory: number; integration_ext_id: string | null }[]>`
-        select v.id, v.inventory,
+      tx<{ id: string; inventory_quantity: number; integration_ext_id: string | null }[]>`
+        select v.id, v.inventory_quantity,
                eem.external_id as integration_ext_id
         from product_variant v
         join product p on p.id = v.product_id
@@ -86,7 +86,7 @@ export async function runInventoryExport(
     for (const variant of variants) {
       if (!variant.integration_ext_id) continue;
       try {
-        await adapter.updateInventory(variant.integration_ext_id, variant.inventory);
+        await adapter.updateInventory(variant.integration_ext_id, variant.inventory_quantity);
         synced++;
       } catch {
         failed++;
@@ -174,19 +174,27 @@ async function upsertProduct(
   if (existing?.externalHash === hash) return; // unchanged
 
   if (existing) {
-    // Update existing product
-    await withTenant(tenantId, null, (tx) =>
-      tx`
+    // Update existing product (no images column — images live in product_image)
+    await withTenant(tenantId, null, async (tx) => {
+      await tx`
         update product
         set title       = ${product.title},
             description = ${product.description},
             status      = ${product.status},
             tags        = ${product.tags ?? []},
-            images      = ${JSON.stringify(product.images)}::jsonb,
             updated_at  = now()
         where id = ${existing.internalId} and tenant_id = ${tenantId}
-      `,
-    );
+      `;
+      if (product.images.length > 0) {
+        await tx`delete from product_image where product_id = ${existing.internalId}`;
+        for (let pos = 0; pos < product.images.length; pos++) {
+          await tx`
+            insert into product_image (tenant_id, product_id, url, position)
+            values (${tenantId}, ${existing.internalId}, ${product.images[pos]!}, ${pos})
+          `;
+        }
+      }
+    });
 
     for (const variant of product.variants) {
       await upsertVariant(integrationId, tenantId, existing.internalId, variant);
@@ -197,23 +205,29 @@ async function upsertProduct(
   } else {
     // Insert new product. Slug is derived from title + externalId for determinism
     // and near-uniqueness without relying on Math.random().
-    const rows = await withTenant(tenantId, null, (tx) =>
-      tx<{ id: string }[]>`
-        insert into product (tenant_id, title, description, status, tags, images, slug)
+    const productId = await withTenant(tenantId, null, async (tx) => {
+      const rows = await tx<{ id: string }[]>`
+        insert into product (tenant_id, title, description, status, tags, slug)
         values (
           ${tenantId},
           ${product.title},
           ${product.description},
           ${product.status},
           ${product.tags ?? []},
-          ${JSON.stringify(product.images)}::jsonb,
           ${slugify(product.title, product.externalId)}
         )
         on conflict (tenant_id, slug) do update set slug = excluded.slug || '-x'
         returning id
-      `,
-    );
-    const productId = rows[0]!.id;
+      `;
+      const pid = rows[0]!.id;
+      for (let pos = 0; pos < product.images.length; pos++) {
+        await tx`
+          insert into product_image (tenant_id, product_id, url, position)
+          values (${tenantId}, ${pid}, ${product.images[pos]!}, ${pos})
+        `;
+      }
+      return pid;
+    });
 
     for (const variant of product.variants) {
       await upsertVariant(integrationId, tenantId, productId, variant);
@@ -235,13 +249,13 @@ async function upsertVariant(
     await withTenant(tenantId, null, (tx) =>
       tx`
         update product_variant
-        set sku               = ${variant.sku ?? null},
-            title             = ${variant.title},
-            price             = ${Math.round(variant.price * 100)},
-            compare_at_price  = ${variant.compareAtPrice != null ? Math.round(variant.compareAtPrice * 100) : null},
-            inventory         = ${variant.inventory},
-            options           = ${JSON.stringify(variant.options ?? {})}::jsonb,
-            updated_at        = now()
+        set sku                = ${variant.sku ?? null},
+            title              = ${variant.title},
+            price              = ${variant.price},
+            compare_at_price   = ${variant.compareAtPrice ?? null},
+            inventory_quantity = ${variant.inventory},
+            options            = ${JSON.stringify(variant.options ?? {})}::jsonb,
+            updated_at         = now()
         where id = ${existing.internalId} and product_id = ${productId}
       `,
     );
@@ -249,14 +263,14 @@ async function upsertVariant(
     const rows = await withTenant(tenantId, null, (tx) =>
       tx<{ id: string }[]>`
         insert into product_variant
-          (product_id, tenant_id, sku, title, price, compare_at_price, inventory, options)
+          (product_id, tenant_id, sku, title, price, compare_at_price, inventory_quantity, options)
         values (
           ${productId},
           ${tenantId},
           ${variant.sku ?? null},
           ${variant.title},
-          ${Math.round(variant.price * 100)},
-          ${variant.compareAtPrice != null ? Math.round(variant.compareAtPrice * 100) : null},
+          ${variant.price},
+          ${variant.compareAtPrice ?? null},
           ${variant.inventory},
           ${JSON.stringify(variant.options ?? {})}::jsonb
         )
@@ -278,11 +292,11 @@ async function upsertOrder(
   if (existing?.externalHash === hash) return;
 
   if (existing) {
+    // Update updated_at only — external status doesn't map reliably to our enum
     await withTenant(tenantId, null, (tx) =>
       tx`
-        update "order"
-        set status     = ${order.status},
-            updated_at = now()
+        update orders
+        set updated_at = now()
         where id = ${existing.internalId} and tenant_id = ${tenantId}
       `,
     );
@@ -311,21 +325,27 @@ async function upsertOrder(
         customerId = custRows[0]?.id ?? null;
       }
 
+      const shippingAddr = JSON.stringify({
+        recipient: order.shippingAddress?.name ?? order.customerName ?? "",
+        phone: order.shippingAddress?.phone ?? order.customerPhone ?? "",
+        line: order.shippingAddress?.line1 ?? "",
+        district: order.shippingAddress?.district ?? "",
+        city: order.shippingAddress?.city ?? "",
+      });
       const rows = await tx<{ id: string }[]>`
-        insert into "order"
-          (tenant_id, customer_id, order_number, status, total_amount, payment_method,
-           shipping_name, shipping_phone, shipping_address, external_ref)
+        insert into orders
+          (tenant_id, customer_id, customer_name, customer_phone,
+           shipping_address, grand_total, source,
+           note)
         values (
           ${tenantId},
           ${customerId},
-          ${order.orderNumber},
-          ${order.status},
-          ${Math.round(order.totalAmount * 100)},
-          ${order.paymentMethod ?? null},
-          ${order.shippingAddress?.name ?? null},
-          ${order.shippingAddress?.phone ?? null},
-          ${order.shippingAddress?.line1 ?? null},
-          ${order.externalId}
+          ${order.shippingAddress?.name ?? order.customerName ?? null},
+          ${order.customerPhone ?? null},
+          ${shippingAddr}::jsonb,
+          ${order.totalAmount},
+          'api'::order_source,
+          ${order.orderNumber ? `External #${order.orderNumber}` : null}
         )
         returning id
       `;
@@ -337,14 +357,15 @@ async function upsertOrder(
           : null;
         await tx`
           insert into order_item
-            (order_id, tenant_id, variant_id, title, quantity, unit_price)
+            (order_id, tenant_id, variant_id, title, quantity, unit_price, line_total)
           values (
             ${oid},
             ${tenantId},
             ${variantInternalId},
             ${li.title},
             ${li.qty},
-            ${Math.round(li.unitPrice * 100)}
+            ${li.unitPrice},
+            ${li.unitPrice * li.qty}
           )
         `;
       }

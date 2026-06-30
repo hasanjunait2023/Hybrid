@@ -150,19 +150,21 @@ export async function updateOrderStatus(
         tx<
           {
             order_number: number;
-            total: string;
+            grand_total: string;
             payment_method: string;
             customer_name: string;
             customer_phone: string;
             tracking_code: string | null;
             store_name: string;
           }[]
-        >`select o.order_number, o.total, o.payment_method,
-                 c.name as customer_name, c.phone as customer_phone,
+        >`select o.order_number, o.grand_total,
+                 coalesce((select provider::text from payment where order_id = o.id order by created_at limit 1), 'cod') as payment_method,
+                 coalesce(c.name, o.customer_name, '') as customer_name,
+                 coalesce(c.phone, o.customer_phone, '') as customer_phone,
                  s.tracking_code,
                  t.name as store_name
             from orders o
-            join customer c on c.id = o.customer_id
+            left join customer c on c.id = o.customer_id
             join tenant t on t.id = o.tenant_id
             left join shipment s on s.order_id = o.id
            where o.id = ${orderId}
@@ -179,7 +181,7 @@ export async function updateOrderStatus(
           {
             storeName: r.store_name,
             orderNumber: r.order_number,
-            total: Number(r.total),
+            total: Number(r.grand_total),
             paymentMethod: r.payment_method === "bkash" ? "bkash" : "cod",
             customerName: r.customer_name,
             customerPhone: r.customer_phone,

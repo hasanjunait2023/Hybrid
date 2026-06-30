@@ -48,7 +48,12 @@ export async function readSteadfastCreds(tx: Tx): Promise<CourierCreds | null> {
   const row = rows[0];
   if (!row || !row.is_enabled || !isSealed(row.credentials)) return null;
 
-  const creds = openCredentials(row.credentials);
+  let creds: ReturnType<typeof openCredentials>;
+  try {
+    creds = openCredentials(row.credentials);
+  } catch {
+    return null;
+  }
   if (!creds.apiKey || !creds.secretKey) return null;
 
   return { apiKey: creds.apiKey, secretKey: creds.secretKey };

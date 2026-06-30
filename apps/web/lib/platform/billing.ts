@@ -122,7 +122,12 @@ export async function extendTrial(tenantId: string, days: number): Promise<void>
       update subscription
          set current_period_end = greatest(coalesce(current_period_end, now()), now()) + (${d} || ' days')::interval,
              status = 'trialing'
-       where tenant_id = ${tenantId}
+       where id = (
+         select id from subscription
+          where tenant_id = ${tenantId}
+          order by created_at desc
+          limit 1
+       )
     `;
     await tx`
       update tenant set status = 'trial', updated_at = now()

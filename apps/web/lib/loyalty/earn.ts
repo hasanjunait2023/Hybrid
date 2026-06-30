@@ -59,7 +59,7 @@ export async function getLoyaltyProgram(tenantId: string): Promise<LoyaltyProgra
  *  loyalty_ledger(order_id) WHERE reason='earn'. */
 export async function earnPointsOnDelivery(
   tenantId: string,
-  userId: string,
+  userId: string | null,
   orderId: string,
   grandTotal: number,
 ): Promise<{ points: number; awarded: boolean }> {

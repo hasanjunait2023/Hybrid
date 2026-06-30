@@ -13,6 +13,7 @@ import { getPlatformAdmin } from "@/lib/platform/auth";
 import { setTenantStatus, getTenantOwnerUserId } from "@/lib/platform/data";
 import { bustTenantDomainCache } from "@/lib/platform/cache";
 import { DEV_SESSION_COOKIE, signDevCookie } from "@/lib/auth/session";
+import { extendTrial } from "@/lib/platform/billing";
 
 const TenantId = z.string().uuid();
 
@@ -49,7 +50,15 @@ export async function suspendTenant(tenantId: string): Promise<PlatformActionRes
 }
 
 export async function reactivateTenant(tenantId: string): Promise<PlatformActionResult> {
-  return flipStatus(tenantId, "active");
+  const result = await flipStatus(tenantId, "active");
+  if (result.ok) {
+    // Restore the most recent subscription to trialing so the billing sweep
+    // tracks the tenant again. extendTrial also un-suspends tenant.status but
+    // only when status is in ('past_due','suspended') — since flipStatus already
+    // set it to 'active', this only affects the subscription row.
+    await extendTrial(tenantId, 7).catch(() => {});
+  }
+  return result;
 }
 
 // Impersonate a tenant owner — reuses the EXISTING dev-login seam (the signed

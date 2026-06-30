@@ -79,7 +79,10 @@ const ProductWriteSchema = z.object({
   status: z.enum(["active", "draft", "archived"]),
   options: z.array(OptionSchema).max(3).default([]),
   variants: z.array(VariantSchema).min(1, "অন্তত একটি ভ্যারিয়েন্ট দিন").max(100),
-  imageUrls: z.array(z.string().max(500)).max(20).default([]),
+  imageUrls: z
+    .array(z.string().max(500).refine((u) => /^https?:\/\//i.test(u), "ছবির URL-এ শুধু http/https অনুমোদিত।"))
+    .max(20)
+    .default([]),
   collectionIds: z.array(z.string().uuid()).max(50).default([]),
   marketplaceHidden: z.boolean().default(false),
 });

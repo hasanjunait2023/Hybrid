@@ -75,20 +75,20 @@ export async function listWholesaleProducts(opts: {
 
   const rows = await withPublic((tx) => {
     if (q) {
-      return tx.unsafe<(ListingRow & { moq: number | null; wholesale_only: boolean })[]>(`
+      return tx<(ListingRow & { moq: number | null; wholesale_only: boolean })[]>`
         select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
                price_from, image_url, in_stock, rating_avg, rating_count,
                moq, wholesale_only
           from marketplace_listing
          where status = 'active' and hidden = false
            and is_wholesale = true
-           and search_tsv @@ plainto_tsquery('simple', '${q.replace(/'/g, "''")}')
-         ${orderClause}
+           and search_tsv @@ plainto_tsquery('simple', ${q})
+         ${tx.unsafe(orderClause)}
          limit ${LIMIT}
-      `);
+      `;
     }
     if (cat) {
-      return tx.unsafe<(ListingRow & { moq: number | null; wholesale_only: boolean })[]>(`
+      return tx<(ListingRow & { moq: number | null; wholesale_only: boolean })[]>`
         select ml.product_id, ml.tenant_id, ml.vendor_slug, ml.slug, ml.title, ml.vendor_name,
                ml.price_from, ml.image_url, ml.in_stock, ml.rating_avg, ml.rating_count,
                ml.moq, ml.wholesale_only
@@ -96,21 +96,21 @@ export async function listWholesaleProducts(opts: {
           join marketplace_category c on c.id = ml.category_id
          where ml.status = 'active' and ml.hidden = false
            and ml.is_wholesale = true
-           and c.slug = '${cat.replace(/'/g, "''")}'
-         ${orderClause}
+           and c.slug = ${cat}
+         ${tx.unsafe(orderClause)}
          limit ${LIMIT}
-      `);
+      `;
     }
-    return tx.unsafe<(ListingRow & { moq: number | null; wholesale_only: boolean })[]>(`
+    return tx<(ListingRow & { moq: number | null; wholesale_only: boolean })[]>`
       select product_id, tenant_id, vendor_slug, slug, title, vendor_name,
              price_from, image_url, in_stock, rating_avg, rating_count,
              moq, wholesale_only
         from marketplace_listing
        where status = 'active' and hidden = false
          and is_wholesale = true
-       ${orderClause}
+       ${tx.unsafe(orderClause)}
        limit ${LIMIT}
-    `);
+    `;
   });
   return rows.map(toListing);
 }

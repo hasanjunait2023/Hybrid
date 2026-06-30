@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@/lib/auth/session";
+import { getActiveTenantId } from "@/lib/admin/data";
 import {
   sealIntegrationCredentials,
   createIntegration,
@@ -16,9 +17,19 @@ export interface ConnectResult {
   integrationId?: string;
 }
 
-export async function connectIntegrationAction(formData: FormData): Promise<ConnectResult> {
+async function authTenant(): Promise<
+  { ok: true; tenantId: string; userId: string } | { ok: false; error: string }
+> {
   const session = await getSession();
-  if (!session?.tenantId) return { ok: false, error: "unauthenticated" };
+  if (!session) return { ok: false, error: "unauthenticated" };
+  const tenantId = await getActiveTenantId(session.userId);
+  if (!tenantId) return { ok: false, error: "unauthenticated" };
+  return { ok: true, tenantId, userId: session.userId };
+}
+
+export async function connectIntegrationAction(formData: FormData): Promise<ConnectResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return { ok: false, error: auth.error };
 
   const platform = formData.get("platform") as IntegrationPlatform;
   const displayName = (formData.get("display_name") as string | null)?.trim() ?? platform;
@@ -40,8 +51,8 @@ export async function connectIntegrationAction(formData: FormData): Promise<Conn
 
   const sealed = sealIntegrationCredentials(creds);
   const integration = await createIntegration(
-    session.tenantId,
-    session.userId,
+    auth.tenantId,
+    auth.userId,
     platform,
     displayName,
     sealed,
@@ -50,15 +61,15 @@ export async function connectIntegrationAction(formData: FormData): Promise<Conn
 
   // Immediately set status to active (test passed)
   const { updateIntegrationStatus } = await import("@/lib/integrations/data");
-  await updateIntegrationStatus(session.tenantId, integration.id, "active");
+  await updateIntegrationStatus(auth.tenantId, integration.id, "active");
 
-  revalidateTag(`tenant:${session.tenantId}`);
+  revalidateTag(`tenant:${auth.tenantId}`);
   return { ok: true, integrationId: integration.id };
 }
 
 export async function testConnectionAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
-  const session = await getSession();
-  if (!session?.tenantId) return { ok: false, error: "unauthenticated" };
+  const auth = await authTenant();
+  if (!auth.ok) return { ok: false, error: auth.error };
 
   const platform = formData.get("platform") as IntegrationPlatform;
   let creds: PlatformCredentials;

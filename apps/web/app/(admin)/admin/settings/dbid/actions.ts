@@ -109,12 +109,31 @@ async function upsertWizard(
   const newStatus = existing[0]?.status ?? "in_progress";
 
   if (existing[0]) {
+    type PatchFields = {
+      nid_sealed?: unknown;
+      tin_sealed?: unknown;
+      trade_license_sealed?: unknown;
+      bin_sealed?: unknown;
+      business_name?: string;
+      business_type?: string;
+      owner_full_name?: string;
+      owner_dob?: string;
+    };
+    const p = patch as PatchFields;
+    const jsonOrNull = (v: unknown) => (v != null ? tx.json(v as Jsonb) : null);
     await tx`
       update dbid_submission
-      set ${tx.json(patch as unknown as Jsonb)},
-          step = ${newStep},
-          status = ${newStatus},
-          updated_at = now()
+      set nid_sealed            = coalesce(${jsonOrNull(p.nid_sealed)}, nid_sealed),
+          tin_sealed            = coalesce(${jsonOrNull(p.tin_sealed)}, tin_sealed),
+          trade_license_sealed  = coalesce(${jsonOrNull(p.trade_license_sealed)}, trade_license_sealed),
+          bin_sealed            = coalesce(${jsonOrNull(p.bin_sealed)}, bin_sealed),
+          business_name         = coalesce(${p.business_name ?? null}, business_name),
+          business_type         = coalesce(${p.business_type ?? null}, business_type),
+          owner_full_name       = coalesce(${p.owner_full_name ?? null}, owner_full_name),
+          owner_dob             = coalesce(${(p.owner_dob ?? null) as string | null}::date, owner_dob),
+          step                  = ${newStep},
+          status                = ${newStatus},
+          updated_at            = now()
       where id = ${existing[0].id}
     `;
   } else {
