@@ -303,6 +303,18 @@ export interface OrderDetail {
   source: string;
   note: string | null;
   placedAt: string;
+  // SLA tracking (Digital Commerce Guidelines 2021) — stamped at placement,
+  // immutable thereafter. Null for legacy orders placed before migration 28
+  // (UI shows "—" for those).
+  sla: {
+    zone: "same_city" | "out_city" | null;
+    handoverDeadlineAt: string | null;
+    deliveryDeadlineAt: string | null;
+    refundWindowClosesAt: string | null;
+    /** Null when admin hasn't overridden SLA for this order. */
+    overriddenBy: string | null;
+    overriddenReason: string | null;
+  };
   items: OrderItemRow[];
   payment: OrderPayment | null;
   shipment: OrderShipment | null;
@@ -349,11 +361,19 @@ export async function getOrderDetail(
         source: string;
         note: string | null;
         placed_at: string;
+        sla_zone: "same_city" | "out_city" | null;
+        sla_handover_deadline_at: string | null;
+        sla_delivery_deadline_at: string | null;
+        sla_refund_window_closes_at: string | null;
+        sla_overridden_by: string | null;
+        sla_overridden_reason: string | null;
       }[]
     >`
       select id, order_number, customer_id, customer_name, customer_phone, customer_email,
              shipping_address, subtotal, shipping_total, grand_total, cod_amount,
-             payment_status, fulfillment_status, source, note, placed_at
+             payment_status, fulfillment_status, source, note, placed_at,
+             sla_zone, sla_handover_deadline_at, sla_delivery_deadline_at,
+             sla_refund_window_closes_at, sla_overridden_by, sla_overridden_reason
       from orders where id = ${orderId} limit 1
     `;
     const o = orders[0];
@@ -470,6 +490,14 @@ export async function getOrderDetail(
       source: o.source,
       note: o.note,
       placedAt: o.placed_at,
+      sla: {
+        zone: o.sla_zone,
+        handoverDeadlineAt: o.sla_handover_deadline_at,
+        deliveryDeadlineAt: o.sla_delivery_deadline_at,
+        refundWindowClosesAt: o.sla_refund_window_closes_at,
+        overriddenBy: o.sla_overridden_by,
+        overriddenReason: o.sla_overridden_reason,
+      },
       items: items.map((i) => ({
         id: i.id,
         variantId: i.variant_id,

@@ -89,3 +89,37 @@ export function customerOrderStatusSms(
       return `${data.storeName} — আপনার অর্ডার ${orderLine} বাতিল হয়েছে। প্রয়োজনে কল করুন।`;
   }
 }
+
+// =============================================================================
+// SLA breach alerts (BD Digital Commerce Guidelines 2021) — fire from the
+// /api/internal/sla-sweep cron (every 30m). Recipient = the merchant (the
+// courier-side breach is something only the merchant can act on, not the
+// customer). All copy is in Bengali to match the rest of the SMS surface.
+// =============================================================================
+
+export interface MerchantHandoverOverdueInput {
+  orderNumber: number;
+  customerName: string;
+  /** How many hours past the 48h deadline (e.g. 6, 12, 24). */
+  hoursOverdue: number;
+}
+
+export function merchantHandoverOverdueSms(
+  input: MerchantHandoverOverdueInput,
+): string {
+  return `Hybrid — অর্ডার #${toBnDigits(input.orderNumber)} (${input.customerName}) এর কুরিয়ার হ্যান্ডওভার ${toBnDigits(input.hoursOverdue)} ঘণ্টা দেরি হয়েছে। দয়া করে আজই কুরিয়ারে দিন।`;
+}
+
+export interface MerchantDeliveryOverdueInput {
+  orderNumber: number;
+  customerName: string;
+  daysOverdue: number;
+  slaZone: "same_city" | "out_city";
+}
+
+export function merchantDeliveryOverdueSms(
+  input: MerchantDeliveryOverdueInput,
+): string {
+  const zone = input.slaZone === "same_city" ? "শহরের মধ্যে" : "শহরের বাইরে";
+  return `Hybrid — অর্ডার #${toBnDigits(input.orderNumber)} (${input.customerName}) ডেলিভারি ${toBnDigits(input.daysOverdue)} দিন দেরি (${zone} SLA)। কুরিয়ার ট্র্যাক করুন ও গ্রাহককে আপডেট দিন।`;
+}

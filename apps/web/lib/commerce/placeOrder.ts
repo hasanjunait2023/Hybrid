@@ -21,6 +21,7 @@ import { randomUUID } from "node:crypto";
 import { withTenant } from "@hybrid/db";
 import type { Tx } from "@hybrid/db";
 import { upsertCustomerByPhone } from "./customer";
+import { computeSlaForOrder } from "@/lib/sla/compute";
 
 // 'hybridpay' is Hybrid's single white-labeled online gateway (subsumes the
 // individual MFS gateways — bKash/Nagad are methods INSIDE Hybrid Pay, not
@@ -481,6 +482,44 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     // (4) INSERT orders. order_number is assigned by the assign_order_number
     // trigger. COD is confirmed immediately; bKash stays pending until executed.
+    //
+    // SLA stamping (Digital Commerce Guidelines 2021): load the tenant's
+    // shipping_config origin (same query the shipping calculator uses) and
+    // compute deadlines from placed_at + dest. The deadlines are frozen at
+    // placement so subsequent edits to the tenant's origin don't move the
+    // timer. If no shipping_config exists (tenant never configured shipping)
+    // we still stamp deadlines using the dest as its own "origin" → forces
+    // same_city 5d deadline (conservative: never under-promise to the
+    // customer). Null deadlines are also valid for non-shipping orders
+    // (digital products, pickup) but placeOrder today is shipping-only.
+    const slaRows = await tx<
+      {
+        origin_division: string | null;
+        origin_district: string | null;
+      }[]
+    >`
+      select origin_division, origin_district
+      from shipping_config
+      where tenant_id = ${input.tenantId}
+      limit 1
+    `;
+    const origin = slaRows[0]
+      ? {
+          division: slaRows[0].origin_division,
+          district: slaRows[0].origin_district,
+        }
+      : {
+          // Tenant has no shipping_config — fall back to "dest == origin" so the
+          // timer defaults to same_city 5d. Safe: never shortens the customer's
+          // entitlement (the 10d out-city deadline would only help the merchant).
+          division: input.shippingAddress.division,
+          district: input.shippingAddress.district,
+        };
+    const sla = computeSlaForOrder(new Date(), origin, {
+      division: input.shippingAddress.division,
+      district: input.shippingAddress.district,
+    });
+
     const orderRows = await tx<{ id: string; order_number: string }[]>`
       insert into orders (
         tenant_id, customer_id,
@@ -489,7 +528,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         subtotal, discount_total, discount_code,
         shipping_total, grand_total, cod_amount, currency,
         payment_status, fulfillment_status, source, channel, marketplace_order_id,
-        order_mode, credit_due, credit_approved, note
+        order_mode, credit_due, credit_approved, note,
+        sla_zone, sla_handover_deadline_at, sla_delivery_deadline_at
       ) values (
         ${input.tenantId}, ${customerId},
         ${input.customer.name}, ${input.customer.phone}, ${input.customer.email ?? null},
@@ -507,7 +547,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         ${isCod ? "confirmed" : "pending"},
         ${input.source}, ${input.channel ?? "storefront"}, ${input.marketplaceOrderId ?? null},
         ${orderModeValue}, ${creditDue}, ${isCreditSale},
-        ${input.note ?? null}
+        ${input.note ?? null},
+        ${sla.zone}, ${sla.handover.toISOString()}, ${sla.delivery.toISOString()}
       )
       returning id, order_number
     `;

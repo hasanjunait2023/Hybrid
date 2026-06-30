@@ -12,6 +12,7 @@ import { ManualPaymentForm } from "./ManualPaymentForm";
 import { CustomerHistorySidebar } from "./CustomerHistorySidebar";
 import { OrderNotesPanelWrapper } from "./OrderNotesPanelWrapper";
 import { Breadcrumbs } from "../../_ui";
+import { SlaBadges, type SlaBadgesProps } from "./SlaBadges";
 
 // Order detail (DESIGN §P3.3). Header = order# + stepper + contextual action.
 // Two-column ≥ lg, stacked on mobile. Latin numerals, mono amounts (§4.4).
@@ -64,6 +65,16 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
         <div className="mt-5 border-t border-border pt-5">
           <StatusStepper status={order.fulfillmentStatus} />
+        </div>
+
+        {/* BD Digital Commerce Guidelines 2021 SLA — handover + delivery status */}
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <span className="text-xs font-semibold text-ink-muted">SLA:</span>
+          <SlaBadges
+            deadlines={order.sla}
+            fulfillmentStatus={order.fulfillmentStatus as SlaBadgesProps["fulfillmentStatus"]}
+            deliveredAt={null}
+          />
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
