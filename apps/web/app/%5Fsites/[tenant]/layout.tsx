@@ -40,7 +40,7 @@ export default async function StorefrontLayout({
 
   return (
     <LocaleProvider locale={locale}>
-      <div style={themeStyle} className="flex min-h-screen flex-col bg-bg">
+      <div data-site="storefront" style={themeStyle} className="flex min-h-screen flex-col bg-bg">
         <StoreHeader store={ctx.store} lang={locale} toggle={<LanguageToggle />} />
         {/* DBID verified trust badge — only shown when the seller has an approved DBID. */}
         {ctx.dbidVerified && (

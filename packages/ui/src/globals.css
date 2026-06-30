@@ -2,10 +2,12 @@
  *
  * Single source of token truth (docs/DESIGN.md §3). Authored as CSS custom
  * properties, mapped into Tailwind by @hybrid/config/tailwind/preset.mjs.
- * Light-first; dark mode is intentionally out of scope (reads low-trust for COD).
+ * Light-first; storefront stays light-only (low-trust for COD e-commerce in BD).
+ * Admin / Platform / Marketplace / Marketing support dark mode via
+ * prefers-color-scheme — :has([data-site="storefront"]) excludes it.
  *
  * Tenant theme settings override --color-primary / --color-accent per request:
- * the storefront layout injects them as an inline style on <html> from
+ * the storefront layout injects them as an inline style on a wrapper div from
  * tenant_theme_settings.settings.colors. Everything else stays constant.
  */
 @tailwind base;
@@ -13,11 +15,11 @@
 @tailwind utilities;
 
 :root {
-  /* ---- Color: brand ---- */
-  --color-primary: #1d4ed8; /* Indigo 700 — CTA, links, focus */
-  --color-primary-hover: #1e40af; /* Indigo 800 */
-  --color-primary-active: #1e3a8a; /* Indigo 900 */
-  --color-primary-weak: #eff4ff; /* indigo tint surface */
+  /* ---- Color: brand (Hybrid violet — matches logo gradient) ---- */
+  --color-primary: #7c3aed; /* Violet 600 — CTA, links, focus */
+  --color-primary-hover: #6d28d9; /* Violet 700 */
+  --color-primary-active: #5b21b6; /* Violet 800 */
+  --color-primary-weak: #ede9fe; /* Violet 100 tint surface */
 
   --color-accent: #f59e0b; /* Marigold 500 — sale tags, ratings */
   --color-accent-hover: #d97706; /* Marigold 600 */
@@ -44,7 +46,7 @@
   --color-warning-weak: #fbeedc;
   --color-danger: #b91c1c;
   --color-danger-weak: #fbe9e9;
-  --color-info: #1d4ed8;
+  --color-info: #0369a1; /* Sky 700 — distinct from brand violet */
 
   /* ---- Phase-1: order / shipment lifecycle status colors (DESIGN §P0) ----
    * One color per state, rendered as a chip (weak bg + strong text + dot/icon).
@@ -52,8 +54,8 @@
    * a distinct read (shipped = motion teal, returned = amber-brown). */
   --color-st-pending: #b45309; /* = warning */
   --color-st-pending-weak: #fbeedc;
-  --color-st-confirmed: #1d4ed8; /* = primary */
-  --color-st-confirmed-weak: #eff4ff;
+  --color-st-confirmed: #7c3aed; /* = primary violet */
+  --color-st-confirmed-weak: #ede9fe;
   --color-st-packed: #b7791f; /* darker marigold for text contrast */
   --color-st-packed-weak: #fef3c7;
   --color-st-shipped: #0e7490; /* cyan-700 — "on the road" */
@@ -126,7 +128,7 @@
   --shadow-sm: 0 1px 3px rgba(26, 24, 20, 0.08), 0 1px 2px rgba(26, 24, 20, 0.04);
   --shadow-md: 0 4px 12px rgba(26, 24, 20, 0.08);
   --shadow-lg: 0 10px 28px rgba(26, 24, 20, 0.1);
-  --shadow-focus: 0 0 0 3px rgba(29, 78, 216, 0.35);
+  --shadow-focus: 0 0 0 3px rgba(124, 58, 237, 0.35); /* violet focus ring */
 
   /* ---- Motion ---- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -148,7 +150,7 @@
 
   /* ---- shadcn/ui compatibility layer (DESIGN §7.1) ----
    * Point shadcn's vars at our tokens so any shadcn primitive inherits the
-   * Bazaar Modern look (warm neutrals, indigo, 10px radius) instead of the
+   * Bazaar Modern look (warm neutrals, violet, 10px radius) instead of the
    * default cold-gray Vercel demo aesthetic. */
   --background: var(--color-bg);
   --foreground: var(--color-text);
@@ -170,6 +172,76 @@
   --input: var(--color-border-strong);
   --ring: var(--color-primary);
   --radius: 10px;
+}
+
+/* ---- Dark mode (admin / platform / marketplace / marketing only) ----
+ * :has([data-site="storefront"]) guards against overriding the per-tenant
+ * light palette on storefront pages — COD commerce reads as lower-trust in
+ * dark mode, so storefronts always stay light. */
+@media (prefers-color-scheme: dark) {
+  html:not(:has([data-site="storefront"])) {
+    color-scheme: dark;
+
+    /* Primary: Violet 400 — logo gradient's lighter end, legible on dark surfaces */
+    --color-primary: #a78bfa;
+    --color-primary-hover: #c4b5fd; /* Violet 300 */
+    --color-primary-active: #8b5cf6; /* Violet 500 — press state */
+    --color-primary-weak: #2d1b69; /* dark violet tint for badges / weak bg */
+
+    /* Accent: Marigold unchanged — it glows beautifully against dark */
+    --color-accent-weak: #2a1e06;
+
+    /* Neutrals: deep violet-tinted dark (avoids cold charcoal) */
+    --color-bg: #0c0a1a;
+    --color-surface: #16122b;
+    --color-surface-2: #1e1a38;
+    --color-border: #2e274d;
+    --color-border-strong: #3d3466;
+
+    /* Text */
+    --color-text: #f0edff;
+    --color-text-muted: #b8b0d6;
+    --color-text-subtle: #7a7299;
+
+    /* Semantic: brighter variants for dark-bg contrast */
+    --color-success: #4ade80; /* Green 400 */
+    --color-success-weak: #0a2312;
+    --color-cod: #34d399; /* Emerald 400 */
+    --color-cod-weak: #062616;
+    --color-warning: #fbbf24; /* Amber 400 */
+    --color-warning-weak: #261800;
+    --color-danger: #f87171; /* Red 400 */
+    --color-danger-weak: #1f0808;
+    --color-info: #60a5fa; /* Blue 400 */
+
+    /* Order lifecycle on dark */
+    --color-st-pending: #fbbf24;
+    --color-st-pending-weak: #261800;
+    --color-st-confirmed: #a78bfa;
+    --color-st-confirmed-weak: #2d1b69;
+    --color-st-packed: #fcd34d;
+    --color-st-packed-weak: #262010;
+    --color-st-shipped: #22d3ee; /* Cyan 400 */
+    --color-st-shipped-weak: #062028;
+    --color-st-delivered: #4ade80;
+    --color-st-delivered-weak: #0a2312;
+    --color-st-returned: #fca5a5; /* Red 300 */
+    --color-st-returned-weak: #1f0808;
+    --color-st-cancelled: #f87171;
+    --color-st-cancelled-weak: #1f0808;
+
+    /* bKash on dark */
+    --color-bkash: #f9a8d4; /* Pink 300 */
+    --color-bkash-weak: #2d0a1a;
+    --color-bkash-text: #fbcfe8; /* Pink 200 */
+
+    /* Shadows: darker, no warm cast */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.6);
+    --shadow-focus: 0 0 0 3px rgba(167, 139, 250, 0.4); /* Violet 400 focus */
+  }
 }
 
 @layer base {
