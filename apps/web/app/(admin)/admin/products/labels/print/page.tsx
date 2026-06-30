@@ -119,7 +119,7 @@ export default function LabelsPrintPage() {
           padding: 4px 6px;
           background: white;
           color: black;
-          border: 1px dashed #ddd;
+          border: 1px dashed var(--color-border, lightgray);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -185,8 +185,8 @@ function LabelTile({ label }: { label: LabelCandidate }) {
         height: 12, // mm
         includetext: false, // we render the digits ourselves in the tile
         scale: 2,
-        barcolor: "#000000",
-        backgroundcolor: "#ffffff",
+        barcolor: "black",
+        backgroundcolor: "white",
       });
       svgRef.current.innerHTML = svgString;
     } catch {

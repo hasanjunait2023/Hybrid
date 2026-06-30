@@ -11,7 +11,6 @@
 //   • "Show products missing barcodes" — inline filter (highlighted rows)
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/useT";
 import { Button } from "@hybrid/ui";
 
@@ -25,7 +24,6 @@ interface Candidate {
 
 export function PickerClient() {
   const m = useT();
-  const router = useRouter();
   const [items, setItems] = useState<Candidate[]>([]);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [showMissing, setShowMissing] = useState(false);
