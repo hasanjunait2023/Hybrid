@@ -106,6 +106,13 @@ export interface PlaceOrderInput {
    * before passing this value — never trust the client directly.
    */
   bumpTotal?: number;
+  /**
+   * Client-supplied dedupe key (UUID v4). A re-submit with the same key returns
+   * the existing order without creating a new one — guards against network jitter
+   * and form double-submits that slip past the client-side submitLockRef.
+   * Null/undefined → no idempotency check (admin manual, API, legacy paths).
+   */
+  idempotencyKey?: string | null;
 }
 
 export interface PlaceOrderResult {
@@ -210,6 +217,7 @@ async function reserveLine(
        set inventory_quantity = inventory_quantity - ${item.quantity}
      where id = ${item.variantId}
        and tenant_id = ${tenantId}
+       and is_active = true
        and track_inventory = true
        and inventory_quantity >= ${item.quantity}
     returning id, price, product_id, title, sku
@@ -229,17 +237,18 @@ async function reserveLine(
       title: string | null;
       sku: string | null;
       track_inventory: boolean;
+      is_active: boolean;
     }[]
   >`
-    select id, price, product_id, title, sku, track_inventory
+    select id, price, product_id, title, sku, track_inventory, is_active
       from product_variant
      where id = ${item.variantId} and tenant_id = ${tenantId}
      limit 1
   `;
 
   const found = variant[0];
-  if (!found || found.track_inventory) {
-    // Not found (cross-tenant / bad id) OR tracked-but-insufficient → reject.
+  if (!found || !found.is_active || found.track_inventory) {
+    // Not found, inactive variant, or tracked-but-insufficient → reject.
     throw new InsufficientStockError(item.variantId);
   }
   // Untracked variant — sell without decrementing.
@@ -387,6 +396,30 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const discountCode = input.discountCode?.trim() || null;
 
   return withTenant(input.tenantId, input.userId, async (tx) => {
+    // (0) Idempotency pre-check: return the existing order if the key was seen before.
+    if (input.idempotencyKey) {
+      const existing = await tx<{ id: string; order_number: string; payment_id: string }[]>`
+        select o.id, o.order_number, p.id as payment_id
+          from orders o
+          join payment p on p.order_id = o.id
+         where o.tenant_id = ${input.tenantId}
+           and o.idempotency_key = ${input.idempotencyKey}
+         limit 1
+      `;
+      if (existing[0]) {
+        const row = existing[0]!;
+        return {
+          orderId: row.id,
+          orderNumber: Number(row.order_number),
+          paymentId: row.payment_id,
+          bkashRequired: false,
+          onlineRequired: false,
+          discount: null,
+          analyticsEventId: "",
+        };
+      }
+    }
+
     // (1) customer upsert by phone.
     const customerId = await upsertCustomerByPhone(tx, input.tenantId, {
       phone: input.customer.phone,
@@ -510,7 +543,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         shipping_address,
         subtotal, discount_total, discount_code,
         shipping_total, grand_total, cod_amount, currency,
-        payment_status, fulfillment_status, source, channel, marketplace_order_id, note
+        payment_status, fulfillment_status, source, channel, marketplace_order_id, note,
+        idempotency_key
       ) values (
         ${input.tenantId}, ${customerId},
         ${input.customer.name}, ${input.customer.phone}, ${input.customer.email ?? null},
@@ -527,7 +561,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         'unpaid',
         ${isCod ? "confirmed" : "pending"},
         ${input.source}, ${input.channel ?? "storefront"}, ${input.marketplaceOrderId ?? null},
-        ${input.note ?? null}
+        ${input.note ?? null},
+        ${input.idempotencyKey ?? null}
       )
       returning id, order_number
     `;

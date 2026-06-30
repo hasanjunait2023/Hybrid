@@ -60,6 +60,9 @@ const checkoutSchema = z.object({
   // verified primary domain + request scheme — never from a client-supplied
   // origin (open-redirect / phishing aid). Any `origin` the client sends is
   // ignored; the schema accepts unknown extra keys by default.
+  // Client-minted dedupe key (UUID v4). Passed through to placeOrder's
+  // idempotency pre-check so a network-retried submit returns the existing order.
+  idempotencyKey: z.string().uuid().optional(),
 });
 
 // Per-IP / per-phone abuse dampener thresholds for checkout submission. Fails
@@ -188,6 +191,7 @@ export async function submitCheckout(
       discountCode: input.discountCode ?? null,
       shippingTotal: shipQuote.amount ?? 0,
       bumpTotal: bumpTotal > 0 ? bumpTotal : undefined,
+      idempotencyKey: input.idempotencyKey ?? null,
     });
   } catch (error) {
     if (error instanceof InsufficientStockError) {

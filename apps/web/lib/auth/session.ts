@@ -248,8 +248,11 @@ function verifyDevCookie(raw: string): string | null {
     return null;
   }
 
-  const a = Buffer.from(presented, "utf8");
-  const b = Buffer.from(expected, "utf8");
-  if (a.length !== b.length) return null;
-  return timingSafeEqual(a, b) ? userId : null;
+  // Always compare fixed-size buffers so `timingSafeEqual` runs in constant time
+  // regardless of `presented` length — prevents a timing oracle on length mismatch.
+  const b = Buffer.from(expected, "utf8"); // always 64 bytes (sha256 hex)
+  const a = Buffer.alloc(b.length, 0);
+  Buffer.from(presented, "utf8").copy(a, 0, 0, b.length);
+  const matched = timingSafeEqual(a, b);
+  return matched && presented.length === b.length ? userId : null;
 }

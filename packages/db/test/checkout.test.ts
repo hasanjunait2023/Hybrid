@@ -275,10 +275,11 @@ describe("bKash callback — replay idempotency (webhook_event guard)", () => {
     // dropped by a clobbering `payload = {...}` set, killing purchase analytics).
     expect(state.payment[0]!.payload?.analytics?.eventId).toBe("evt-survives-001");
 
-    // execute was called on BOTH callbacks (the guard is at the DB write, not the
-    // provider call) — but the STATE TRANSITION happened once. The second call's
-    // claim lost the race, so the second execute's result was discarded.
-    expect(stub.executeCalls()).toBe(2);
+    // execute was called only ONCE — the payment-status pre-check short-circuits
+    // the second callback before it hits the gateway. The DB-level guard
+    // (webhook_event unique) is still the authoritative race safety net; the
+    // pre-check is an optimisation that avoids a redundant gateway round-trip.
+    expect(stub.executeCalls()).toBe(1);
   });
 });
 

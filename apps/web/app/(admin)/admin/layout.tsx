@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getTenantBusinessType } from "@/lib/admin/wholesale";
+import { getTenantSlug } from "@/lib/theme/data";
 import { platformHomeUrl, loginPath } from "@/lib/auth/urls";
 import { HybridLogo } from "@hybrid/ui";
 import { getDict } from "@/lib/i18n/server";
@@ -32,9 +33,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect(await platformHomeUrl());
 
-  const { locale, d } = await getDict();
-  const businessType = await getTenantBusinessType(tenantId);
+  const [{ locale, d }, businessType, tenantSlug] = await Promise.all([
+    getDict(),
+    getTenantBusinessType(tenantId),
+    getTenantSlug(tenantId, session.userId),
+  ]);
   const showWholesale = businessType === "wholesale" || businessType === "both";
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "lvh.me:3000";
+  const storefrontUrl = tenantSlug ? `//${tenantSlug}.${rootDomain}` : null;
 
   return (
     <LocaleProvider locale={locale}>
@@ -52,12 +58,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                   {tenantId.slice(0, 8)}
                 </span>
                 <LanguageToggle />
-                <a
-                  href={`/dev-login?as=owner-a`}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-surface-2"
-                >
-                  {d.admin.shell.storeLink}
-                </a>
+                {storefrontUrl && (
+                  <a
+                    href={storefrontUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-surface-2"
+                  >
+                    {d.admin.shell.storeLink}
+                  </a>
+                )}
               </span>
             </div>
           </header>

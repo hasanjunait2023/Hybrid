@@ -64,6 +64,12 @@ export function CheckoutForm({
   // between the first handleSubmit call and the React state re-render that sets
   // submitting=true. A ref update is synchronous; useState is not.
   const submitLockRef = useRef(false);
+  // Per-checkout-session dedupe key. Minted once on mount; sent with every submit
+  // attempt so the server can return the existing order on a network-retried submit.
+  const idempotencyKeyRef = useRef<string | null>(null);
+  if (idempotencyKeyRef.current === null) {
+    idempotencyKeyRef.current = crypto.randomUUID();
+  }
   const [error, setError] = useState<string | null>(null);
   // Live shipping charge for display (null = not configured / not yet quoted).
   // The authoritative value is re-computed server-side at submit.
@@ -159,6 +165,7 @@ export function CheckoutForm({
       items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
       lpSlug: lpSlug ?? undefined,
       selectedBumpLabels: selectedBumps.size > 0 ? [...selectedBumps] : undefined,
+      idempotencyKey: idempotencyKeyRef.current ?? undefined,
     });
 
     if (!result.ok) {

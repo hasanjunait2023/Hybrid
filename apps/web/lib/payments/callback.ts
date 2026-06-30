@@ -197,6 +197,13 @@ export async function processGatewayCallback(
     return { outcome: "unknown", tenantSlug: lookup.tenantSlug, orderNumber: lookup.orderNumber };
   }
 
+  // Short-circuit: payment already in a terminal success state — skip the gateway
+  // call entirely. A concurrent callback that lost the claimWebhookEvent race would
+  // have committed the status flip; re-executing would waste a gateway round-trip.
+  if (lookup.paymentStatus === "success") {
+    return { outcome: "replayed", tenantSlug: lookup.tenantSlug, orderNumber: lookup.orderNumber };
+  }
+
   // Execute the payment (server-side, authoritative). If execute didn't yield a
   // terminal success — the callback/execute can be lost — fall back to query.
   let state: PaymentState;
