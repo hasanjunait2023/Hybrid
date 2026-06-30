@@ -21,7 +21,7 @@ export function ModerateButtons({ reviewId }: { reviewId: string }) {
         type="button"
         disabled={busy}
         onClick={() => act(true)}
-        className="rounded bg-primary px-3 py-1 text-sm text-white hover:bg-primary-hover disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center rounded bg-primary px-3 py-1 text-sm text-white hover:bg-primary-hover disabled:opacity-50"
       >
         অনুমোদন
       </button>
@@ -29,7 +29,7 @@ export function ModerateButtons({ reviewId }: { reviewId: string }) {
         type="button"
         disabled={busy}
         onClick={() => act(false)}
-        className="rounded border border-border px-3 py-1 text-sm disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center rounded border border-border px-3 py-1 text-sm disabled:opacity-50"
       >
         বাতিল
       </button>

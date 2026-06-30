@@ -72,7 +72,7 @@ export function ReviewRow({ review }: { review: Review }) {
             type="button"
             disabled={pending}
             onClick={() => moderate("approved")}
-            className="rounded-md bg-success px-3 py-1.5 text-xs font-semibold text-ink-on-primary hover:opacity-90 disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-success px-3 py-1.5 text-xs font-semibold text-ink-on-primary hover:opacity-90 disabled:opacity-50"
           >
             {t.action.approve}
           </button>
@@ -82,7 +82,7 @@ export function ReviewRow({ review }: { review: Review }) {
             type="button"
             disabled={pending}
             onClick={() => moderate("rejected")}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger-weak disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-border-strong px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger-weak disabled:opacity-50"
           >
             {t.action.reject}
           </button>
