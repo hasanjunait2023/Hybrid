@@ -1,6 +1,4 @@
 import { notFound } from "next/navigation";
-// Must be dynamic — searchParams (phone) is only available at request time.
-export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
 import {
   CheckCircleIcon,
@@ -13,6 +11,9 @@ import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { OrderLookup } from "./OrderLookup";
 import { PurchaseTracker } from "./PurchaseTracker";
+
+// Must be dynamic — searchParams (phone) is only available at request time.
+export const dynamic = "force-dynamic";
 
 interface OrderPageProps {
   params: Promise<{ tenant: string; orderNumber: string }>;
