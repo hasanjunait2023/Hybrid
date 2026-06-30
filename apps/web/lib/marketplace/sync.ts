@@ -80,8 +80,10 @@ async function readSource(tenantId: string, productId: string): Promise<ListingS
     if (!tenant) return null;
 
     const variants = await tx<VariantSource[]>`
-      select id, title, options, price, wholesale_price, tier_prices, moq,
-             inventory_quantity, track_inventory, position
+      select id, title, options, price,
+             wholesale_price  as "wholesalePrice",
+             tier_prices      as "tierPrices",
+             moq, inventory_quantity, track_inventory, position
         from product_variant
        where product_id = ${productId} and is_active = true
        order by position asc, created_at asc
