@@ -34,8 +34,10 @@ coverage/
 # embedded-postgres ephemeral test cluster (safety net; also in packages/db/.gitignore)
 .pgtmp/
 .pgtmp.json
+.pgtmp-gen/
 **/.pgtmp/
 **/.pgtmp.json
+**/.pgtmp-gen/
 
 # docker volumes (if ever bound locally)
 .pgdata/
