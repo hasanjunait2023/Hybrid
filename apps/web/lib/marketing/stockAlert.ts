@@ -88,7 +88,7 @@ export async function runStockAlertSweep(
             5
           )
           and (v.last_low_stock_alert_at is null
-               or v.last_low_stock_alert_at < ${now.toISOString()}::timestamptz - interval '${COOLDOWN_HOURS} hours')
+               or v.last_low_stock_alert_at < ${now.toISOString()}::timestamptz - (${COOLDOWN_HOURS} || ' hours')::interval)
         order by v.inventory_quantity asc
         limit 500
       `,

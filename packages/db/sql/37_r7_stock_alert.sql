@@ -52,15 +52,16 @@ begin
   end if;
 end $$;
 
--- Partial index keeps the sweep cheap: only variants below the bar
--- AND not recently alerted. Sweep hits this index and walks the
--- few hundred "currently low + not-alerted-today" rows.
+-- Partial index keeps the sweep cheap: only variants that could
+-- possibly be "low" (≤10 in stock, regardless of threshold). The
+-- threshold comparison itself runs in the sweep query — keeping
+-- that out of the index lets us avoid a per-row timestamp
+-- dependency (now() in an index predicate must be IMMUTABLE, and
+-- the version of now() we get is not).
 create index if not exists product_variant_low_stock_idx
   on product_variant (tenant_id, inventory_quantity)
   where track_inventory = true
-    and inventory_quantity <= 10
-    and (last_low_stock_alert_at is null
-         or last_low_stock_alert_at < now() - interval '24 hours');
+    and inventory_quantity <= 10;
 
 -- Down migration
 -- (see packages/db/sql/down/37_r7_stock_alert.down.sql)
