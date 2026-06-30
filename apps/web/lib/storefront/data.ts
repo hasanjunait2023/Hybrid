@@ -581,6 +581,7 @@ export async function getStorefrontProducts(
             price: string | null;
             compare_at_price: string | null;
             inventory_quantity: number | null;
+            image_url: string | null;
           }[]
         >`
           select
@@ -603,7 +604,14 @@ export async function getStorefrontProducts(
               select coalesce(sum(v.inventory_quantity), 0)
               from product_variant v
               where v.product_id = p.id and v.is_active = true
-            ) as inventory_quantity
+            ) as inventory_quantity,
+            (
+              select i.url
+              from product_image i
+              where i.product_id = p.id
+              order by i.position asc
+              limit 1
+            ) as image_url
           from product p
           where p.status = 'active'
           order by p.created_at desc
@@ -618,6 +626,7 @@ export async function getStorefrontProducts(
         compareAtPrice: r.compare_at_price != null ? Number(r.compare_at_price) : null,
         inStock: (r.inventory_quantity ?? 0) > 0,
         codEnabled: true,
+        imageUrl: r.image_url,
       }));
     },
     [`products:${tenantId}`],
