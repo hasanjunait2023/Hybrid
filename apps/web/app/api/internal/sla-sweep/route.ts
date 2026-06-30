@@ -35,7 +35,16 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const result = await runSlaSweep({ now: new Date() });
+  // Top-level try/catch mirrors auto-cancel-unpaid and billing-sweep. Prevents
+  // an unhandled runner exception from surfacing as a Next.js stack trace in
+  // the orchestrator log and breaking the orchestrator's tally parse.
+  let result: Awaited<ReturnType<typeof runSlaSweep>>;
+  try {
+    result = await runSlaSweep({ now: new Date() });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,

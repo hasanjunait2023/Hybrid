@@ -38,7 +38,16 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const result = await runAutoCancelSweep({ now: new Date() });
+  // Top-level try/catch so a runner exception becomes a 500 with envelope
+  // (matching billing/courier sweep behaviour) instead of bubbling up as an
+  // unhandled Next.js error that breaks the orchestrator log shape.
+  let result: Awaited<ReturnType<typeof runAutoCancelSweep>>;
+  try {
+    result = await runAutoCancelSweep({ now: new Date() });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
