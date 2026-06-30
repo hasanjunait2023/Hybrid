@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { BottomTab } from "./_BottomTab";
 
 export const dynamic = "force-dynamic";
 
@@ -90,34 +91,32 @@ export default function MarketLayout({ children }: { children: ReactNode }) {
         </nav>
       </header>
 
-      {/* Page content — bottom padding so fixed tab bar never covers content */}
-      <main className="mx-auto max-w-5xl px-4 py-4 pb-24 sm:pb-4">{children}</main>
+      {/* Page content — pb-28 leaves enough room for 56px tab bar + ≈34px iOS safe area */}
+      <main className="mx-auto max-w-5xl px-4 py-4 pb-28 sm:pb-4">{children}</main>
 
-      {/* ── Mobile bottom tab bar ── */}
+      {/* ── Mobile bottom tab bar: Home · Wishlist · Wholesale · Account ── */}
       <nav
         aria-label="নেভিগেশন"
         className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-surface sm:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <TabLink href="/" icon={
+        <BottomTab href="/" icon={
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 21V12h6v9" />
           </svg>
         } label="হোম" />
-        <TabLink href="/account/wishlist" icon={
+        <BottomTab href="/account/wishlist" icon={
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
             <path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
         } label="উইশলিস্ট" />
-        <TabLink href="/cart" icon={
+        <BottomTab href="/wholesale" icon={
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <path strokeLinecap="round" d="M16 10a4 4 0 0 1-8 0" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9h18M3 15h18M9 3v18M15 3v18" />
           </svg>
-        } label="কার্ট" />
-        <TabLink href="/account" icon={
+        } label="পাইকারি" />
+        <BottomTab href="/account" icon={
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
             <path strokeLinecap="round" strokeLinejoin="round" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
@@ -125,25 +124,5 @@ export default function MarketLayout({ children }: { children: ReactNode }) {
         } label="অ্যাকাউন্ট" />
       </nav>
     </div>
-  );
-}
-
-function TabLink({
-  href,
-  icon,
-  label,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-ink-muted transition-colors hover:text-primary active:text-primary"
-    >
-      {icon}
-      <span className="text-2xs font-medium">{label}</span>
-    </Link>
   );
 }

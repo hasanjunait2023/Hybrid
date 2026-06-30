@@ -45,14 +45,14 @@ export function MobileMenu({
         )}
       </button>
 
-      {/* Backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-ink/40 lg:hidden"
-          aria-hidden="true"
-          onClick={() => setOpen(false)}
-        />
-      )}
+      {/* Backdrop — always mounted; fades with the drawer so there's no abrupt flash on close */}
+      <div
+        className={`fixed inset-0 z-40 bg-ink/40 transition-opacity duration-300 lg:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        aria-hidden="true"
+        onClick={() => setOpen(false)}
+      />
 
       {/* Drawer */}
       <div

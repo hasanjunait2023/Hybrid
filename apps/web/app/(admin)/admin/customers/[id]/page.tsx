@@ -69,11 +69,11 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                   <PhoneIcon className="h-4 w-4" /> {customer.phone}
                 </a>
                 <a
-                  href="https://m.me/"
+                  href={`https://wa.me/${customer.phone?.replace(/\D/g, "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex min-h-[44px] w-11 items-center justify-center text-ink-subtle hover:text-primary"
-                  aria-label="Messenger"
+                  aria-label="WhatsApp"
                 >
                   <ChatIcon className="h-4 w-4" />
                 </a>
@@ -83,7 +83,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </div>
 
         {/* Trust signals */}
-        <div className={`mt-4 grid gap-3 border-t border-border pt-4 text-center ${loyaltyBalance ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+        <div className={`mt-4 grid gap-3 border-t border-border pt-4 text-center ${loyaltyBalance ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"}`}>
           <Stat label={t.statOrders} value={formatNumber(customer.ordersCount, locale)} />
           <Stat label={t.statSpent} value={formatMoney(customer.totalSpent, locale)} mono />
           <Stat

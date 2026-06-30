@@ -43,7 +43,7 @@ export function StoreHeader({ store, cartCount = 0, lang = "en", toggle }: Store
           {phone && (
             <a
               href={`tel:${phone}`}
-              className="inline-flex min-h-[36px] shrink-0 items-center gap-1 font-semibold hover:underline"
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-1 font-semibold hover:underline"
             >
               <PhoneIcon width={13} height={13} />
               {lang === "bn" ? toBnDigits(phone) : phone}

@@ -45,19 +45,19 @@ export default async function WholesaleLayout({
           <div className="flex min-w-max items-center gap-1 px-4 py-1 text-sm sm:gap-2">
             <a
               href="/wholesale"
-              className="inline-flex min-h-[40px] items-center px-3 font-semibold text-primary hover:text-primary-hover"
+              className="inline-flex min-h-[44px] items-center px-3 font-semibold text-primary hover:text-primary-hover"
             >
               পাইকারি পণ্য
             </a>
             <a
               href="/wholesale/cart"
-              className="inline-flex min-h-[40px] items-center px-3 text-ink-muted hover:text-ink"
+              className="inline-flex min-h-[44px] items-center px-3 text-ink-muted hover:text-ink"
             >
               কার্ট
             </a>
             <a
               href="/wholesale/checkout"
-              className="inline-flex min-h-[40px] items-center px-3 text-ink-muted hover:text-ink"
+              className="inline-flex min-h-[44px] items-center px-3 text-ink-muted hover:text-ink"
             >
               চেকআউট
             </a>

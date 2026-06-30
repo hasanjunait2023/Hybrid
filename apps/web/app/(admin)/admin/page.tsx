@@ -106,9 +106,7 @@ export default async function AdminDashboardPage() {
               {t.days14}
             </span>
           </div>
-          <div className="overflow-x-auto">
-            <TrendChart series={data.revenueSeries} locale={locale} ordersUnit={t.ordersUnit} />
-          </div>
+          <TrendChart series={data.revenueSeries} locale={locale} ordersUnit={t.ordersUnit} />
         </div>
 
         {/* Month highlight — the reference's hero stat card, Hybrid indigo. */}
