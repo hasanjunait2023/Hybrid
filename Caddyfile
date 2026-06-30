@@ -79,9 +79,17 @@ cdn.hybrid.ecomex.cloud {
 		method GET HEAD
 		path /hybrid-media/*
 	}
-	reverse_proxy @ok supabase-minio:9000
-
-	respond 403
+	# Named-matcher handles must be wrapped in `handle` blocks. Without the
+	# `handle` keyword, Caddy's directive evaluator attaches the matcher to
+	# the WRONG handler (the next one in document order) and creates a separate
+	# default route that fires first — which is why every CDN request returned
+	# 403 even for legitimate /hybrid-media/* paths.
+	handle @ok {
+		reverse_proxy supabase-minio:9000
+	}
+	handle {
+		respond 403
+	}
 }
 
 # n8n automation — Cloudflare-proxied host (CF passes ACME HTTP-01 to origin,

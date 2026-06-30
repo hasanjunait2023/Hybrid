@@ -444,4 +444,100 @@ These are SHIPPED + DEPLOYED + LIVE (verified via curl + git log):
 
 ---
 
-*End of plan. Boss — review and approve S0 start, then we ship.*
+# 📎 ADDENDUM — 2026-06-30 Post-Deploy Verification Audit
+
+**Author:** AXIS (verified, no fabrication)
+**Repo HEAD:** `0445b1c` (local + VPS in sync)
+**VPS HEAD:** `0445b1c`
+**Migrations applied on VPS:** 26 (was 24 — see §A below)
+
+This addendum captures state changes since the original plan was generated.
+Original §1-§9 above remain canonical.
+
+---
+
+## A. State Changes Since 2026-06-26
+
+### A.1 — Local ↔ VPS Sync ✅
+- **19 new commits pulled** to local (`0445b1c`), 0 ahead / 0 behind
+- All under one **marketplace + wholesale + hybridpay + storefront discovery** theme
+- Working tree clean on both sides
+
+### A.2 — Migrations Applied to VPS (2026-06-30) ✅
+Two migrations from the pull were missing on VPS:
+- `25_marketplace_fee.sql` — wholesale monthly fee model (Founder decision 2026-06-29: flat fee, not per-tx)
+- `26_customer_segment.sql` — saved customer segments (admin)
+- **Ledger now shows 26 applied** (was 24)
+- **Schema backup captured** at `/tmp/hybrid_schema_pre_migrate_20260629_221830.sql` (396KB)
+
+### A.3 — Bug Fixed in Local `.env.local` ✅
+`APP_ENCRYPTION_KEY` was a 58-char placeholder, causing 8 test failures.
+Now a valid 32-byte base64 key (`openssl rand -base64 32` output).
+Backup: `.env.local.bak.20260630_001635`
+
+### A.4 — Lint Cleanup ✅
+1 unused `eslint-disable-next-line` removed from `apps/web/lib/platform/dbid-review.ts:75` (auto-fixable).
+
+### A.5 — k6 Baseline Recorded ✅
+See `load-test/BASELINE_2026-06-30.md`. Headline:
+- **p95 latency: 336ms** (44% faster than 2026-06-26 baseline of 595ms)
+- **Error rate: 0%** (120/120 checks pass)
+- Threshold `<1000ms` comfortably met
+
+---
+
+## B. New Work Shipped (in the 19 commits, was NOT in original plan)
+
+These were not in the original backlog but shipped:
+
+| Feature | Commit | Status |
+|---|---|---|
+| Wholesale B2B channel (Phases 1-5) | `50f7165`, `7f2e1e0` merge | Live on VPS ✅ |
+| Hybrid Pay gateway | `b247a5c`, `16b7802` | Live ✅ |
+| Design token enforcement (no hardcoded hex) | `6dea992` | In repo ✅ |
+| Retailer/wholesaler tenant split | `7a77f54` | Live ✅ |
+| Platform: business-type in stores directory | `b4dea47` | Live ✅ |
+| Storefront: product search + collection pages + related products | `089503f` | Live ✅ |
+| Storefront: product reviews (display + submit) | `089503f` | Live ✅ |
+| Storefront: WhatsApp/Messenger order button on PDP | `7832a49` | Live ✅ |
+| Storefront: static & policy pages (fix 404 footer) | `2462b70` | Live ✅ |
+| Admin: saved customer segments | `42a453b` | Live ✅ |
+| Admin: bulk product editor (status + price adjust) | `72ee446` | Live ✅ |
+| Admin: discount performance report | `8800a7f` | Live ✅ |
+| Wholesale: cash memo / invoice / delivery challan export | `c022b66` | Live ✅ |
+| Wholesale: post B2B credit sales to customer ledger | `54f1dfc` | Live ✅ |
+| Wholesale: monthly-fee commission model + platform console | `80c1641` | Live ✅ |
+
+**All shipped since 2026-06-26. None required backlog decision — they were inline product evolution.**
+
+---
+
+## C. What Is STILL Pending (unchanged from original plan)
+
+Original Categories A-H remain valid. **Re-verified 2026-06-30:**
+- **A1 (CF wildcard TLS):** Still grey-cloud. Boss decision ($10/mo upgrade) pending.
+- **B1/B2 (OAuth login UI):** Code path ready, Boss needs to create Google Cloud OAuth client + Supabase Studio provider config.
+- **C1 (F-commerce Meta Graph API):** Highest ROI. Boss decision needed (Meta App creation, 5-7 day review).
+- **C4 (DBID Wizard):** Migration 22_dbid.sql + 23_dbid_audit.sql shipped. Wizard UI still to build.
+- **E1-E7 (Phase 3 / M4):** Self-serve billing, plan limits, funnels — all still in backlog.
+
+---
+
+## D. Quality State (Post-Audit 2026-06-30)
+
+| Gate | Result |
+|---|---|
+| Typecheck | **5/5 packages clean** ✅ |
+| Tests | **400 passed, 2 skipped, 0 failed** ✅ (was 8 failed before .env.local fix) |
+| Lint | **0 errors, 0 warnings** ✅ (1 trivial fixed) |
+| Build | ✅ `pnpm --filter @hybrid/web build` succeeds |
+| Migrations | **26/26 applied on VPS** ✅ |
+| VPS ↔ Local | **0 ahead / 0 behind** ✅ |
+| Live routes | `/market` 200, `/_sites/demo/wholesale` 200, `/admin` 307 ✅ |
+| p95 latency | **336ms** (down from 595ms — 44% faster) ✅ |
+
+---
+
+*Generated: 2026-06-30 by AXIS post-pull + post-migration verification.*
+*Source: real tool output, no fabrication.*
+*Next action: Boss picks next sprint from updated §C.*

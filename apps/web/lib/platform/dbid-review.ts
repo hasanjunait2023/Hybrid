@@ -72,7 +72,7 @@ function last4FromNumber(value: unknown): string | null {
 // One row per tenant. We don't expose the sealed envelope contents — only
 // last-4 hints. The full document is opened server-side only when needed
 // (e.g. for a future a2i portal API integration).
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 function _rowToReview(r: RawRow): DbidReviewRow {
   return {
     id: r.id,

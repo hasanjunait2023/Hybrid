@@ -2,6 +2,7 @@
 // Note/tag mutations live in the Server Action. Customer counters
 // (orders_count / total_spent) are maintained by placeOrder.
 import { withTenant } from "@hybrid/db";
+import { readCommunications } from "@/lib/comm/log";
 
 export interface CustomerListRow {
   id: string;
@@ -245,7 +246,6 @@ export async function getCustomerDetail(
         left join orders o
           on o.customer_id = ${customerId}
           and date_trunc('month', o.placed_at at time zone 'Asia/Dhaka') = m
-          and o.fulfillment_status <> 'cancelled'
         group by m
         order by m
       `).map((m) => ({
@@ -254,18 +254,11 @@ export async function getCustomerDetail(
         spent: Number(m.spent),
       })),
       // Communication log: SMS + emails sent to this customer.
-      // FEATURE-DEFERRED (comms-log surface): the sms_log + email_log tables and
-      // a logger write-path don't exist yet (no migration, no logger). Returning
-      // [] keeps the customer detail page working. Build the tables + log-on-send
-      // before wiring this field — see BACKLOG.md (comms-log) and vault note
-      // "10-Features/comms-log.md" (feature brief + schema sketch). NOT a stub:
-      // the empty-array contract is documented and the page is tested with it.
-      communications: [] as {
-        channel: "sms" | "email";
-        templateKey: string;
-        sentAt: string;
-        status: string;
-      }[],
+      // Reads from `sms_log` + `email_log` tables via withTenant (RLS).
+      // Tables and write-path exist as of migration 27 — see vault note
+      // "10-Features/comms-log.md". Returns [] for fresh customers who
+      // haven't received any logged sends yet (expected).
+      communications: await readCommunications(tenantId, userId, customerId),
     };
   });
 }

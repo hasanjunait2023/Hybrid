@@ -14,6 +14,7 @@ import {
   type StatusChangeKind,
 } from "./templates";
 import { notifyOrderPlacedWhatsApp } from "@/lib/whatsapp/notify";
+import { logSms } from "@/lib/comm/log";
 
 export interface SendOrderNotificationsInput extends OrderNotificationData {
   /** Seller hotline to alert. Null/absent → skip the seller SMS. */
@@ -34,16 +35,43 @@ export async function sendOrderNotifications(
 ): Promise<void> {
   const sms = getSmsAdapter();
 
-  await safeSend(() =>
-    sms.send(input.customerPhone, customerOrderConfirmationSms(input)),
+  // customer order-placed confirmation
+  const customerMsg = customerOrderConfirmationSms(input);
+  const customerResult = await safeSend(
+    () => sms.send(input.customerPhone, customerMsg),
     `customer ${input.customerPhone} order #${input.orderNumber}`,
   );
+  // H1 comm-log: persist every attempt — non-blocking failure (swallow).
+  if (input.tenantId) {
+    void logSms({
+      tenantId: input.tenantId,
+      customerId: null, // SMS not directly tied to a customer row; keep nullable.
+      phone: input.customerPhone,
+      templateKey: "customer.order.confirmation",
+      body: customerMsg,
+      status: customerResult.ok ? "sent" : "failed",
+      error: customerResult.error,
+    }).catch((err) => console.error("[sms-log] customer log write failed:", err));
+  }
 
+  // seller alert (if configured)
   if (input.sellerPhone) {
-    await safeSend(() =>
-      sms.send(input.sellerPhone!, sellerNewOrderAlertSms(input)),
+    const sellerMsg = sellerNewOrderAlertSms(input);
+    const sellerResult = await safeSend(
+      () => sms.send(input.sellerPhone!, sellerMsg),
       `seller ${input.sellerPhone} order #${input.orderNumber}`,
     );
+    if (input.tenantId) {
+      void logSms({
+        tenantId: input.tenantId,
+        customerId: null,
+        phone: input.sellerPhone,
+        templateKey: "seller.order.new",
+        body: sellerMsg,
+        status: sellerResult.ok ? "sent" : "failed",
+        error: sellerResult.error,
+      }).catch((err) => console.error("[sms-log] seller log write failed:", err));
+    }
   }
 
   // WhatsApp customer confirmation — ADDITIVE to SMS, per-tenant opt-in,
@@ -62,16 +90,20 @@ export async function sendOrderNotifications(
 }
 
 async function safeSend(
-  send: () => Promise<{ ok: boolean }>,
+  send: () => Promise<{ ok: boolean; error?: string }>,
   context: string,
-): Promise<void> {
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const result = await send();
     if (!result.ok) {
       console.warn(`[sms] send returned not-ok (${context})`);
+      return { ok: false, error: result.error ?? "gateway returned not-ok" };
     }
+    return { ok: true };
   } catch (error) {
-    console.error(`[sms] send failed (${context}):`, error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[sms] send failed (${context}):`, message);
+    return { ok: false, error: message };
   }
 }
 
@@ -83,8 +115,23 @@ export async function sendOrderStatusNotification(
   kind: StatusChangeKind,
 ): Promise<void> {
   const sms = getSmsAdapter();
-  await safeSend(
-    () => sms.send(input.customerPhone, customerOrderStatusSms(input, kind)),
+  const msg = customerOrderStatusSms(input, kind);
+  const result = await safeSend(
+    () => sms.send(input.customerPhone, msg),
     `customer ${input.customerPhone} order #${input.orderNumber} status=${kind}`,
   );
+  // H1 comm-log: persist every status-change attempt when we have a tenant
+  // context. tenantId is optional on OrderStatusNotificationData; absent →
+  // skip the log (same contract as order-placed).
+  if (input.tenantId) {
+    void logSms({
+      tenantId: input.tenantId,
+      customerId: null,
+      phone: input.customerPhone,
+      templateKey: `customer.order.${kind}`,
+      body: msg,
+      status: result.ok ? "sent" : "failed",
+      error: result.error,
+    }).catch((err) => console.error("[sms-log] status log write failed:", err));
+  }
 }

@@ -21,6 +21,12 @@ export interface OrderNotificationData {
   customerName: string;
   /** Customer phone (for the seller alert). */
   customerPhone: string;
+  /**
+   * Tenant id, used ONLY to fire the additive, per-tenant comm log row
+   * (H1 sms_log/email_log). Optional so existing callers stay valid;
+   * absent → the SMS is sent but no log row is written.
+   */
+  tenantId?: string;
 }
 
 function bnTaka(amount: number): string {
