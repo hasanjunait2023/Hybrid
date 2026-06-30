@@ -266,3 +266,29 @@ export function customerCartRecoverySms(
   }
   return `${input.storeName} — শেষ সুযোগ: ${itemPart} ${bnTaka(input.cartTotal)} কার্টে আছে। আজ রাতের মধ্যে অর্ডার করুন: ${input.recoveryUrl}`;
 }
+
+// =============================================================================
+// R7 — Merchant low-stock alert (sprint 3)
+// =============================================================================
+// Merchant-facing message: "X is low on stock — reorder." The sweep
+// picks each variant at-or-below its threshold, dedups via
+// last_low_stock_alert_at (24h cooldown), and fans out one SMS per
+// recipient on the tenant's stock_alert_recipients list. Bengali copy
+// here so a merchant can audit the actual message bodies without
+// grepping the sweep code.
+// =============================================================================
+
+export interface MerchantLowStockInput {
+  /** Display store name (Bangla or Latin as stored). */
+  storeName: string;
+  /** Product title. */
+  productTitle: string;
+  /** Current inventory_quantity for this variant. */
+  currentStock: number;
+  /** Effective threshold that triggered the alert. */
+  threshold: number;
+}
+
+export function merchantLowStockSms(input: MerchantLowStockInput): string {
+  return `${input.storeName} — "${input.productTitle}" স্টক কম: ${toBnDigits(input.currentStock)}টি বাকি (থ্রেশহোল্ড ${toBnDigits(input.threshold)})। শীঘ্রই রিস্টক করুন।`;
+}
