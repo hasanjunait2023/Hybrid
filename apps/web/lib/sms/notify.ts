@@ -9,6 +9,7 @@ import {
   customerOrderConfirmationSms,
   sellerNewOrderAlertSms,
   customerOrderStatusSms,
+  customerRefundSms,
   type OrderNotificationData,
   type OrderStatusNotificationData,
   type StatusChangeKind,
@@ -134,4 +135,69 @@ export async function sendOrderStatusNotification(
       error: result.error,
     }).catch((err) => console.error("[sms-log] status log write failed:", err));
   }
+}
+
+// O22 — Refund notifications. Customer-facing. Same non-blocking contract.
+// Looks up the customer's phone from the order when needed (the action that
+// enqueues this already has orderId, tenantId; we resolve phone + store here).
+export async function sendRefundNotification(input: {
+  orderId: string;
+  amount: number;
+  method: "bkash" | "nagad" | "cash";
+  tenantId: string;
+}): Promise<void> {
+  const { orderId, amount, method, tenantId } = input;
+  // Resolve order details. The store is a sibling query — we want to render
+  // the right storeName in the SMS so the customer knows who refunded them.
+  let phone: string | null = null;
+  let storeName = "Hybrid";
+  let orderNumber = 0;
+  try {
+    const { withTenant } = await import("@hybrid/db");
+    const rows = await withTenant(tenantId, null, (tx) =>
+      tx<{
+        customer_phone: string;
+        store_name: string;
+        order_number: number;
+      }[]>`
+        select c.phone as customer_phone, t.name as store_name, o.order_number
+        from orders o
+        join customer c on c.id = o.customer_id
+        join tenant t on t.id = o.tenant_id
+        where o.id = ${orderId}
+        limit 1
+      `,
+    );
+    if (rows[0]) {
+      phone = rows[0].customer_phone;
+      storeName = rows[0].store_name;
+      orderNumber = rows[0].order_number;
+    }
+  } catch (err) {
+    console.warn("[sms] refund order lookup failed:", err);
+  }
+  if (!phone) {
+    console.warn(`[sms] refund: no phone found for order ${orderId}`);
+    return;
+  }
+  const sms = getSmsAdapter();
+  const msg = customerRefundSms({
+    storeName,
+    orderNumber,
+    amount,
+    method,
+  });
+  const result = await safeSend(
+    () => sms.send(phone!, msg),
+    `customer ${phone} order #${orderNumber} refund=${amount}`,
+  );
+  void logSms({
+    tenantId,
+    customerId: null,
+    phone,
+    templateKey: "customer.refund",
+    body: msg,
+    status: result.ok ? "sent" : "failed",
+    error: result.error,
+  }).catch((err) => console.error("[sms-log] refund log write failed:", err));
 }

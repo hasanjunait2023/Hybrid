@@ -123,3 +123,45 @@ export function merchantDeliveryOverdueSms(
   const zone = input.slaZone === "same_city" ? "শহরের মধ্যে" : "শহরের বাইরে";
   return `Hybrid — অর্ডার #${toBnDigits(input.orderNumber)} (${input.customerName}) ডেলিভারি ${toBnDigits(input.daysOverdue)} দিন দেরি (${zone} SLA)। কুরিয়ার ট্র্যাক করুন ও গ্রাহককে আপডেট দিন।`;
 }
+
+// =============================================================================
+// Refund notifications (O22, sprint 1)
+// =============================================================================
+// Customer-facing message: "we returned your money via [method]."
+// Two flavors:
+//   * mobile money (bKash / Nagad): "check your bKash, ৳X is incoming"
+//   * cash: "we'll give you ৳X back when you next visit / with the next order"
+//
+// Method labels are kept short and colloquial — the customer shouldn't have
+// to think about what "Hybrid Pay refund" means.
+// =============================================================================
+
+export interface RefundNotificationData {
+  /** Display store name. */
+  storeName: string;
+  /** Per-tenant sequential order number. */
+  orderNumber: number;
+  /** Refund amount in taka (Latin number). */
+  amount: number;
+  /** Refund payout method — drives the Bengali copy. */
+  method: "bkash" | "nagad" | "cash";
+  /** Optional payout reference (bKash trx id). Shown only for mobile money. */
+  payoutReference?: string | null;
+}
+
+const methodBn: Record<RefundNotificationData["method"], string> = {
+  bkash: "বিকাশ",
+  nagad: "নগদ",
+  cash: "ক্যাশ",
+};
+
+export function customerRefundSms(data: RefundNotificationData): string {
+  const base = `${data.storeName} — অর্ডার #${toBnDigits(data.orderNumber)} এর জন্য ${bnTaka(data.amount)} ফেরত দেওয়া হয়েছে`;
+  if (data.method === "cash") {
+    // Cash refund: customer needs to physically receive the money. Promise a
+    // window during which it will be available (next order or pickup).
+    return `${base}। পরবর্তী অর্ডারে বা স্টোর থেকে সংগ্রহ করতে পারবেন।`;
+  }
+  const trx = data.payoutReference ? ` (TrxID: ${data.payoutReference})` : "";
+  return `${base} ${methodBn[data.method]} এ পাঠানো হচ্ছে${trx}।`;
+}

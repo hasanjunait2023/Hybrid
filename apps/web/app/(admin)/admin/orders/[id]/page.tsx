@@ -9,6 +9,8 @@ import { OrderStatusActions } from "./OrderStatusActions";
 import { SendToCourierButton } from "./SendToCourierButton";
 import { OrderRiskPanel } from "./OrderRiskPanel";
 import { ManualPaymentForm } from "./ManualPaymentForm";
+import { ManualRefundForm } from "./ManualRefundForm";
+import { RefundHistory, fetchRefundHistory } from "./RefundHistory";
 import { CustomerHistorySidebar } from "./CustomerHistorySidebar";
 import { OrderNotesPanelWrapper } from "./OrderNotesPanelWrapper";
 import { Breadcrumbs } from "../../_ui";
@@ -34,6 +36,31 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
   const { locale, d } = await getDict();
   const t = d.admin.ordersDetail;
+
+  // O22 — refund history + remaining balance for the manual refund button.
+  // Compute remaining on the server to keep the client island dumb.
+  const [refunds, refundedTotalRow] = await Promise.all([
+    fetchRefundHistory(tenantId, session.userId, order.id),
+    // Sum already-refunded amounts (excluding pending/cancelled) via withTenant
+    // for an accurate "remaining refundable" calculation.
+    (async () => {
+      const { withTenant } = await import("@hybrid/db");
+      const rows = await withTenant(tenantId, session.userId, (tx) =>
+        tx<{ total: string }[]>`
+          select coalesce(sum(refund_amount), 0) as total
+            from return_request
+           where order_id = ${order.id}
+             and status in ('refunded', 'approved', 'completed')
+             and type = 'manual_refund'
+        `,
+      );
+      return Number(rows[0]?.total ?? 0);
+    })(),
+  ]);
+  const remainingRefundable = order.grandTotal - refundedTotalRow;
+  const showRefundButton = ["paid", "partially_paid", "partially_refunded"].includes(
+    order.paymentStatus,
+  );
 
   return (
     <div className="space-y-5">
@@ -82,7 +109,15 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             status={order.fulfillmentStatus}
             nextTo={action?.to ?? null}
           />
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex flex-wrap gap-2">
+            {showRefundButton && (
+              <ManualRefundForm
+                orderId={order.id}
+                remainingAmount={remainingRefundable}
+                locale={locale}
+                formatAmount={formatMoney}
+              />
+            )}
             <a
               href={`/admin/orders/${order.id}/print?doc=invoice`}
               target="_blank"
@@ -191,6 +226,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               )}
             </section>
           )}
+
+          {/* O22 — Refund history (visible always; empty state when no refunds) */}
+          <RefundHistory refunds={refunds} locale={locale} labels={t.refundHistory} />
         </div>
 
         {/* Aside */}

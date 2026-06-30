@@ -13,17 +13,25 @@
 // don't add a dedup key here.
 
 import { registerHandler, enqueue } from "../queue/queue";
-import { sendOrderStatusNotification } from "../sms/notify";
+import { sendOrderStatusNotification, sendRefundNotification } from "../sms/notify";
 import {
   type OrderStatusNotificationData,
   type StatusChangeKind,
 } from "../sms/templates";
 
 const QUEUE_NAME = "sms-status";
+const QUEUE_NAME_REFUND = "sms-refund";
 
 type StatusSmsJob = {
   data: OrderStatusNotificationData;
   kind: StatusChangeKind;
+};
+
+type RefundSmsJob = {
+  orderId: string;
+  amount: number;
+  method: "bkash" | "nagad" | "cash";
+  tenantId: string;
 };
 
 let registered = false;
@@ -32,6 +40,9 @@ function ensureRegistered(): void {
   registered = true;
   registerHandler<StatusSmsJob>(QUEUE_NAME, async (job) => {
     await sendOrderStatusNotification(job.data, job.kind);
+  });
+  registerHandler<RefundSmsJob>(QUEUE_NAME_REFUND, async (job) => {
+    await sendRefundNotification(job);
   });
 }
 
@@ -46,4 +57,18 @@ export async function enqueueStatusSms(
 ): Promise<string> {
   ensureRegistered();
   return enqueue<StatusSmsJob>(QUEUE_NAME, { data, kind });
+}
+
+/**
+ * Enqueue a refund confirmation SMS (O22). Tells the customer how much was
+ * returned via which method. Non-blocking.
+ */
+export async function enqueueRefundSms(job: {
+  orderId: string;
+  amount: number;
+  method: "bkash" | "nagad" | "cash";
+  tenantId: string;
+}): Promise<string> {
+  ensureRegistered();
+  return enqueue<RefundSmsJob>(QUEUE_NAME_REFUND, job);
 }

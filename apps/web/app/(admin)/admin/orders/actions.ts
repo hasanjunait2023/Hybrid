@@ -341,6 +341,142 @@ export async function searchProductsForPicker(query: string): Promise<PickerVari
   }));
 }
 
+// ---- Manual refund (O22, sprint 1) ----------------------------------------
+// Merchant-initiated refund outside the formal RMA flow — for goodwill
+// refunds, shipping-fee corrections, "customer got damaged product" cases.
+// Atomic: locks the order row, validates amount <= remaining balance, writes
+// return_request(type='manual_refund'), updates orders.payment_status, audit log.
+
+const ManualRefundSchema = z.object({
+  orderId: z.string().uuid(),
+  amount: z.coerce.number().positive().max(10_000_000),
+  method: z.enum(["bkash", "nagad", "cash"]),
+  reason: z.string().trim().min(1, "কারণ দিন").max(500),
+  payoutReference: z.string().trim().max(120).optional().default(""),
+  note: z.string().trim().max(1000).optional().default(""),
+  restock: z.coerce.boolean().optional().default(false),
+});
+
+export async function createManualRefund(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return auth;
+
+  const parsed = ManualRefundSchema.safeParse({
+    orderId: formData.get("orderId"),
+    amount: formData.get("amount"),
+    method: formData.get("method"),
+    reason: formData.get("reason"),
+    payoutReference: formData.get("payoutReference") ?? "",
+    note: formData.get("note") ?? "",
+    restock: formData.get("restock") === "on",
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "ইনপুট ভুল।" };
+  }
+  const input = parsed.data;
+
+  try {
+    await withTenant(auth.tenantId, auth.userId, async (tx) => {
+      // Lock the order row so a concurrent refund can't double-spend the balance.
+      const rows = await tx<{
+        payment_status: string;
+        grand_total: string;
+        refunded_total: string;
+      }[]>`select payment_status, grand_total,
+                coalesce((select sum(refund_amount) from return_request
+                          where order_id = ${input.orderId}
+                            and status in ('refunded','approved','completed')), 0) as refunded_total
+           from orders where id = ${input.orderId} for update`;
+      const order = rows[0];
+      if (!order) throw new Error("ORDER_NOT_FOUND");
+      if (!["paid", "partially_paid", "partially_refunded"].includes(order.payment_status)) {
+        throw new Error("ORDER_NOT_REFUNDABLE");
+      }
+      const grandTotal = Number(order.grand_total);
+      const alreadyRefunded = Number(order.refunded_total);
+      const remaining = grandTotal - alreadyRefunded;
+      if (input.amount > remaining + 0.01) {
+        throw new Error("AMOUNT_EXCEEDS_BALANCE");
+      }
+
+      // Determine the new payment_status: fully refunded vs partially refunded.
+      const isFullRefund = input.amount >= remaining - 0.01;
+      const newStatus = isFullRefund ? "refunded" : "partially_refunded";
+
+      // Write the refund row. Restock is merchant's call (UI checkbox) — we
+      // record intent but the actual restock happens via the inventory
+      // adjustment path (out of scope for O22 — see SPEC.md).
+      await tx`
+        insert into return_request
+          (tenant_id, order_id, type, status, reason,
+           refund_amount, refund_method, refunded_at,
+           payout_reference, payout_at, initiated_by, note)
+        values
+          (${auth.tenantId}, ${input.orderId}, 'manual_refund', 'refunded',
+           'other', ${input.amount}, ${input.method}::refund_method, now(),
+           ${input.payoutReference || null}, now(), ${auth.userId}, ${input.note || null})
+      `;
+
+      // Update the order's payment status. approved_at is informational —
+      // we already stamped refunded_at on the refund row above.
+      await tx`
+        update orders
+           set payment_status = ${newStatus}::order_payment_status,
+               updated_at = now()
+         where id = ${input.orderId}
+      `;
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "ORDER_NOT_FOUND") return { ok: false, error: "অর্ডার পাওয়া যায়নি।" };
+    if (message === "ORDER_NOT_REFUNDABLE") {
+      return { ok: false, error: "শুধু পরিশোধিত অর্ডার ফেরত দেওয়া যায়।" };
+    }
+    if (message === "AMOUNT_EXCEEDS_BALANCE") {
+      return { ok: false, error: "ফেরতের পরিমাণ বাকি টাকার বেশি হতে পারে না।" };
+    }
+    console.error("[createManualRefund] failed", error);
+    return { ok: false, error: "ফেরত প্রদান ব্যর্থ হয়েছে।" };
+  }
+
+  bustOrderTags(auth.tenantId, input.orderId);
+
+  // Audit log — money out is the most important thing to track.
+  const { recordAudit } = await import("@/lib/audit/record");
+  void recordAudit({
+    tenantId: auth.tenantId,
+    actorUserId: auth.userId,
+    action: "order.refund",
+    resourceType: "order",
+    resourceId: input.orderId,
+    details: {
+      amount: input.amount,
+      method: input.method,
+      reason: input.reason,
+      payoutReference: input.payoutReference || null,
+      restock: input.restock,
+    },
+  });
+
+  // SMS to the customer — non-blocking via the existing queue.
+  try {
+    const { enqueueRefundSms } = await import("@/lib/sms/queue");
+    void enqueueRefundSms({
+      orderId: input.orderId,
+      amount: input.amount,
+      method: input.method,
+      tenantId: auth.tenantId,
+    });
+  } catch (err) {
+    console.warn("[createManualRefund] SMS enqueue failed (non-blocking)", err);
+  }
+
+  return { ok: true };
+}
+
 function readJson(value: FormDataEntryValue | null): unknown[] {
   if (typeof value !== "string" || !value) return [];
   try {
