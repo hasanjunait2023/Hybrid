@@ -76,9 +76,10 @@ export function OrdersBulkTable({ orders }: { orders: OrderListRow[] }) {
                 startTransition(async () => {
                   setMessage(null);
                   const res = await bulkPrintInvoices(ids());
-                  if (res.urls.length > 0) {
+                  const urls = res.urls ?? [];
+                  if (urls.length > 0) {
                     // Open each invoice in a new tab — browser handles print dialog
-                    res.urls.forEach((u) => window.open(u, "_blank"));
+                    urls.forEach((u) => window.open(u, "_blank"));
                     setMessage(`প্রিন্টের জন্য ${formatNumber(res.succeeded, locale)} টি ইনভয়েস খোলা হয়েছে।`);
                   } else if (res.error) {
                     setMessage(res.error);
