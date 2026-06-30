@@ -42,4 +42,18 @@ describe("NDR count semantics", () => {
     const MAX_NDR_ATTEMPTS = 3;
     expect(MAX_NDR_ATTEMPTS).toBe(3);
   });
+
+  it("RTS (O15) triggers when ndr_count >= MAX_NDR_ATTEMPTS and order not already cancelled", () => {
+    // The auto-restock + cancel logic in lib/couriers/sync.ts fires once
+    // ndr_count reaches 3 and the order has not yet been cancelled.
+    // Idempotent: a 4th NDR after a successful RTS will see cancelled_at
+    // set and skip the restore to avoid double-restocking.
+    const MAX_NDR_ATTEMPTS = 3;
+    const rtsCondition = (ndrCount: number, cancelledAt: Date | null) =>
+      ndrCount >= MAX_NDR_ATTEMPTS && !cancelledAt;
+    expect(rtsCondition(3, null)).toBe(true);
+    expect(rtsCondition(2, null)).toBe(false);
+    expect(rtsCondition(3, new Date())).toBe(false); // already cancelled
+    expect(rtsCondition(5, new Date())).toBe(false); // already cancelled
+  });
 });

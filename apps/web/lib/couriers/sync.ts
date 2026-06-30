@@ -17,6 +17,7 @@
 // COD-pending list.
 import { withTenant } from "@hybrid/db";
 import type { CourierAdapter, CourierCreds, CourierProvider } from "@hybrid/couriers";
+import { restoreInventory } from "@/lib/admin/orders";
 
 interface ActiveShipment {
   id: string;
@@ -146,6 +147,51 @@ async function reconcileOne(
       `;
     }
   });
+
+  // O15 — RTS (Return To Seller) automation. After MAX_NDR_ATTEMPTS NDRs
+  // on the same shipment, the parcel is presumed lost or refused for good.
+  // We auto-restock the inventory (cancelling an unfulfilled order should
+  // free up the reserved stock for the next buyer) and mark the order as
+  // returned with a system note. The admin gets the audit trail in the
+  // order timeline; no separate admin action is required to free the
+  // stock. The admin can still manually re-attempt or refund from the
+  // order detail page.
+  if (isNdr) {
+    const MAX_NDR_ATTEMPTS = 3;
+    const header = await withTenant(tenantId, null, (tx) =>
+      tx<{ ndr_count: number; cancelled_at: Date | null }[]>`
+        select ndr_count, cancelled_at
+        from shipment
+        where id = ${shipment.id}
+      `,
+    );
+    const currentNdrCount = header[0]?.ndr_count ?? 0;
+    if (currentNdrCount >= MAX_NDR_ATTEMPTS && !header[0]?.cancelled_at) {
+      await withTenant(tenantId, null, async (tx) => {
+        // Auto-restock inventory so the reserved units can be sold again.
+        await restoreInventory(tx, shipment.orderId);
+        // Stamp the order as returned + cancelled.
+        await tx`
+          update orders
+             set fulfillment_status = 'returned'::order_fulfillment_status,
+                 cancel_reason = 'rts_auto',
+                 cancelled_at = now(),
+                 updated_at = now()
+           where id = ${shipment.orderId}
+        `;
+        // Write a system note so the admin sees why the order was RTS'd.
+        await tx`
+          insert into order_note (tenant_id, order_id, author_id, body)
+          values (
+            ${tenantId},
+            ${shipment.orderId},
+            null,
+            ${`RTS (auto): ${currentNdrCount} NDR attempts exhausted — inventory restocked, order cancelled`}
+          )
+        `;
+      });
+    }
+  }
 }
 
 // Map a raw courier payload to one of our NDR reason tags. The vocabulary
