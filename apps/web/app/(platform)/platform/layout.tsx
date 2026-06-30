@@ -56,10 +56,10 @@ export default async function PlatformLayout({ children }: { children: ReactNode
         <PlatformSidebar adminName={name} />
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Mobile top bar (sidebar is hidden < lg) */}
-          <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-2.5 lg:hidden">
+          <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 lg:hidden">
             <HybridLogo size="sm" />
             <span className="rounded-full bg-[var(--pf-yellow-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--pf-yellow-deep)]">Admin</span>
-            <span className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
+            <span className="ml-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
               {name.slice(0, 1).toUpperCase()}
             </span>
           </header>

@@ -90,7 +90,7 @@ export default async function PlatformDashboard() {
           </div>
           <Link
             href="/platform/wholesale-kyc"
-            className="text-[13px] font-semibold text-[var(--pf-yellow-deep)] hover:underline"
+            className="inline-flex min-h-[44px] items-center text-[13px] font-semibold text-[var(--pf-yellow-deep)] hover:underline"
           >
             KYC Queue →
           </Link>
@@ -238,7 +238,7 @@ function ScheduleCard({ tenants }: { tenants: TenantDirectoryRow[] }) {
           ))
         )}
       </div>
-      <Link href="/platform/tenants" className="mt-auto pt-3 text-[13px] font-semibold text-[var(--pf-yellow-deep)] hover:underline">
+      <Link href="/platform/tenants" className="mt-auto inline-flex min-h-[44px] items-center pt-3 text-[13px] font-semibold text-[var(--pf-yellow-deep)] hover:underline">
         View all stores →
       </Link>
     </div>
@@ -265,7 +265,7 @@ function KpiCard({ rate, series }: { rate: number; series: PlatformStats["signup
           <p className="text-[26px] font-bold leading-none text-[var(--pf-ink)]">{rate}%</p>
           <p className="mt-1 text-[13px] font-medium text-[var(--pf-muted)]">Trial → Paid conversion</p>
         </div>
-        <Link href="/platform/finance" className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--pf-border)] text-[var(--pf-muted)] hover:bg-[var(--pf-hover)]">
+        <Link href="/platform/finance" className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--pf-border)] text-[var(--pf-muted)] hover:bg-[var(--pf-hover)]">
           <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>
       </div>
@@ -303,7 +303,7 @@ function LifecycleRow({ t }: { t: PlatformStats["tenants"] }) {
           <span className="block h-1.5 w-1.5 rounded-full bg-[var(--pf-yellow)]" />
           <p className="mt-2 text-[20px] font-bold leading-none text-[var(--pf-ink)]">{fmt(it.value)}</p>
           <p className="mt-1 text-[12px] font-medium text-[var(--pf-muted)]">{it.label}</p>
-          <Link href="/platform/tenants" className="mt-1.5 inline-block text-[11px] font-semibold text-[var(--pf-yellow-deep)] hover:underline">
+          <Link href="/platform/tenants" className="mt-1.5 inline-flex min-h-[44px] items-center text-[11px] font-semibold text-[var(--pf-yellow-deep)] hover:underline">
             View →
           </Link>
         </div>
@@ -457,13 +457,13 @@ function Avatar({ name }: { name: string }) {
 }
 function Dots() {
   return (
-    <button type="button" className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--pf-subtle)] hover:bg-[var(--pf-hover)]" aria-label="More">
+    <button type="button" className="flex h-11 w-11 items-center justify-center rounded-md text-[var(--pf-subtle)] hover:bg-[var(--pf-hover)]" aria-label="More">
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
     </button>
   );
 }
 function IconButton({ children }: { children: React.ReactNode }) {
-  return <button type="button" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-muted)] hover:bg-[var(--pf-hover)]">{children}</button>;
+  return <button type="button" className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-muted)] hover:bg-[var(--pf-hover)]">{children}</button>;
 }
 function CalendarGlyph({ className }: { className?: string }) {
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5" /><path d="M3 9h18M8 2.5v4M16 2.5v4" /></svg>;

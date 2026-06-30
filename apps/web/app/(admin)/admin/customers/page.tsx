@@ -76,7 +76,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
               <li key={c.id}>
                 <a
                   href={`/admin/customers/${c.id}`}
-                  className="block rounded-lg border border-border bg-surface p-3 shadow-xs"
+                  className="block min-h-[44px] rounded-lg border border-border bg-surface p-3 shadow-xs"
                 >
                   <div className="flex items-baseline justify-between">
                     <span className="text-sm font-semibold text-ink">{c.name ?? "—"}</span>
@@ -84,7 +84,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                       {formatMoney(c.totalSpent, locale)}
                     </span>
                   </div>
-                  <div className="mt-0.5 flex items-center justify-between">
+                  <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                     <span className="font-mono text-xs text-ink-muted tnum">{c.phone}</span>
                     <span className="text-2xs text-ink-subtle">
                       {formatNumber(c.ordersCount, locale)} {t.ordersUnit} · {c.lastOrderAt ? timeAgo(c.lastOrderAt, locale) : "—"}

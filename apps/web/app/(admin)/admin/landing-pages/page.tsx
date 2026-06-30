@@ -35,7 +35,7 @@ export default async function LandingPagesPage() {
       {pages.length === 0 ? (
         <div className="rounded-lg border border-border bg-surface px-4 py-12 text-center">
           <p className="text-ink-muted">কোনো ল্যান্ডিং পেজ নেই।</p>
-          <a href="/admin/landing-pages/new" className="mt-3 inline-block text-sm font-medium text-primary hover:underline">
+          <a href="/admin/landing-pages/new" className="mt-3 inline-flex min-h-[44px] items-center text-sm font-medium text-primary hover:underline">
             প্রথম পেজ তৈরি করুন →
           </a>
         </div>
@@ -45,7 +45,7 @@ export default async function LandingPagesPage() {
             <li key={p.id}>
               <a
                 href={`/admin/landing-pages/${p.id}`}
-                className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2"
+                className="flex min-h-[44px] flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2"
               >
                 <div className="min-w-0">
                   <p className="truncate font-medium text-ink">{p.title ?? "(শিরোনাম নেই)"}</p>
@@ -53,7 +53,7 @@ export default async function LandingPagesPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   {p.publishedAt ? (
-                    <span className="text-xs text-ink-subtle">
+                    <span className="hidden text-xs text-ink-subtle sm:inline">
                       {new Date(p.publishedAt).toLocaleDateString("bn-BD")}
                     </span>
                   ) : null}

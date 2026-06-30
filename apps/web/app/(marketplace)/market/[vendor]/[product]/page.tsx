@@ -37,7 +37,7 @@ export default async function MarketProductPage({
         </div>
         <div className="flex flex-col gap-3">
           <h1 className="text-xl font-bold text-ink">{product.title}</h1>
-          <Link href={`/${product.vendorSlug}`} className="text-sm text-ink-muted">
+          <Link href={`/${product.vendorSlug}`} className="inline-flex min-h-[44px] items-center text-sm text-ink-muted">
             বিক্রেতা: {product.vendorName}
           </Link>
           <p className="text-2xl font-bold text-primary">{formatBdtBangla(product.priceFrom)}</p>
@@ -46,7 +46,7 @@ export default async function MarketProductPage({
               ★ {product.ratingAvg.toFixed(1)} ({product.ratingCount} রিভিউ)
             </p>
           ) : null}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <AddToCart product={product} />
             <WishlistButton
               productId={product.productId}

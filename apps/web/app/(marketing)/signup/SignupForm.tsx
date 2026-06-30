@@ -125,7 +125,7 @@ export function SignupForm({ labels }: { labels: SignupLabels }) {
               key={s}
               type="button"
               onClick={() => setSlug(s)}
-              className="min-h-[36px] rounded-full border border-border-strong bg-surface px-3 font-latin text-sm text-primary transition-colors duration-fast hover:bg-primary-weak"
+              className="min-h-[44px] rounded-full border border-border-strong bg-surface px-3 font-latin text-sm text-primary transition-colors duration-fast hover:bg-primary-weak"
             >
               {s}
             </button>

@@ -25,7 +25,7 @@ export default async function VendorProfilePage({
           ) : null}
           <span>{profile.productCount} টি পণ্য</span>
         </div>
-        <Link href="/" className="mt-3 inline-block text-sm text-primary">
+        <Link href="/" className="mt-3 inline-flex min-h-[44px] items-center text-sm text-primary">
           ← মার্কেটপ্লেসে ফিরুন
         </Link>
       </div>

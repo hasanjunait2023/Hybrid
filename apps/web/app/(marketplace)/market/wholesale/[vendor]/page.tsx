@@ -32,7 +32,7 @@ export default async function WholesaleVendorPage({
           ) : null}
           <span>{profile.productCount} টি পাইকারি পণ্য</span>
         </div>
-        <Link href="/wholesale" className="mt-3 inline-block text-sm text-primary">
+        <Link href="/wholesale" className="mt-3 inline-flex min-h-[44px] items-center text-sm text-primary">
           ← পাইকারি মার্কেটে ফিরুন
         </Link>
       </div>

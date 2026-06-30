@@ -319,7 +319,7 @@ export function CheckoutForm({
           <button
             type="button"
             onClick={() => setShowNote(true)}
-            className="w-fit text-sm font-medium text-primary"
+            className="inline-flex min-h-[44px] items-center text-sm font-medium text-primary"
           >
             {t.addNote}
           </button>
@@ -346,7 +346,7 @@ export function CheckoutForm({
             {upsells.map((u) => (
               <label
                 key={u.label}
-                className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5"
+                className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border border-border bg-surface px-3 py-3"
               >
                 <input
                   type="checkbox"

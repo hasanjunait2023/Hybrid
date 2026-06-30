@@ -47,13 +47,13 @@ export default async function DiscountsPage() {
             <li key={d.id}>
               <a
                 href={`/admin/discounts/${d.id}/edit`}
-                className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2"
+                className="flex min-h-[44px] items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2"
               >
                 <div className="min-w-0">
                   <p className="font-mono text-sm font-semibold uppercase text-ink">{d.code}</p>
                   <p className="text-xs text-ink-muted">{describe(d, t, locale)}</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                   <span className="font-mono text-xs text-ink-subtle tnum">
                     {formatNumber(d.usedCount, locale)}
                     {d.usageLimit != null ? ` / ${formatNumber(d.usageLimit, locale)}` : ""}
@@ -90,7 +90,7 @@ function StatusChip({
     expired: "bg-danger-weak text-danger",
   };
   return (
-    <span className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${map[status]}`}>
+    <span className={`rounded-full px-2 py-1 text-2xs font-semibold ${map[status]}`}>
       {t.status[status]}
     </span>
   );

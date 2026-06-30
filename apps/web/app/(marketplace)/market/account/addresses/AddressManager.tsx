@@ -118,7 +118,7 @@ export function AddressManager({ initial }: { initial: BuyerAddress[] }) {
                 type="button"
                 onClick={() => makeDefault(a.id)}
                 disabled={pending}
-                className="text-xs text-primary hover:underline disabled:opacity-50"
+                className="inline-flex min-h-[44px] items-center text-xs text-primary hover:underline disabled:opacity-50"
               >
                 ডিফল্ট করুন
               </button>
@@ -126,7 +126,7 @@ export function AddressManager({ initial }: { initial: BuyerAddress[] }) {
             <button
               type="button"
               onClick={() => openEdit(a)}
-              className="text-xs text-primary hover:underline"
+              className="inline-flex min-h-[44px] items-center text-xs text-primary hover:underline"
             >
               সম্পাদনা
             </button>
@@ -134,7 +134,7 @@ export function AddressManager({ initial }: { initial: BuyerAddress[] }) {
               type="button"
               onClick={() => del(a.id)}
               disabled={pending}
-              className="text-xs text-danger hover:underline disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center text-xs text-danger hover:underline disabled:opacity-50"
             >
               মুছুন
             </button>
@@ -163,7 +163,7 @@ export function AddressManager({ initial }: { initial: BuyerAddress[] }) {
               placeholder={label}
               value={form[k] as string}
               onChange={set(k)}
-              className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm"
+              className="min-h-[44px] rounded-md border border-border bg-surface-2 px-3 py-2 text-sm"
             />
           ))}
           <label className="flex items-center gap-2 text-sm">

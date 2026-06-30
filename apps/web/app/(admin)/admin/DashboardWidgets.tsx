@@ -120,7 +120,7 @@ export function TopProducts({
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {locale === "bn" ? "শীর্ষ পণ্য (৩০ দিন)" : "Top products (30d)"}
         </p>
-        <Link href={seeAllHref} className="text-2xs font-semibold text-primary hover:underline">
+        <Link href={seeAllHref} className="inline-flex min-h-[44px] items-center px-1 text-2xs font-semibold text-primary hover:underline">
           {seeAllLabel} →
         </Link>
       </div>
@@ -133,7 +133,7 @@ export function TopProducts({
             <div className="min-w-0 flex-1">
               <Link
                 href={`/admin/products/${p.id}/edit`}
-                className="block truncate text-sm font-medium text-ink hover:text-primary"
+                className="flex min-h-[44px] items-center truncate text-sm font-medium text-ink hover:text-primary"
               >
                 {p.name}
               </Link>
@@ -213,7 +213,7 @@ export function ActivityFeed({
       </p>
       <ul className="mt-3 space-y-2.5">
         {items.map((it) => (
-          <li key={`${it.orderId}-${it.at}`} className="flex items-start gap-2.5">
+          <li key={`${it.orderId}-${it.at}`} className="flex min-h-[44px] items-start gap-2.5 py-1">
             <span className={`mt-0.5 text-sm ${TONES[it.type]}`}>{ICONS[it.type]}</span>
             <div className="min-w-0 flex-1">
               <p className="text-xs">

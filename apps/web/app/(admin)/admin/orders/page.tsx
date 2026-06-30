@@ -172,7 +172,9 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
           </ul>
 
           {/* Desktop: selectable table + bulk action bar */}
-          <OrdersBulkTable orders={orders} />
+          <div className="overflow-x-auto">
+            <OrdersBulkTable orders={orders} />
+          </div>
         </>
       )}
     </div>
@@ -191,7 +193,7 @@ function Pill({
   children: React.ReactNode;
 }) {
   const base =
-    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap";
+    "inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold whitespace-nowrap";
   const cls = active
     ? tone === "cod"
       ? "bg-cod text-white"

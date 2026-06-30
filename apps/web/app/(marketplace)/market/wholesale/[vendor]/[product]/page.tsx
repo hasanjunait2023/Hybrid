@@ -37,7 +37,7 @@ export default async function WholesaleProductPage({
         {/* Details */}
         <div className="flex flex-col gap-3">
           <h1 className="text-xl font-bold text-ink">{product.title}</h1>
-          <Link href={`/wholesale/${product.vendorSlug}`} className="text-sm text-ink-muted">
+          <Link href={`/wholesale/${product.vendorSlug}`} className="inline-flex min-h-[44px] items-center text-sm text-ink-muted">
             বিক্রেতা: {product.vendorName}
           </Link>
 
@@ -65,7 +65,7 @@ export default async function WholesaleProductPage({
                 <TierPriceTable variants={product.wholesaleVariants} />
               )}
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <WholesaleAddToCart product={product} />
                 <WishlistButton
                   productId={product.productId}
@@ -84,7 +84,7 @@ export default async function WholesaleProductPage({
               </p>
               <Link
                 href={`/wholesale/login?next=/wholesale/${product.vendorSlug}/${product.productSlug}`}
-                className="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+                className="mt-3 inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
               >
                 লগইন / রেজিস্টার
               </Link>

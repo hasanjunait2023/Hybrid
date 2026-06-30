@@ -19,7 +19,7 @@ export default async function WholesaleHome() {
         <h1 className="text-lg font-semibold">পাইকারি বাজার</h1>
         <Link
           href="/wholesale/search"
-          className="text-sm text-primary hover:underline"
+          className="inline-flex min-h-[44px] items-center text-sm text-primary hover:underline"
         >
           সব দেখুন
         </Link>
@@ -30,14 +30,14 @@ export default async function WholesaleHome() {
           <Link
             key={c.slug}
             href={`/wholesale/category/${c.slug}`}
-            className="rounded-full border border-border bg-surface px-3 py-1 text-sm hover:border-primary"
+            className="inline-flex min-h-[44px] items-center rounded-full border border-border bg-surface px-3 py-2 text-sm hover:border-primary"
           >
             {c.nameBn}
           </Link>
         ))}
       </nav>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {products.map((p) => (
           <WholesaleProductCard key={p.productId} product={p} showPrice={showPrice} />
         ))}

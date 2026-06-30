@@ -16,7 +16,7 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex items-end justify-between gap-3">
+    <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 className="text-2xl font-bold text-ink">{title}</h1>
         {subtitle && <p className="mt-0.5 text-sm text-ink-muted">{subtitle}</p>}
@@ -95,7 +95,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
               {c.href && !last ? (
                 <Link
                   href={c.href}
-                  className="rounded px-1 py-0.5 hover:bg-surface-2 hover:text-ink"
+                  className="inline-flex min-h-[44px] items-center rounded px-2 hover:bg-surface-2 hover:text-ink"
                 >
                   {c.label}
                 </Link>

@@ -53,7 +53,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <header className="sticky top-0 z-sticky border-b border-border bg-surface">
             <div className="mx-auto flex h-14 max-w-admin items-center gap-3 px-4">
               <HybridLogo size="sm" className="lg:hidden" />
-              <span className="ml-auto flex items-center gap-2">
+              <span className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
                 <span className="hidden font-mono text-xs text-ink-subtle sm:inline">
                   {tenantId.slice(0, 8)}
                 </span>
@@ -63,7 +63,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                     href={storefrontUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-surface-2"
+                    className="inline-flex min-h-[44px] items-center rounded-md px-3 text-xs font-medium text-ink-muted hover:bg-surface-2"
                   >
                     {d.admin.shell.storeLink}
                   </a>

@@ -58,7 +58,7 @@ export default async function PurchaseRequestsPage(props: {
             <Link
               key={s}
               href={href}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              className={`inline-flex min-h-[44px] items-center rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 active
                   ? "bg-primary text-white"
                   : "bg-surface-2 text-ink-muted hover:bg-surface-3 hover:text-ink"

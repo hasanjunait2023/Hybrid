@@ -58,14 +58,14 @@ export function LoginForm() {
             placeholder="মোবাইল নম্বর"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="rounded-md border border-border bg-surface px-3 py-2"
+            className="min-h-[44px] rounded-md border border-border bg-surface px-3 py-2"
           />
           <input
             type="text"
             placeholder="আপনার নাম (ঐচ্ছিক)"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="rounded-md border border-border bg-surface px-3 py-2"
+            className="min-h-[44px] rounded-md border border-border bg-surface px-3 py-2"
           />
           <button
             type="button"
@@ -95,7 +95,7 @@ export function LoginForm() {
           >
             যাচাই করুন
           </button>
-          <button type="button" onClick={() => setStep("phone")} className="text-sm text-ink-muted">
+          <button type="button" onClick={() => setStep("phone")} className="inline-flex min-h-[44px] items-center text-sm text-ink-muted">
             নম্বর পরিবর্তন করুন
           </button>
         </>

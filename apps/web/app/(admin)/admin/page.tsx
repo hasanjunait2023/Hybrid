@@ -106,7 +106,9 @@ export default async function AdminDashboardPage() {
               {t.days14}
             </span>
           </div>
-          <TrendChart series={data.revenueSeries} locale={locale} ordersUnit={t.ordersUnit} />
+          <div className="overflow-x-auto">
+            <TrendChart series={data.revenueSeries} locale={locale} ordersUnit={t.ordersUnit} />
+          </div>
         </div>
 
         {/* Month highlight — the reference's hero stat card, Hybrid indigo. */}
@@ -136,7 +138,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       {/* Weekly comparison + Top products + Recent activity */}
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <WeeklyComparison
           thisWeekOrders={data.thisWeekOrders}
           thisWeekRevenue={data.thisWeekRevenue}
@@ -154,11 +156,11 @@ export default async function AdminDashboardPage() {
       </section>
 
       {/* Recent orders table (2/3) + status panel (1/3) */}
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="overflow-hidden rounded-lg border border-border bg-surface lg:col-span-2">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <h2 className="text-sm font-bold text-ink">{t.recentOrders}</h2>
-            <a href="/admin/orders" className="text-xs font-semibold text-primary hover:underline">
+            <a href="/admin/orders" className="inline-flex min-h-[44px] items-center px-1 text-xs font-semibold text-primary hover:underline">
               {t.viewAllOrders} →
             </a>
           </div>
@@ -170,7 +172,7 @@ export default async function AdminDashboardPage() {
                 <li key={o.id}>
                   <a
                     href={`/admin/orders/${o.id}`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2"
+                    className="flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-surface-2"
                   >
                     <span className="font-mono text-sm font-semibold text-ink tnum">
                       #{o.orderNumber}

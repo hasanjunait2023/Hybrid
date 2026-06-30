@@ -20,7 +20,7 @@ export default async function AccountOrdersPage() {
     return (
       <div className="py-12 text-center">
         <p className="text-ink-muted">অর্ডার দেখতে লগইন করুন।</p>
-        <Link href="/login?next=/account/orders" className="mt-3 inline-block text-primary">
+        <Link href="/login?next=/account/orders" className="mt-3 inline-flex min-h-[44px] items-center text-primary">
           লগইন
         </Link>
       </div>
@@ -37,7 +37,7 @@ export default async function AccountOrdersPage() {
       ) : (
         orders.map((o) => (
           <section key={o.id} className="rounded-lg border border-border bg-surface">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+            <div className="flex min-h-[44px] flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
               <span className="text-sm font-medium">{STATUS_BN[o.status] ?? o.status}</span>
               <span className="text-sm font-semibold">{formatBdtBangla(o.grandTotal)}</span>
             </div>

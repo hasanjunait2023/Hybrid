@@ -18,7 +18,7 @@ export default async function AccountPage() {
     return (
       <div className="py-12 text-center">
         <p className="text-ink-muted">আপনার অ্যাকাউন্ট দেখতে লগইন করুন।</p>
-        <Link href="/login" className="mt-3 inline-block text-primary">
+        <Link href="/login" className="mt-3 inline-flex min-h-[44px] items-center text-primary">
           লগইন
         </Link>
       </div>

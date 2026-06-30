@@ -9,7 +9,7 @@ export default async function WishlistPage() {
     return (
       <div className="py-12 text-center">
         <p className="text-ink-muted">উইশলিস্ট দেখতে লগইন করুন।</p>
-        <Link href="/login?next=/account/wishlist" className="mt-3 inline-block text-primary">
+        <Link href="/login?next=/account/wishlist" className="mt-3 inline-flex min-h-[44px] items-center text-primary">
           লগইন
         </Link>
       </div>
@@ -29,7 +29,7 @@ export default async function WishlistPage() {
           </Link>
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {items.map((p) => (
             <Link
               key={p.productId}

@@ -25,7 +25,8 @@ export function TrendChart({
   return (
     // items-stretch (default) so each column fills h-44; the inner flex-1 bar
     // area then has a definite height for the percentage to resolve against.
-    <div className="flex h-44 gap-1.5">
+    <div className="overflow-x-auto">
+    <div className="flex h-44 gap-1.5 min-w-[320px]">
       {series.map((s, i) => {
         const isPeak = i === peakIdx && s.revenue > 0;
         const pct = s.revenue > 0 ? Math.max(6, (s.revenue / max) * 100) : 2;
@@ -51,6 +52,7 @@ export function TrendChart({
         );
       })}
     </div>
+    </div>
   );
 }
 
@@ -70,7 +72,7 @@ export function StatusBars({
         const pct = Math.round((r.count / total) * 100);
         return (
           <li key={r.status} className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <StatusBadge kind="fulfillment" value={r.status} lang={locale} />
               <span className="font-mono text-xs font-semibold text-ink tnum">
                 {formatNumber(r.count, locale)}

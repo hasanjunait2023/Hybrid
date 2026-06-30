@@ -64,7 +64,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
               <div className="mt-1 flex items-center gap-3">
                 <a
                   href={`tel:${customer.phone}`}
-                  className="inline-flex items-center gap-1.5 font-mono text-sm text-primary tnum hover:underline"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 font-mono text-sm text-primary tnum hover:underline"
                 >
                   <PhoneIcon className="h-4 w-4" /> {customer.phone}
                 </a>
@@ -72,7 +72,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                   href="https://m.me/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-ink-subtle hover:text-primary"
+                  className="inline-flex min-h-[44px] w-11 items-center justify-center text-ink-subtle hover:text-primary"
                   aria-label="Messenger"
                 >
                   <ChatIcon className="h-4 w-4" />
@@ -83,7 +83,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </div>
 
         {/* Trust signals */}
-        <div className={`mt-4 grid gap-3 border-t border-border pt-4 text-center ${loyaltyBalance ? "grid-cols-4" : "grid-cols-3"}`}>
+        <div className={`mt-4 grid gap-3 border-t border-border pt-4 text-center ${loyaltyBalance ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
           <Stat label={t.statOrders} value={formatNumber(customer.ordersCount, locale)} />
           <Stat label={t.statSpent} value={formatMoney(customer.totalSpent, locale)} mono />
           <Stat
@@ -118,7 +118,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                 <li key={o.id}>
                   <a
                     href={`/admin/orders/${o.id}`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2"
+                    className="flex min-h-[44px] flex-wrap items-center gap-3 px-4 py-3 hover:bg-surface-2"
                   >
                     <span className="font-mono text-sm font-semibold text-ink tnum">#{o.orderNumber}</span>
                     <span className="flex-1 text-xs text-ink-subtle">{timeAgo(o.placedAt, locale)}</span>

@@ -64,7 +64,7 @@ export function CartIsland() {
                     <button
                       type="button"
                       onClick={() => cart.remove(l.variantId)}
-                      className="ml-auto text-xs text-danger"
+                      className="ml-auto inline-flex min-h-[44px] items-center px-2 text-xs text-danger"
                     >
                       সরান
                     </button>

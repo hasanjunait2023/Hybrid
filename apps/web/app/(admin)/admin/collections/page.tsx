@@ -45,13 +45,13 @@ export default async function CollectionsPage() {
             <li key={c.id}>
               <a
                 href={`/admin/collections/${c.id}/edit`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-surface-2"
+                className="flex min-h-[44px] items-center justify-between px-4 py-3 hover:bg-surface-2"
               >
-                <div>
-                  <p className="text-sm font-semibold text-ink">{c.title}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">{c.title}</p>
                   <p className="font-mono text-xs text-ink-subtle">{c.slug}</p>
                 </div>
-                <span className="font-mono text-sm text-ink-muted tnum">{formatNumber(c.productCount, locale)} {t.itemCountSuffix}</span>
+                <span className="ml-2 shrink-0 font-mono text-sm text-ink-muted tnum">{formatNumber(c.productCount, locale)} {t.itemCountSuffix}</span>
               </a>
             </li>
           ))}

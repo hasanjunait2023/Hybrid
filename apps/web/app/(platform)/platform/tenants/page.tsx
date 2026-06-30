@@ -60,7 +60,7 @@ export default async function PlatformStores({
       </div>
 
       {/* Business type filter */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-[12px] font-medium text-[var(--pf-muted)]">Business type:</span>
         <div className="flex flex-wrap gap-1.5">
           {[
@@ -77,7 +77,7 @@ export default async function PlatformStores({
               <Link
                 key={opt.label}
                 href={href}
-                className={`rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${
+                className={`inline-flex min-h-[44px] items-center rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${
                   active
                     ? "bg-[var(--pf-black)] text-[var(--pf-surface-2)]"
                     : "bg-[var(--pf-surface)] text-[var(--pf-muted)] hover:bg-[var(--pf-surface-2)]"
