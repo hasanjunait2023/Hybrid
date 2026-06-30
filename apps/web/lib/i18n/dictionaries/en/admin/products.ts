@@ -70,6 +70,17 @@ export const products = {
     priceWithUnit: "Price (৳)",
     stock: "Stock",
     sku: "SKU",
+    // R1 — product video upload
+    videos: "Videos",
+    videoLabel: "Video",
+    videoHelp: "MP4 or WebM · up to 50 MB",
+    removeVideo: "Remove video",
+    moveVideoLeft: "Move video left",
+    moveVideoRight: "Move video right",
+    uploadVideoFailed: "Video upload failed.",
+    videoPosterLabel: "Cover image (optional)",
+    videoDurationLabel: "Duration (seconds)",
+    videoTitleLabel: "Title (optional)",
   },
 
   import: {

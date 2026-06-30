@@ -32,6 +32,21 @@ export const storefront = {
     orderOnWhatsapp: "Order on WhatsApp",
     orderOnMessenger: "Order on Messenger",
     chatOrderPrefix: "I'd like to order:",
+    // R1 — product videos
+    videoPlay: "Play video",
+    videoPause: "Pause video",
+    videoSectionTitle: "Product videos",
+    videoUnavailable: "Video unavailable",
+    videoMute: "Mute",
+    videoUnmute: "Unmute",
+    // R3 — per-category size chart on the PDP
+    sizeGuide: "Size guide",
+    sizeChartTitle: "Size chart",
+    sizeChartClose: "Close",
+    sizeChartUnitInch: "Inches",
+    sizeChartUnitCm: "Centimeters",
+    sizeChartHint:
+      "Measurements are approximate. Pick the size closest to your body measurements.",
   },
   reviews: {
     title: "Reviews",

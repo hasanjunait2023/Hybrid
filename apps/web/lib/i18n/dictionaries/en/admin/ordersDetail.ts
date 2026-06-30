@@ -121,6 +121,10 @@ export const ordersDetail = {
     cashOnDelivery: "Cash on Delivery",
     trackingPrefix: "Tracking:",
     thankYou: "Thank you! If you don't like the product, you can return it within 7 days.",
+    // O13 — TIN / BIN printed under the seller block on the invoice.
+    // The numeric value itself is rendered as-is; this is just the label.
+    tinPrefix: "TIN:",
+    binPrefix: "BIN:",
   },
 
   // O22 — Manual refund UI (sprint 1)
@@ -157,5 +161,54 @@ export const ordersDetail = {
     initiatedBy: "Initiated by",
     note: "Note",
     refundedAt: "Time",
+  },
+
+  // O20 — Auto-cancel of unpaid orders (sprint 1).
+  autoCancel: {
+    badge: "Auto-cancelled",
+    reasonBadge: "Payment not received",
+    heading: "Why was this cancelled?",
+    body: "Payment for this order did not arrive within the time limit — the system auto-cancelled it and restocked the products.",
+    sweepTitle: "Auto-cancel history",
+    sweepEmpty: "No auto-cancel on this order.",
+    sweepCancelledAt: "Cancelled at",
+    sweepThreshold: "Threshold",
+    sweepAge: "Order age",
+    smsTemplate: "Message sent to the customer",
+  },
+
+  // O3 — Edit Order (sprint 1). Merchant modal to fix qty / unit_price on
+  // a non-shipped order. Atomic with full audit trail.
+  editOrder: {
+    button: "Edit order",
+    title: "Edit order",
+    subtitle:
+      "Change quantity or unit price for any line. The order is locked while you edit. All changes are recorded in the audit log.",
+    close: "Close",
+    colProduct: "Product",
+    colQuantity: "Qty",
+    colPrice: "Unit price",
+    reasonLabel: "Reason (required)",
+    reasonPlaceholder: "e.g. customer asked for 2 instead of 1, post-call price negotiation",
+    cancel: "Cancel",
+    submit: "Save changes",
+    submitting: "Saving…",
+    errorGeneric: "Edit failed.",
+    errorNoChanges: "Change at least one field before saving.",
+    reasonRequired: "A reason is required for the audit trail.",
+  },
+  editHistory: {
+    title: "Edit history",
+    empty: "This order has not been edited yet.",
+    seq: "Edit",
+    reason: "Reason",
+    by: "By",
+    at: "At",
+    changes: "Changes",
+    before: "Before",
+    after: "After",
+    quantity: "Quantity",
+    price: "Unit price",
+    lineTotal: "Line total",
   },
 };

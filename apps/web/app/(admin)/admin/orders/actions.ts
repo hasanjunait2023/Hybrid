@@ -18,6 +18,7 @@ import { canTransition, canCancelOrder, restoreInventory } from "@/lib/admin/ord
 import { findCustomerByPhone, type CustomerPrefill } from "@/lib/admin/customers";
 import { placeOrder, InsufficientStockError } from "@/lib/commerce/placeOrder";
 import { recordAudit, type AuditAction } from "@/lib/audit/record";
+import { editOrder as editOrderCore, EditOrderError } from "@/lib/orders/editOrder";
 
 export interface ActionResult {
   ok: boolean;
@@ -475,6 +476,135 @@ export async function createManualRefund(
   }
 
   return { ok: true };
+}
+
+// ---- Edit order (O3, sprint 1) --------------------------------------------
+// Merchant-initiated soft edit of an order's line items BEFORE it ships.
+// Atomic: locks the order row, validates the order is still editable,
+// recomputes line_totals + subtotal + grand_total in one txn, writes an
+// order_edits audit row + an audit_log entry with before/after JSON.
+//
+// Restrictive by design: only qty + unit_price can be edited in v1. Adding
+// "edit customer" / "edit shipping address" should land as separate flows
+// so the audit trail stays coherent (a single order_edits row is one
+// coherent change-set; mixing line-item edits with address edits would
+// muddy that).
+
+const EditOrderItemSchema = z.object({
+  orderItemId: z.string().uuid(),
+  quantity: z.coerce.number().int().min(1).max(1000).optional(),
+  unitPrice: z.coerce.number().min(0).max(10_000_000).optional(),
+});
+
+const EditOrderSchema = z.object({
+  orderId: z.string().uuid(),
+  reason: z.string().trim().min(1, "কারণ দিন").max(500),
+  items: z.string().trim().min(1), // JSON-encoded array, parsed below
+});
+
+export interface EditOrderResult extends ActionResult {
+  editSeq?: number;
+  newGrandTotal?: number;
+}
+
+export async function submitEditOrder(
+  _prev: EditOrderResult | null,
+  formData: FormData,
+): Promise<EditOrderResult> {
+  const auth = await authTenant();
+  if (!auth.ok) return auth;
+
+  const parsed = EditOrderSchema.safeParse({
+    orderId: formData.get("orderId"),
+    reason: formData.get("reason"),
+    items: formData.get("items") ?? "",
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "ইনপুট ভুল।" };
+  }
+  const input = parsed.data;
+
+  let itemsParsed: Array<{ orderItemId: string; quantity?: number; unitPrice?: number }>;
+  try {
+    const raw = JSON.parse(input.items);
+    if (!Array.isArray(raw)) throw new Error("not an array");
+    const arr = z.array(EditOrderItemSchema).safeParse(raw);
+    if (!arr.success) {
+      return { ok: false, error: arr.error.issues[0]?.message ?? "পণ্যের ইনপুট ভুল।" };
+    }
+    itemsParsed = arr.data;
+  } catch {
+    return { ok: false, error: "পণ্যের তালিকা পড়া যাচ্ছে না।" };
+  }
+
+  try {
+    const result = await editOrderCore(auth.tenantId, {
+      orderId: input.orderId,
+      actorUserId: auth.userId,
+      reason: input.reason,
+      items: itemsParsed,
+    });
+    bustOrderTags(auth.tenantId, input.orderId);
+    revalidateTag(`tenant:${auth.tenantId}:dashboard`);
+
+    // Audit log — order.update is the new action added in 31_o3_edit_order.sql.
+    // details captures the touched items so a compliance review doesn't need
+    // to join against order_edits.
+    const { recordAudit } = await import("@/lib/audit/record");
+    void recordAudit({
+      tenantId: auth.tenantId,
+      actorUserId: auth.userId,
+      action: "order.update",
+      resourceType: "order",
+      resourceId: input.orderId,
+      details: {
+        reason: input.reason,
+        editSeq: result.editSeq,
+        newGrandTotal: result.newGrandTotal,
+        editedItems: result.editedItems.map((ed) => ({
+          orderItemId: ed.orderItemId,
+          before: ed.before,
+          after: ed.after,
+        })),
+      },
+    });
+
+    // Customer SMS — non-blocking via the existing queue. Sent AFTER the
+    // txn commits so a notification failure never rolls back the edit.
+    try {
+      const { enqueueOrderEditedSms } = await import("@/lib/sms/queue");
+      void enqueueOrderEditedSms({
+        orderId: input.orderId,
+        tenantId: auth.tenantId,
+      }).catch((err) =>
+        console.warn("[editOrder] SMS enqueue failed (non-blocking)", err),
+      );
+    } catch (err) {
+      console.warn("[editOrder] SMS enqueue failed (non-blocking)", err);
+    }
+
+    return {
+      ok: true,
+      editSeq: result.editSeq,
+      newGrandTotal: result.newGrandTotal,
+    };
+  } catch (err) {
+    if (err instanceof EditOrderError) {
+      // Map our stable codes to friendly Bengali error messages.
+      const map: Record<EditOrderError["code"], string> = {
+        ORDER_NOT_FOUND: "অর্ডার পাওয়া যায়নি।",
+        ORDER_NOT_EDITABLE: "অর্ডার শিপ হওয়ার পরে আর এডিট করা যায় না।",
+        ITEM_NOT_FOUND: "পণ্য পাওয়া যায়নি।",
+        INVALID_QUANTITY: "পরিমাণ ১-১০০০ হতে হবে।",
+        INVALID_PRICE: "দাম সঠিক নয়।",
+        NO_CHANGES: "কোনো পরিবর্তন নেই।",
+        REASON_REQUIRED: "কারণ দিন।",
+      };
+      return { ok: false, error: map[err.code] ?? err.message };
+    }
+    console.error("[editOrder] failed", err);
+    return { ok: false, error: "অর্ডার এডিট ব্যর্থ হয়েছে।" };
+  }
 }
 
 function readJson(value: FormDataEntryValue | null): unknown[] {

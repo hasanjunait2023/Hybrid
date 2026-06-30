@@ -10,6 +10,8 @@ import {
   sellerNewOrderAlertSms,
   customerOrderStatusSms,
   customerRefundSms,
+  customerOrderAutoCancelledSms,
+  customerOrderEditedSms,
   type OrderNotificationData,
   type OrderStatusNotificationData,
   type StatusChangeKind,
@@ -200,4 +202,158 @@ export async function sendRefundNotification(input: {
     status: result.ok ? "sent" : "failed",
     error: result.error,
   }).catch((err) => console.error("[sms-log] refund log write failed:", err));
+}
+
+// O20 — Auto-cancel-of-unpaid-orders notification. Customer-facing, same
+// non-blocking contract as the refund notification. Triggered by the
+// /api/internal/auto-cancel-unpaid cron after it has flipped the order to
+// 'cancelled' / cancel_reason='auto_unpaid'.
+//
+// Resolves the customer's phone + the merchant's store name + how many
+// hours the order sat unpaid (for the message copy), then composes a
+// Bengali "you can re-order any time" message — kept gentle rather than
+// alarming, since these are typically forgetful-but-warm leads.
+export async function sendAutoCancelNotification(input: {
+  orderId: string;
+  tenantId: string;
+}): Promise<void> {
+  const { orderId, tenantId } = input;
+  let phone: string | null = null;
+  let storeName = "Hybrid";
+  let orderNumber = 0;
+  let hoursOverdue = 0;
+  try {
+    const { withTenant } = await import("@hybrid/db");
+    const rows = await withTenant(tenantId, null, (tx) =>
+      tx<{
+        customer_phone: string;
+        store_name: string;
+        order_number: number;
+        cancel_after_at: string | null;
+        cancelled_at: string | null;
+        placed_at: string;
+      }[]>`
+        select
+          c.phone as customer_phone,
+          t.name as store_name,
+          o.order_number,
+          o.cancel_after_at,
+          o.cancelled_at,
+          o.placed_at
+        from orders o
+        join customer c on c.id = o.customer_id
+        join tenant t on t.id = o.tenant_id
+        where o.id = ${orderId}
+        limit 1
+      `,
+    );
+    const row = rows[0];
+    if (row) {
+      phone = row.customer_phone;
+      storeName = row.store_name;
+      orderNumber = Number(row.order_number);
+      // Best-effort age (hours between placed_at and the actual cancellation).
+      // Falls back to 0 if either timestamp is missing (legacy orders).
+      if (row.placed_at && row.cancelled_at) {
+        const start = new Date(row.placed_at).getTime();
+        const end = new Date(row.cancelled_at).getTime();
+        if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+          hoursOverdue = Math.max(1, Math.round((end - start) / 3_600_000));
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[sms] auto-cancel order lookup failed:", err);
+  }
+  if (!phone) {
+    console.warn(`[sms] auto-cancel: no phone found for order ${orderId}`);
+    return;
+  }
+  const sms = getSmsAdapter();
+  const msg = customerOrderAutoCancelledSms({
+    storeName,
+    orderNumber,
+    hoursOverdue,
+  });
+  const result = await safeSend(
+    () => sms.send(phone!, msg),
+    `customer ${phone} order #${orderNumber} auto-cancelled after ${hoursOverdue}h`,
+  );
+  void logSms({
+    tenantId,
+    customerId: null,
+    phone,
+    templateKey: "customer.order.auto_cancelled",
+    body: msg,
+    status: result.ok ? "sent" : "failed",
+    error: result.error,
+  }).catch((err) => console.error("[sms-log] auto-cancel log write failed:", err));
+}
+
+// O3 — Order-edited notification. Customer-facing, same non-blocking contract
+// as the other post-mutation sends. Triggered by the merchant's "Save" on
+// the edit-order modal AFTER editOrder() has committed the new line items
+// and recomputed grand_total. We resolve the customer's phone + store name
+// + the NEW grand total here (the action that enqueued this only has the
+// orderId/tenantId), then render the Bengali "your order was updated" copy.
+export async function sendOrderEditedNotification(input: {
+  orderId: string;
+  tenantId: string;
+}): Promise<void> {
+  const { orderId, tenantId } = input;
+  let phone: string | null = null;
+  let storeName = "Hybrid";
+  let orderNumber = 0;
+  let newTotal = 0;
+  try {
+    const { withTenant } = await import("@hybrid/db");
+    const rows = await withTenant(tenantId, null, (tx) =>
+      tx<{
+        customer_phone: string;
+        store_name: string;
+        order_number: number;
+        grand_total: string;
+      }[]>`select c.phone as customer_phone,
+                t.name as store_name,
+                o.order_number,
+                o.grand_total
+           from orders o
+           join customer c on c.id = o.customer_id
+           join tenant t on t.id = o.tenant_id
+          where o.id = ${orderId}
+          limit 1`,
+    );
+    const row = rows[0];
+    if (row) {
+      phone = row.customer_phone;
+      storeName = row.store_name;
+      orderNumber = Number(row.order_number);
+      newTotal = Number(row.grand_total);
+    }
+  } catch (err) {
+    console.warn("[sms] order-edited order lookup failed:", err);
+  }
+  if (!phone) {
+    console.warn(`[sms] order-edited: no phone found for order ${orderId}`);
+    return;
+  }
+  const sms = getSmsAdapter();
+  const msg = customerOrderEditedSms({
+    storeName,
+    orderNumber,
+    newTotal,
+  });
+  const result = await safeSend(
+    () => sms.send(phone!, msg),
+    `customer ${phone} order #${orderNumber} edited (new total=${newTotal})`,
+  );
+  void logSms({
+    tenantId,
+    customerId: null,
+    phone,
+    templateKey: "customer.order.edited",
+    body: msg,
+    status: result.ok ? "sent" : "failed",
+    error: result.error,
+  }).catch((err) => console.error("[sms-log] order-edited log write failed:", err));
 }

@@ -44,6 +44,12 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       isActive: v.isActive,
     })),
     imageUrls: product.images.map((i) => i.url),
+    videos: product.videos.map((v) => ({
+      url: v.url,
+      posterUrl: v.posterUrl,
+      title: v.title,
+      duration: v.durationSeconds,
+    })),
     collectionIds: product.collectionIds,
     marketplaceHidden: product.marketplaceHidden,
   };

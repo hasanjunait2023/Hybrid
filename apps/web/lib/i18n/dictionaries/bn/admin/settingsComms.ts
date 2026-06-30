@@ -52,4 +52,39 @@ export const settingsComms: typeof En = {
     addMember: "যোগ করুন",
     failed: "ব্যর্থ হয়েছে।",
   },
+
+  // R3 — প্রতি ক্যাটাগরি সাইজ চার্ট এডিটর
+  sizeCharts: {
+    title: "সাইজ চার্ট",
+    subtitle:
+      "প্রতিটি ক্যাটাগরির জন্য একটি মাপের চার্ট প্রকাশ করুন — ক্রেতারা পণ্যের পেজ থেকে সঠিক সাইজ বেছে নিতে পারবে।",
+    categoryLabel: "ক্যাটাগরি",
+    unitLabel: "একক",
+    columnLabel: "কলামের নাম (যেমন বুকের মাপ, দৈর্ঘ্য)",
+    rowLabel: "সাইজ",
+    addColumn: "কলাম যোগ করুন",
+    addRow: "সাইজ যোগ করুন",
+    removeRow: "মুছে ফেলুন",
+    save: "চার্ট সেভ করুন",
+    saving: "সেভ হচ্ছে…",
+    saved: "চার্ট সেভ হয়েছে।",
+    saveFailed: "সেভ ব্যর্থ হয়েছে।",
+    loadFailed: "সাইজ চার্ট লোড করা যায়নি।",
+    empty:
+      "এখনো কোনো সাইজ চার্ট প্রকাশিত হয়নি। উপরে একটি ক্যাটাগরি বাছাই করে সারি যোগ শুরু করুন।",
+    publishedEmpty: "—",
+    unitInch: "ইঞ্চি",
+    unitCm: "সেন্টিমিটার",
+    categories: {
+      clothing_top: "পোশাক · উপরের",
+      clothing_bottom: "পোশাক · নিচের",
+      clothing_dress: "পোশাক · ড্রেস",
+      footwear: "জুতা",
+      accessories: "অ্যাকসেসরিজ",
+    },
+    invalidCategory:
+      "ক্যাটাগরি অবশ্যই ইংরেজি অক্ষর, সংখ্যা, আন্ডারস্কোর বা হাইফেন হতে হবে।",
+    invalidColumns: "অন্তত ‘size’ কলামটি যোগ করুন।",
+    invalidRows: "অন্তত একটি সাইজের সারি যোগ করুন।",
+  },
 };

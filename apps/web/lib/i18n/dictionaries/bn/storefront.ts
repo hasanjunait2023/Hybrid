@@ -33,6 +33,21 @@ export const storefront: typeof EnStorefront = {
     orderOnWhatsapp: "হোয়াটসঅ্যাপে অর্ডার করুন",
     orderOnMessenger: "মেসেঞ্জারে অর্ডার করুন",
     chatOrderPrefix: "আমি অর্ডার করতে চাই:",
+    // R1 — পণ্যের ভিডিও
+    videoPlay: "ভিডিও চালান",
+    videoPause: "ভিডিও বিরতি দিন",
+    videoSectionTitle: "পণ্যের ভিডিও",
+    videoUnavailable: "ভিডিও লোড হচ্ছে না",
+    videoMute: "মিউট করুন",
+    videoUnmute: "আওয়াজ চালু করুন",
+    // R3 — প্রতি ক্যাটাগরি সাইজ চার্ট
+    sizeGuide: "সাইজ গাইড",
+    sizeChartTitle: "সাইজ চার্ট",
+    sizeChartClose: "বন্ধ করুন",
+    sizeChartUnitInch: "ইঞ্চি",
+    sizeChartUnitCm: "সেন্টিমিটার",
+    sizeChartHint:
+      "পরিমাপগুলো আনুমানিক। আপনার শরীরের মাপের সবচেয়ে কাছের সাইজটি বেছে নিন।",
   },
   reviews: {
     title: "রিভিউ",

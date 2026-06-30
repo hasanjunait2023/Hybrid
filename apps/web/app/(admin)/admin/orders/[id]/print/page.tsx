@@ -65,6 +65,14 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
             {isPacking ? t.packingSlip : t.invoice}
           </h1>
           <p className="font-mono text-sm">{t.orderPrefix} #{order.orderNumber}</p>
+          {/* O13 — TIN / BIN printed under the seller name. Rendered only
+              when filled (NBR compliance — don't show placeholder dashes). */}
+          {!isPacking && (profile.tin || profile.bin) && (
+            <div className="mt-1 space-y-0.5 font-mono text-xs text-black/70">
+              {profile.tin && <p>{t.tinPrefix} {profile.tin}</p>}
+              {profile.bin && <p>{t.binPrefix} {profile.bin}</p>}
+            </div>
+          )}
         </div>
         <p className="text-right font-mono text-xs">{formatDate(order.placedAt)}</p>
       </header>

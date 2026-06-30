@@ -17,6 +17,7 @@ export type AuditAction =
   | "product.delete"
   | "order.refund"
   | "order.cancel"
+  | "order.update"
   | "member.invite"
   | "member.remove"
   | "member.role_change"

@@ -8,11 +8,14 @@ import {
   getStorefrontProductReviews,
   getTenantContextBySlug,
 } from "@/lib/storefront/data";
+import { getSizeChartForCategory } from "@/lib/products/sizeChart";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/i18n/format";
 import { AddToCart } from "./AddToCart";
 import { OrderViaChat } from "./OrderViaChat";
 import { ProductReviews } from "./ProductReviews";
+import { ProductVideoGallery } from "./ProductVideoGallery";
+import { SizeChartModal } from "@/components/storefront/SizeChartModal";
 
 interface ProductDetailPageProps {
   params: Promise<{ tenant: string; slug: string }>;
@@ -62,9 +65,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const product = await getStorefrontProductBySlug(ctx.id, productSlug);
   if (!product) notFound();
 
-  const [reviews, related] = await Promise.all([
+  const [reviews, related, sizeChart] = await Promise.all([
     getStorefrontProductReviews(ctx.id, product.id),
     getRelatedProducts(ctx.id, product.id),
+    getSizeChartForCategory(ctx.id, product.productType),
   ]);
 
   const { locale, d } = await getDict();
@@ -119,6 +123,20 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
           <AddToCart tenantSlug={slug} product={product} />
 
+          {/* R3 — per-category size guide modal. Hidden when the merchant has
+              not published a chart for `product.product_type`. */}
+          <SizeChartModal
+            chart={sizeChart}
+            labels={{
+              trigger: d.storefront.product.sizeGuide,
+              title: d.storefront.product.sizeChartTitle,
+              close: d.storefront.product.sizeChartClose,
+              unitInch: d.storefront.product.sizeChartUnitInch,
+              unitCm: d.storefront.product.sizeChartUnitCm,
+              hint: d.storefront.product.sizeChartHint,
+            }}
+          />
+
           {/* Chat-order fallback — BD buyers often prefer to confirm on WhatsApp/
               Messenger. Only renders when the store has a phone or FB page set. */}
           <OrderViaChat
@@ -133,6 +151,26 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           />
         </div>
       </div>
+
+      {/* R1 — product video carousel (lazy, Bengali-first). Sits below the
+          image + buy box so it never pushes them above the fold on mobile. */}
+      {product.videos?.length ? (
+        <ProductVideoGallery
+          videos={product.videos}
+          labels={{
+            videoSectionTitle: d.storefront.product.videoSectionTitle,
+            videoPlay: d.storefront.product.videoPlay,
+            videoPause: d.storefront.product.videoPause,
+            videoUnavailable: d.storefront.product.videoUnavailable,
+            videoMute: d.storefront.product.videoMute,
+            videoUnmute: d.storefront.product.videoUnmute,
+            prev:
+              locale === "bn" ? "পূর্ববর্তী" : "Previous",
+            next:
+              locale === "bn" ? "পরবর্তী" : "Next",
+          }}
+        />
+      ) : null}
 
       <ProductReviews
         data={reviews}

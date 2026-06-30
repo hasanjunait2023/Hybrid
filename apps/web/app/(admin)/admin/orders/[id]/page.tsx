@@ -11,6 +11,8 @@ import { OrderRiskPanel } from "./OrderRiskPanel";
 import { ManualPaymentForm } from "./ManualPaymentForm";
 import { ManualRefundForm } from "./ManualRefundForm";
 import { RefundHistory, fetchRefundHistory } from "./RefundHistory";
+import { EditOrderForm } from "./EditOrderForm";
+import { EditHistory, fetchEditHistory } from "./EditHistory";
 import { CustomerHistorySidebar } from "./CustomerHistorySidebar";
 import { OrderNotesPanelWrapper } from "./OrderNotesPanelWrapper";
 import { Breadcrumbs } from "../../_ui";
@@ -39,7 +41,8 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
   // O22 — refund history + remaining balance for the manual refund button.
   // Compute remaining on the server to keep the client island dumb.
-  const [refunds, refundedTotalRow] = await Promise.all([
+  // O3 — edit history for the audit timeline.
+  const [refunds, refundedTotalRow, edits] = await Promise.all([
     fetchRefundHistory(tenantId, session.userId, order.id),
     // Sum already-refunded amounts (excluding pending/cancelled) via withTenant
     // for an accurate "remaining refundable" calculation.
@@ -56,10 +59,19 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
       );
       return Number(rows[0]?.total ?? 0);
     })(),
+    fetchEditHistory(tenantId, session.userId, order.id),
   ]);
   const remainingRefundable = order.grandTotal - refundedTotalRow;
   const showRefundButton = ["paid", "partially_paid", "partially_refunded"].includes(
     order.paymentStatus,
+  );
+  // O3 — the edit modal is available for any order that is still editable
+  // (pending / confirmed / packed). After 'shipped' the merchant has to
+  // refund + reorder. The EditOrderForm also enables the Edit button only
+  // when there are items, but the form is rendered always (no-op when no
+  // items, e.g. a fully-refunded order).
+  const showEditButton = ["pending", "confirmed", "packed"].includes(
+    order.fulfillmentStatus,
   );
 
   return (
@@ -110,6 +122,21 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             nextTo={action?.to ?? null}
           />
           <div className="ml-auto flex flex-wrap gap-2">
+            {showEditButton && (
+              <EditOrderForm
+                orderId={order.id}
+                lines={order.items.map((it) => ({
+                  id: it.id,
+                  title: it.title,
+                  variantTitle: it.variantTitle,
+                  unitPrice: it.unitPrice,
+                  quantity: it.quantity,
+                  lineTotal: it.lineTotal,
+                }))}
+                locale={locale}
+                formatAmount={formatMoney}
+              />
+            )}
             {showRefundButton && (
               <ManualRefundForm
                 orderId={order.id}
@@ -229,6 +256,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
           {/* O22 — Refund history (visible always; empty state when no refunds) */}
           <RefundHistory refunds={refunds} locale={locale} labels={t.refundHistory} />
+
+          {/* O3 — Edit history (visible always; empty state when no edits) */}
+          <EditHistory edits={edits} locale={locale} labels={t.editHistory} />
         </div>
 
         {/* Aside */}

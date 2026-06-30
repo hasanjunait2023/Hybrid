@@ -13,7 +13,12 @@
 // don't add a dedup key here.
 
 import { registerHandler, enqueue } from "../queue/queue";
-import { sendOrderStatusNotification, sendRefundNotification } from "../sms/notify";
+import {
+  sendOrderStatusNotification,
+  sendRefundNotification,
+  sendAutoCancelNotification,
+  sendOrderEditedNotification,
+} from "../sms/notify";
 import {
   type OrderStatusNotificationData,
   type StatusChangeKind,
@@ -21,6 +26,8 @@ import {
 
 const QUEUE_NAME = "sms-status";
 const QUEUE_NAME_REFUND = "sms-refund";
+const QUEUE_NAME_AUTO_CANCEL = "sms-auto-cancel";
+const QUEUE_NAME_ORDER_EDITED = "sms-order-edited";
 
 type StatusSmsJob = {
   data: OrderStatusNotificationData;
@@ -34,6 +41,16 @@ type RefundSmsJob = {
   tenantId: string;
 };
 
+type AutoCancelSmsJob = {
+  orderId: string;
+  tenantId: string;
+};
+
+type OrderEditedSmsJob = {
+  orderId: string;
+  tenantId: string;
+};
+
 let registered = false;
 function ensureRegistered(): void {
   if (registered) return;
@@ -43,6 +60,12 @@ function ensureRegistered(): void {
   });
   registerHandler<RefundSmsJob>(QUEUE_NAME_REFUND, async (job) => {
     await sendRefundNotification(job);
+  });
+  registerHandler<AutoCancelSmsJob>(QUEUE_NAME_AUTO_CANCEL, async (job) => {
+    await sendAutoCancelNotification(job);
+  });
+  registerHandler<OrderEditedSmsJob>(QUEUE_NAME_ORDER_EDITED, async (job) => {
+    await sendOrderEditedNotification(job);
   });
 }
 
@@ -71,4 +94,32 @@ export async function enqueueRefundSms(job: {
 }): Promise<string> {
   ensureRegistered();
   return enqueue<RefundSmsJob>(QUEUE_NAME_REFUND, job);
+}
+
+/**
+ * Enqueue an auto-cancel notification (O20). The sweep does this AFTER the
+ * orders row has been flipped to 'cancelled' / cancel_reason='auto_unpaid';
+ * the SMS is a gentle "you can re-order any time" message. Non-blocking
+ * so the cron never waits on the gateway.
+ */
+export async function enqueueAutoCancelSms(job: {
+  orderId: string;
+  tenantId: string;
+}): Promise<string> {
+  ensureRegistered();
+  return enqueue<AutoCancelSmsJob>(QUEUE_NAME_AUTO_CANCEL, job);
+}
+
+/**
+ * Enqueue an order-edited notification (O3). The merchant UI fires this
+ * after editOrder() commits a line-item change. Tells the customer the
+ * order was updated and the new grand total. Non-blocking so a gateway
+ * hiccup never blocks the merchant's save.
+ */
+export async function enqueueOrderEditedSms(job: {
+  orderId: string;
+  tenantId: string;
+}): Promise<string> {
+  ensureRegistered();
+  return enqueue<OrderEditedSmsJob>(QUEUE_NAME_ORDER_EDITED, job);
 }

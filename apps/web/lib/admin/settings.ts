@@ -357,6 +357,9 @@ export async function getAnalyticsSettings(
 
 // ---- Store profile ---------------------------------------------------------
 // Stored in tenant.settings jsonb (not a credentials column — no encryption).
+// TIN + BIN are dedicated columns on `tenant` (O13); we select them alongside
+// the settings blob to keep the print invoice + admin order detail pages on
+// a single round-trip.
 export interface StoreProfile {
   name: string;
   phone: string;
@@ -364,6 +367,10 @@ export interface StoreProfile {
   address: string;
   returnPolicy: string;
   vatBin: string;
+  /** O13 — NBR Taxpayer Identification Number (12 digits), nullable. */
+  tin: string | null;
+  /** O13 — NBR Business Identification Number (10 digits), nullable. */
+  bin: string | null;
   /** The verified primary subdomain, shown read-only (DESIGN §P6). */
   subdomain: string | null;
 }
@@ -380,8 +387,15 @@ export async function getStoreProfile(
   userId: string,
 ): Promise<StoreProfile> {
   return withTenant(tenantId, userId, async (tx) => {
-    const rows = await tx<{ name: string; settings: TenantSettingsJson }[]>`
-      select name, settings from tenant where id = ${tenantId} limit 1
+    const rows = await tx<
+      {
+        name: string;
+        settings: TenantSettingsJson;
+        tin: string | null;
+        bin: string | null;
+      }[]
+    >`
+      select name, settings, tin, bin from tenant where id = ${tenantId} limit 1
     `;
     const row = rows[0];
     const settings = row?.settings ?? {};
@@ -400,6 +414,8 @@ export async function getStoreProfile(
       address: settings.contact?.address ?? "",
       returnPolicy: settings.policies?.returns ?? "",
       vatBin: settings.vatBin ?? "",
+      tin: row?.tin ?? null,
+      bin: row?.bin ?? null,
       subdomain: domains[0]?.domain ?? null,
     };
   });

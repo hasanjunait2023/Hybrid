@@ -325,6 +325,19 @@ export interface StorefrontProductDetail {
   price: number;
   compareAtPrice: number | null;
   inStock: boolean;
+  /** R1 — product videos ordered by position asc. Empty array when none. */
+  videos: StorefrontProductVideo[];
+  /** R3 — free-text category used to look up a per-category size chart on
+   *  the PDP. Corresponds to product.product_type in 01_schema.sql; null
+   *  when the merchant hasn't picked a category. */
+  productType: string | null;
+}
+
+export interface StorefrontProductVideo {
+  url: string;
+  posterUrl: string | null;
+  title: string | null;
+  durationSeconds: number | null;
 }
 
 export async function getStorefrontProductBySlug(
@@ -335,9 +348,15 @@ export async function getStorefrontProductBySlug(
     async () => {
       const product = await withTenant(tenantId, null, async (tx) => {
         const productRows = await tx<
-          { id: string; title: string; slug: string; description: string | null }[]
+          {
+            id: string;
+            title: string;
+            slug: string;
+            description: string | null;
+            product_type: string | null;
+          }[]
         >`
-          select id, title, slug, description
+          select id, title, slug, description, product_type
             from product
            where slug = ${slug} and status = 'active'
            limit 1
@@ -368,7 +387,24 @@ export async function getStorefrontProductBySlug(
            limit 1
         `;
 
-        return { row, variants, imageUrl: image[0]?.url ?? null };
+        // R1 — product videos for the PDP carousel. Public read (userId=null)
+        // just like the rest of the storefront data layer; RLS via withTenant
+        // ensures only the active tenant's rows are returned.
+        const videos = await tx<
+          {
+            url: string;
+            poster_url: string | null;
+            title: string | null;
+            duration_seconds: number | null;
+          }[]
+        >`
+          select url, poster_url, title, duration_seconds
+            from product_video
+           where product_id = ${row.id}
+           order by position asc
+        `;
+
+        return { row, variants, imageUrl: image[0]?.url ?? null, videos };
       });
 
       if (!product) return null;
@@ -396,6 +432,13 @@ export async function getStorefrontProductBySlug(
         price: lowest?.price ?? 0,
         compareAtPrice: lowest?.compareAtPrice ?? null,
         inStock: variants.some((v) => v.inStock),
+        videos: product.videos.map((v) => ({
+          url: v.url,
+          posterUrl: v.poster_url,
+          title: v.title,
+          durationSeconds: v.duration_seconds,
+        })),
+        productType: product.row.product_type ?? null,
       } satisfies StorefrontProductDetail;
     },
     [`product:${tenantId}:${slug}`],

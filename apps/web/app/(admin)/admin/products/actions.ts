@@ -87,6 +87,21 @@ const ProductWriteSchema = z.object({
   options: z.array(OptionSchema).max(3).default([]),
   variants: z.array(VariantSchema).min(1, "অন্তত একটি ভ্যারিয়েন্ট দিন").max(100),
   imageUrls: z.array(z.string().max(500)).max(20).default([]),
+  // R1 — product videos. Each entry is an opaque blob ref produced by the
+  // /api/admin/upload route (video kind) plus optional poster (already-uploaded
+  // image URL) + title + duration. We keep the schema flat and JSON-encodable
+  // because the admin form posts the whole product as a single FormData.
+  videos: z
+    .array(
+      z.object({
+        url: z.string().max(500),
+        posterUrl: z.string().max(500).nullable().default(null),
+        title: z.string().trim().max(200).nullable().default(null),
+        duration: z.coerce.number().int().min(0).max(86_400).nullable().default(null),
+      }),
+    )
+    .max(20)
+    .default([]),
   collectionIds: z.array(z.string().uuid()).max(50).default([]),
   marketplaceHidden: z.boolean().default(false),
 });
@@ -118,6 +133,7 @@ export async function createProduct(
       const productId = rows[0]!.id;
       await writeVariants(tx, auth.tenantId, productId, input.variants);
       await writeImages(tx, auth.tenantId, productId, input.imageUrls);
+      await writeVideos(tx, auth.tenantId, productId, input.videos);
       await writeCollections(tx, auth.tenantId, productId, input.collectionIds);
       return productId;
     });
@@ -165,6 +181,7 @@ export async function updateProduct(
       // keeping rows preserves SKU history and is safer for inventory).
       await writeVariants(tx, auth.tenantId, productId.data, input.variants);
       await replaceImages(tx, auth.tenantId, productId.data, input.imageUrls);
+      await replaceVideos(tx, auth.tenantId, productId.data, input.videos);
       await replaceCollections(tx, auth.tenantId, productId.data, input.collectionIds);
     });
   } catch (error) {
@@ -324,6 +341,7 @@ function readProductForm(formData: FormData) {
     options: readJsonArray(formData.get("options")),
     variants: readJsonArray(formData.get("variants")),
     imageUrls: readJsonArray(formData.get("imageUrls")),
+    videos: readJsonArray(formData.get("videos")),
     collectionIds: readJsonArray(formData.get("collectionIds")),
     marketplaceHidden: formData.get("marketplaceHidden") === "on",
   };
@@ -411,6 +429,45 @@ async function replaceImages(
 ): Promise<void> {
   await tx`delete from product_image where product_id = ${productId}`;
   await writeImages(tx, tenantId, productId, urls);
+}
+
+// ---- Videos (R1) -----------------------------------------------------------
+// Same replacement strategy as images: simplest correct semantics — clear and
+// re-insert. The opacity of the blob URL lets us order by upload order; the
+// client posts the same list it wants stored.
+type VideoInput = {
+  url: string;
+  posterUrl: string | null;
+  title: string | null;
+  duration: number | null;
+};
+
+async function writeVideos(
+  tx: Tx,
+  tenantId: string,
+  productId: string,
+  videos: VideoInput[],
+): Promise<void> {
+  let position = 0;
+  for (const v of videos) {
+    if (!v.url) continue;
+    await tx`
+      insert into product_video (tenant_id, product_id, url, poster_url, title, duration_seconds, position)
+      values (${tenantId}, ${productId}, ${v.url}, ${v.posterUrl},
+              ${v.title}, ${v.duration}, ${position})
+    `;
+    position += 1;
+  }
+}
+
+async function replaceVideos(
+  tx: Tx,
+  tenantId: string,
+  productId: string,
+  videos: VideoInput[],
+): Promise<void> {
+  await tx`delete from product_video where product_id = ${productId}`;
+  await writeVideos(tx, tenantId, productId, videos);
 }
 
 async function writeCollections(

@@ -54,4 +54,37 @@ export const settingsComms = {
     addMember: "Add",
     failed: "Failed.",
   },
+
+  // R3 — per-category size chart editor on the storefront PDP.
+  sizeCharts: {
+    title: "Size charts",
+    subtitle:
+      "Publish a measurement chart per category so buyers can pick the right size from the product page.",
+    categoryLabel: "Category",
+    unitLabel: "Unit",
+    columnLabel: "Column name (e.g. chest, length)",
+    rowLabel: "Size",
+    addColumn: "Add column",
+    addRow: "Add size",
+    removeRow: "Remove",
+    save: "Save chart",
+    saving: "Saving…",
+    saved: "Chart saved.",
+    saveFailed: "Save failed.",
+    loadFailed: "Could not load size chart.",
+    empty: "No size chart published yet. Pick a category above and start adding rows.",
+    publishedEmpty: "—",
+    unitInch: "Inches",
+    unitCm: "Centimeters",
+    categories: {
+      clothing_top: "Clothing · top",
+      clothing_bottom: "Clothing · bottom",
+      clothing_dress: "Clothing · dress",
+      footwear: "Footwear",
+      accessories: "Accessories",
+    },
+    invalidCategory: "Category must be alphanumeric (a-z, 0-9, _, -).",
+    invalidColumns: "Add at least the ‘size’ column.",
+    invalidRows: "Add at least one size row.",
+  },
 };

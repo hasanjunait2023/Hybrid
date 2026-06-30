@@ -22,6 +22,7 @@ import { withTenant } from "@hybrid/db";
 import type { Tx } from "@hybrid/db";
 import { upsertCustomerByPhone } from "./customer";
 import { computeSlaForOrder } from "@/lib/sla/compute";
+import { computeCancelAfterAt } from "@/lib/orders/autoCancel";
 
 // 'hybridpay' is Hybrid's single white-labeled online gateway (subsumes the
 // individual MFS gateways — bKash/Nagad are methods INSIDE Hybrid Pay, not
@@ -520,6 +521,13 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       district: input.shippingAddress.district,
     });
 
+    // (O20) Stamp cancel_after_at at placement so the sweep has a cheap
+    // indexed predicate to filter on. Two values feed the calculation:
+    //   * the env var AUTO_CANCEL_HOURS (default 48) — same knob the sweep reads
+    //   * the local `placed_at = new Date()` below, so the deadline is
+    //     deterministic and consistent across processes.
+    const cancelAfterAt = computeCancelAfterAt(new Date());
+
     const orderRows = await tx<{ id: string; order_number: string }[]>`
       insert into orders (
         tenant_id, customer_id,
@@ -529,7 +537,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         shipping_total, grand_total, cod_amount, currency,
         payment_status, fulfillment_status, source, channel, marketplace_order_id,
         order_mode, credit_due, credit_approved, note,
-        sla_zone, sla_handover_deadline_at, sla_delivery_deadline_at
+        sla_zone, sla_handover_deadline_at, sla_delivery_deadline_at,
+        cancel_after_at
       ) values (
         ${input.tenantId}, ${customerId},
         ${input.customer.name}, ${input.customer.phone}, ${input.customer.email ?? null},
@@ -548,7 +557,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         ${input.source}, ${input.channel ?? "storefront"}, ${input.marketplaceOrderId ?? null},
         ${orderModeValue}, ${creditDue}, ${isCreditSale},
         ${input.note ?? null},
-        ${sla.zone}, ${sla.handover.toISOString()}, ${sla.delivery.toISOString()}
+        ${sla.zone}, ${sla.handover.toISOString()}, ${sla.delivery.toISOString()},
+        ${cancelAfterAt.toISOString()}
       )
       returning id, order_number
     `;

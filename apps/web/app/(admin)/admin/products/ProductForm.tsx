@@ -32,6 +32,13 @@ export interface ProductFormVariant {
   isActive: boolean;
 }
 
+export interface ProductFormVideo {
+  url: string;
+  posterUrl: string | null;
+  title: string | null;
+  duration: number | null;
+}
+
 export interface ProductFormData {
   id?: string;
   title: string;
@@ -40,6 +47,10 @@ export interface ProductFormData {
   options: ProductFormOption[];
   variants: ProductFormVariant[];
   imageUrls: string[];
+  /** R1 — product videos, ordered by position asc. Optional for backward compat
+   *  with any caller that constructs this object ad-hoc; the admin form always
+   *  sets it (empty array minimum). */
+  videos?: ProductFormVideo[];
   collectionIds: string[];
   marketplaceHidden?: boolean;
 }
@@ -71,6 +82,7 @@ export function ProductForm({
   const [options, setOptions] = useState<ProductFormOption[]>(initial.options);
   const [variants, setVariants] = useState<ProductFormVariant[]>(initial.variants);
   const [images, setImages] = useState<string[]>(initial.imageUrls);
+  const [videos, setVideos] = useState<ProductFormVideo[]>(initial.videos ?? []);
   const [collectionIds, setCollectionIds] = useState<string[]>(initial.collectionIds);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -168,6 +180,7 @@ export function ProductForm({
       ),
     );
     fd.set("imageUrls", JSON.stringify(images));
+    fd.set("videos", JSON.stringify(videos));
     fd.set("collectionIds", JSON.stringify(collectionIds));
     fd.set("marketplaceHidden", marketplaceHidden ? "on" : "");
 
@@ -215,6 +228,9 @@ export function ProductForm({
 
         {/* Images */}
         <ImageManager images={images} onChange={setImages} />
+
+        {/* Videos (R1) */}
+        <VideoManager videos={videos} onChange={setVideos} />
 
         {/* Options + variant matrix */}
         <section className="space-y-4 rounded-lg border border-border bg-surface p-4">
@@ -632,6 +648,192 @@ function ImageManager({
       {uploadError && <p className="text-xs font-medium text-danger">{uploadError}</p>}
     </section>
   );
+}
+
+// R1 — product video uploader. Mirrors ImageManager's structure (tile grid +
+// upload tile + per-row reorder/delete) but POSTs as `kind=video` so the
+// /api/admin/upload route runs the video validator (50 MB cap + mp4/webm).
+// After upload we sniff the clip in-browser via HTMLMediaElement to capture
+// duration, then re-render with the metadata. No external dep required.
+function VideoManager({
+  videos,
+  onChange,
+}: {
+  videos: ProductFormVideo[];
+  onChange: (videos: ProductFormVideo[]) => void;
+}) {
+  const t = useDict().admin.products;
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploadError(null);
+    setUploading(true);
+    const next = [...videos];
+    for (const file of Array.from(files)) {
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("kind", "video");
+      const resp = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: fd,
+        credentials: "same-origin",
+      });
+      const json: { url?: string; error?: string } = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json.url) {
+        setUploadError(json.error ?? t.form.uploadVideoFailed);
+        continue;
+      }
+      const duration = await sniffVideoDuration(json.url).catch(() => null);
+      next.push({
+        url: json.url,
+        posterUrl: null,
+        title: null,
+        duration,
+      });
+    }
+    onChange(next);
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function move(index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= videos.length) return;
+    const next = [...videos];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    onChange(next);
+  }
+
+  function remove(index: number) {
+    onChange(videos.filter((_, i) => i !== index));
+  }
+
+  function setField(index: number, patch: Partial<ProductFormVideo>) {
+    onChange(videos.map((v, i) => (i === index ? { ...v, ...patch } : v)));
+  }
+
+  return (
+    <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-bold text-ink">{t.form.videos}</h2>
+        <span className="text-xs text-ink-subtle">{t.form.videoHelp}</span>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {videos.map((v, i) => (
+          <div key={`${v.url}-${i}`} className="rounded-md border border-border bg-surface-2 p-3">
+            <video
+              src={v.url}
+              poster={v.posterUrl ?? undefined}
+              controls
+              preload="none"
+              playsInline
+              muted
+              className="aspect-video w-full rounded-sm bg-black"
+              aria-label={v.title ?? `${t.form.videos} ${i + 1}`}
+            />
+            <div className="mt-2 grid grid-cols-[1fr_1fr] gap-2">
+              <input
+                value={v.title ?? ""}
+                onChange={(e) => setField(i, { title: e.target.value || null })}
+                placeholder={t.form.videoTitleLabel}
+                className="h-9 w-full rounded-sm border border-border-strong bg-surface px-2 text-sm text-ink"
+              />
+              <input
+                value={v.posterUrl ?? ""}
+                onChange={(e) => setField(i, { posterUrl: e.target.value || null })}
+                placeholder={t.form.videoPosterLabel}
+                className="h-9 w-full rounded-sm border border-border-strong bg-surface px-2 text-xs text-ink"
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs text-ink-muted">
+              <span>
+                {v.duration != null ? `${v.duration}s` : ""}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => move(i, -1)}
+                  disabled={i === 0}
+                  aria-label={t.form.moveVideoLeft}
+                  className="rounded-sm border border-border-strong bg-surface px-2 py-1 text-xs text-ink disabled:opacity-30"
+                >
+                  ◀
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(i, 1)}
+                  disabled={i === videos.length - 1}
+                  aria-label={t.form.moveVideoRight}
+                  className="rounded-sm border border-border-strong bg-surface px-2 py-1 text-xs text-ink disabled:opacity-30"
+                >
+                  ▶
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(i)}
+                  aria-label={t.form.removeVideo}
+                  className="rounded-sm border border-border-strong bg-surface px-2 py-1 text-xs font-semibold text-danger"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <label className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border-strong text-sm text-ink-muted hover:bg-surface-2">
+        <PlusIcon className="h-5 w-5" />
+        {uploading ? "..." : t.form.videoLabel}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="video/mp4,video/webm"
+          multiple
+          onChange={(e) => onFiles(e.target.files)}
+          className="hidden"
+        />
+      </label>
+
+      {uploadError && <p className="text-xs font-medium text-danger">{uploadError}</p>}
+    </section>
+  );
+}
+
+// Try to read the clip's duration for the admin UI + the metadata column.
+// Returns null on any failure (CORS-blocked CDN, unsupported codec, etc.) —
+// duration is optional, never blocking.
+function sniffVideoDuration(url: string): Promise<number | null> {
+  return new Promise((resolve) => {
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.muted = true;
+    v.src = url;
+    const cleanup = () => {
+      v.removeAttribute("src");
+      v.load();
+    };
+    const onMeta = () => {
+      const d = isFinite(v.duration) ? Math.round(v.duration) : null;
+      cleanup();
+      resolve(d);
+    };
+    const onError = () => {
+      cleanup();
+      resolve(null);
+    };
+    v.addEventListener("loadedmetadata", onMeta, { once: true });
+    v.addEventListener("error", onError, { once: true });
+    // Safety timeout — the clip may never reply if it's broken; treat as null.
+    setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, 5_000);
+  });
 }
 
 // ---- helpers ---------------------------------------------------------------

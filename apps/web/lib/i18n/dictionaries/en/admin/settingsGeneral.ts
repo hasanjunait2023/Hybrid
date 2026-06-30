@@ -13,8 +13,12 @@ export const settingsGeneral = {
     domains: { label: "Custom domain", sub: "Add your own domain" },
     analytics: { label: "Analytics", sub: "GA4, Meta Pixel/CAPI" },
     store: { label: "Store profile", sub: "Name, phone, address, policy" },
+    // O13 — TIN/BIN on invoice (Bangladesh NBR tax compliance).
+    tax: { label: "Tax / Business", sub: "TIN, BIN — printed on every invoice" },
     staff: { label: "Staff & roles", sub: "Members, owner/admin/staff" },
     loyalty: { label: "Loyalty points", sub: "Earn rate, redeem value" },
+    // R3 — per-category size charts on the PDP
+    sizeCharts: { label: "Size charts", sub: "Publish a measurement table per category" },
   },
 
   // Shared mode chip (sandbox/stage/live).
@@ -37,6 +41,32 @@ export const settingsGeneral = {
     address: "Address",
     returnPolicy: "Return policy",
     vatBin: "VAT / BIN",
+  },
+
+  // O13 — Tax / Business page. TIN (12 digits) + BIN (10 digits) per
+  // Bangladesh NBR spec. Rendered on the customer-facing invoice and the
+  // print packing-slip/invoice from the admin order detail.
+  tax: {
+    title: "Tax / Business",
+    subtitle:
+      "Bangladesh tax IDs printed on every invoice. Both are optional until you have them from NBR.",
+    tinLabel: "TIN (Taxpayer Identification Number)",
+    tinHint: "12 digits — every taxpayer",
+    tinPlaceholder: "e.g. 123456789012",
+    binLabel: "BIN (Business Identification Number)",
+    binHint: "10 digits — registered businesses (trade-license holders)",
+    binPlaceholder: "e.g. 1234567890",
+    save: "Save",
+    saving: "Saving…",
+    saved: "Saved.",
+    saveFailed: "Save failed.",
+    errorTinInvalid: "TIN must be exactly 12 digits.",
+    errorBinInvalid: "BIN must be exactly 10 digits.",
+    blankExplainer:
+      "Leave blank if you don't have these yet — the invoice renders without them.",
+    invoicePreview: "Invoice preview",
+    invoicePreviewTin: "TIN:",
+    invoicePreviewBin: "BIN:",
   },
 
   // Custom domains.

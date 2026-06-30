@@ -14,6 +14,7 @@ describe("AuditAction enum", () => {
       "product.delete",
       "order.refund",
       "order.cancel",
+      "order.update",
       "member.invite",
       "member.remove",
       "member.role_change",
@@ -23,8 +24,8 @@ describe("AuditAction enum", () => {
       "tenant.plan_change",
       "platform_admin.login",
     ];
-    // 14 documented actions — add new ones here AND in the SQL enum together.
-    expect(new Set(sample).size).toBe(14);
+    // 15 documented actions — add new ones here AND in the SQL enum together.
+    expect(new Set(sample).size).toBe(15);
   });
 });
 

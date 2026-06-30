@@ -183,6 +183,15 @@ export interface AdminImage {
   position: number;
 }
 
+export interface AdminVideo {
+  id: string;
+  url: string;
+  posterUrl: string | null;
+  title: string | null;
+  durationSeconds: number | null;
+  position: number;
+}
+
 export interface ProductOption {
   name: string;
   values: string[];
@@ -197,6 +206,8 @@ export interface AdminProductFull {
   options: ProductOption[];
   variants: AdminVariant[];
   images: AdminImage[];
+  /** R1 — product videos, ordered by position asc. */
+  videos: AdminVideo[];
   collectionIds: string[];
   marketplaceHidden: boolean;
 }
@@ -249,6 +260,21 @@ export async function getProductFull(
       where product_id = ${productId} order by position asc
     `;
 
+    const videos = await tx<
+      {
+        id: string;
+        url: string;
+        poster_url: string | null;
+        title: string | null;
+        duration_seconds: number | null;
+        position: number;
+      }[]
+    >`
+      select id, url, poster_url, title, duration_seconds, position
+      from product_video
+      where product_id = ${productId} order by position asc
+    `;
+
     const collections = await tx<{ collection_id: string }[]>`
       select collection_id from product_collection where product_id = ${productId}
     `;
@@ -272,6 +298,14 @@ export async function getProductFull(
         isActive: v.is_active,
       })),
       images: images.map((i) => ({ id: i.id, url: i.url, alt: i.alt, position: i.position })),
+      videos: videos.map((v) => ({
+        id: v.id,
+        url: v.url,
+        posterUrl: v.poster_url,
+        title: v.title,
+        durationSeconds: v.duration_seconds,
+        position: v.position,
+      })),
       collectionIds: collections.map((c) => c.collection_id),
     };
   });

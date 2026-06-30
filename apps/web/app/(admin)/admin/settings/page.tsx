@@ -15,8 +15,12 @@ const SECTION_KEYS = [
   { href: "/admin/settings/domains", key: "domains" },
   { href: "/admin/settings/analytics", key: "analytics" },
   { href: "/admin/settings/store", key: "store" },
+  // O13 — TIN/BIN (Bangladesh NBR tax compliance) on every invoice.
+  { href: "/admin/settings/tax", key: "tax" },
   { href: "/admin/settings/staff", key: "staff" },
   { href: "/admin/settings/loyalty", key: "loyalty" },
+  // R3 — per-category size charts on the PDP.
+  { href: "/admin/settings/size-charts", key: "sizeCharts" },
 ] as const;
 
 export default async function SettingsPage() {

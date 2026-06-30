@@ -71,6 +71,17 @@ export const products: typeof En = {
     priceWithUnit: "দাম (৳)",
     stock: "স্টক",
     sku: "SKU",
+    // R1 — পণ্যের ভিডিও আপলোড
+    videos: "ভিডিও",
+    videoLabel: "ভিডিও",
+    videoHelp: "MP4 বা WebM · সর্বোচ্চ ৫০ এমবি",
+    removeVideo: "ভিডিও সরান",
+    moveVideoLeft: "ভিডিও বামে",
+    moveVideoRight: "ভিডিও ডানে",
+    uploadVideoFailed: "ভিডিও আপলোড ব্যর্থ হয়েছে।",
+    videoPosterLabel: "কভার ছবি (ঐচ্ছিক)",
+    videoDurationLabel: "দৈর্ঘ্য (সেকেন্ড)",
+    videoTitleLabel: "শিরোনাম (ঐচ্ছিক)",
   },
 
   import: {

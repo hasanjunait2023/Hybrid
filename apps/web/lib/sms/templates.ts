@@ -165,3 +165,60 @@ export function customerRefundSms(data: RefundNotificationData): string {
   const trx = data.payoutReference ? ` (TrxID: ${data.payoutReference})` : "";
   return `${base} ${methodBn[data.method]} এ পাঠানো হচ্ছে${trx}।`;
 }
+
+// =============================================================================
+// O20 — Auto-cancel-of-unpaid-orders notifications (sprint 1)
+// =============================================================================
+// Customer-facing message: "we cancelled your order because payment didn't come
+// in within [hours]. Re-order any time." We intentionally keep this gentle
+// rather than alarming — most of these are forgetful-but-warm leads who will
+// re-order if friction stays low. The store name is included so the customer
+// recognises the merchant.
+// =============================================================================
+
+export interface AutoCancelCustomerInput {
+  /** Display store name. */
+  storeName: string;
+  /** Per-tenant sequential order number. */
+  orderNumber: number;
+  /** How many hours the order sat unpaid before the sweep cancelled it. */
+  hoursOverdue: number;
+}
+
+export function customerOrderAutoCancelledSms(
+  input: AutoCancelCustomerInput,
+): string {
+  return `${input.storeName} — অর্ডার #${toBnDigits(input.orderNumber)} পেমেন্ট না পাওয়ায় ${toBnDigits(input.hoursOverdue)} ঘণ্টা পর বাতিল করা হয়েছে। প্রয়োজনে আবার অর্ডার করতে পারবেন।`;
+}
+
+// =============================================================================
+// O3 — Edit-order notifications (sprint 1)
+// =============================================================================
+// Customer-facing message: "we updated your order — your new total is ৳X."
+//
+// Triggered when the merchant edits an existing order's line items BEFORE it
+// ships (qty / unit-price / discount change). This is a separate template
+// from customerRefundSms because the message shape is fundamentally
+// different:
+//   * Refund = "we returned money to you, here's how much, here's how"
+//   * Edit  = "your order details changed, please re-confirm the new total"
+//
+// The merchant doesn't get a separate SMS for this — the audit_log entry is
+// the merchant-side record. Only the customer gets a heads-up so they know
+// the order they're about to receive is the one they confirmed.
+// =============================================================================
+
+export interface OrderEditedCustomerInput {
+  /** Display store name. */
+  storeName: string;
+  /** Per-tenant sequential order number. */
+  orderNumber: number;
+  /** New grand total in taka (Latin number). */
+  newTotal: number;
+}
+
+export function customerOrderEditedSms(
+  input: OrderEditedCustomerInput,
+): string {
+  return `${input.storeName} — আপনার অর্ডার #${toBnDigits(input.orderNumber)} আপডেট করা হয়েছে। নতুন সর্বমোট ${bnTaka(input.newTotal)}। কোনো প্রশ্ন থাকলে আমাদের জানান।`;
+}

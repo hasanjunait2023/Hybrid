@@ -120,6 +120,9 @@ export const ordersDetail: typeof En = {
     cashOnDelivery: "ক্যাশ অন ডেলিভারি",
     trackingPrefix: "ট্র্যাকিং:",
     thankYou: "ধন্যবাদ! পণ্য পছন্দ না হলে ৭ দিনের মধ্যে ফেরত দিতে পারবেন।",
+    // O13 — TIN / BIN — ইনভয়েসের বিক্রেতা ব্লকে দেখানো হয়।
+    tinPrefix: "TIN:",
+    binPrefix: "BIN:",
   },
 
   // O22 — Manual refund UI (sprint 1)
@@ -156,5 +159,57 @@ export const ordersDetail: typeof En = {
     initiatedBy: "করেছেন",
     note: "নোট",
     refundedAt: "সময়",
+  },
+
+  // O20 — Auto-cancel of unpaid orders (sprint 1). Shown on the order detail
+  // page when orders.cancel_reason = 'auto_unpaid'. The cancellation itself
+  // happens in /api/internal/auto-cancel-unpaid (cron); this is just the
+  // admin-visible annotation + Bengali copy for the badge + detail line.
+  autoCancel: {
+    badge: "স্বয়ংক্রিয় বাতিল",
+    reasonBadge: "পেমেন্ট পায়নি",
+    heading: "কেন বাতিল হয়েছে",
+    body: "এই অর্ডারের পেমেন্ট নির্ধারিত সময়ের মধ্যে পাওয়া যায়নি — সিস্টেম স্বয়ংক্রিয়ভাবে বাতিল করেছে এবং পণ্য স্টকে ফিরিয়ে এনেছে।",
+    sweepTitle: "স্বয়ংক্রিয় বাতিল ইতিহাস",
+    sweepEmpty: "এই অর্ডারে কোনো স্বয়ংক্রিয় বাতিল নেই।",
+    sweepCancelledAt: "বাতিলের সময়",
+    sweepThreshold: "থ্রেশহোল্ড",
+    sweepAge: "অর্ডারের বয়স",
+    smsTemplate: "গ্রাহককে যে মেসেজ পাঠানো হয়েছে",
+  },
+
+  // O3 — Edit Order (sprint 1). Merchant modal to fix qty / unit_price on
+  // a non-shipped order. Atomic with full audit trail.
+  editOrder: {
+    button: "অর্ডার এডিট",
+    title: "অর্ডার এডিট করুন",
+    subtitle:
+      "যেকোনো লাইনের পরিমাণ বা একক মূল্য পরিবর্তন করুন। এডিটের সময় অর্ডার লক থাকবে। সব পরিবর্তন অডিট লগে সংরক্ষিত হবে।",
+    close: "বন্ধ করুন",
+    colProduct: "পণ্য",
+    colQuantity: "পরিমাণ",
+    colPrice: "একক মূল্য",
+    reasonLabel: "কারণ (আবশ্যক)",
+    reasonPlaceholder: "যেমন: গ্রাহক ২টি চেয়েছেন, ফোনে দাম কমিয়ে দেওয়া হয়েছে",
+    cancel: "বাতিল",
+    submit: "পরিবর্তন সংরক্ষণ",
+    submitting: "সংরক্ষণ হচ্ছে…",
+    errorGeneric: "এডিট ব্যর্থ হয়েছে।",
+    errorNoChanges: "সংরক্ষণের আগে অন্তত একটি ফিল্ড পরিবর্তন করুন।",
+    reasonRequired: "অডিট লগের জন্য কারণ দিতে হবে।",
+  },
+  editHistory: {
+    title: "এডিট ইতিহাস",
+    empty: "এই অর্ডারে এখনও কোনো এডিট নেই।",
+    seq: "এডিট",
+    reason: "কারণ",
+    by: "করেছেন",
+    at: "সময়",
+    changes: "পরিবর্তন",
+    before: "আগে",
+    after: "পরে",
+    quantity: "পরিমাণ",
+    price: "একক মূল্য",
+    lineTotal: "লাইনের মোট",
   },
 };
