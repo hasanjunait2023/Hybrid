@@ -178,16 +178,15 @@ declare t text;
 begin
   foreach t in array tbls loop
     -- Tenant sees only its own rows.
-    execute format(
-      'create policy if not exists %I_tenant_policy on %I
-         using (tenant_id = app.current_tenant_id() or app.is_platform_admin())',
-      t, t
-    );
-    execute format(
-      'create policy if not exists %I_write_policy on %I for all
-         with check (tenant_id = app.current_tenant_id() or app.is_platform_admin())',
-      t, t
-    );
+    begin
+      execute format(
+        'create policy %1$I_tenant_policy on %1$I
+           using (tenant_id = app.current_tenant_id() or app.is_platform_admin())
+           with check (tenant_id = app.current_tenant_id() or app.is_platform_admin())',
+        t
+      );
+    exception when duplicate_object then null;
+    end;
     execute format('alter table %I force row level security;', t);
   end loop;
 end $$;
