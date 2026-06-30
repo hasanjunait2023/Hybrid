@@ -28,10 +28,12 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
   const selected =
     product.variants.find((v) => v.id === variantId) ?? product.variants[0];
   const canBuy = Boolean(selected?.inStock);
+  const isPreorder = !canBuy && Boolean(selected?.preorderEnabled);
+  const canAdd = canBuy || isPreorder;
   const price = selected?.price ?? product.price;
 
   function handleAdd() {
-    if (!selected || !canBuy) return;
+    if (!selected || !canAdd) return;
     cart.add({
       variantId: selected.id,
       productSlug: product.slug,
@@ -55,7 +57,7 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
                 key={v.id}
                 type="button"
                 onClick={() => setVariantId(v.id)}
-                disabled={!v.inStock}
+                disabled={!v.inStock && !v.preorderEnabled}
                 aria-pressed={v.id === variantId}
                 className={[
                   "min-h-11 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
@@ -79,8 +81,8 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
         <span className="text-2xl font-bold leading-none text-ink tnum">
           {formatMoney(price, locale)}
         </span>
-        <Button variant="primary" size="lg" onClick={handleAdd} disabled={!canBuy}>
-          {canBuy ? (added ? t.added : t.addToCart) : t.outOfStock}
+        <Button variant="primary" size="lg" onClick={handleAdd} disabled={!canAdd}>
+          {canBuy ? (added ? t.added : t.addToCart) : isPreorder ? t.preorder : t.outOfStock}
         </Button>
         <a
           href="/cart"
@@ -111,9 +113,9 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
             size="lg"
             className="flex-1"
             onClick={handleAdd}
-            disabled={!canBuy}
+            disabled={!canAdd}
           >
-            {canBuy ? (added ? t.added : t.addToCart) : t.outOfStock}
+            {canBuy ? (added ? t.added : t.addToCart) : isPreorder ? t.preorder : t.outOfStock}
           </Button>
         </div>
       </div>

@@ -45,6 +45,9 @@ const checkoutSchema = z.object({
   // bKash/Nagad). 'bkash' stays accepted as a still-functional legacy method.
   paymentMethod: z.enum(["cod", "bkash", "hybridpay"]),
   note: z.string().max(500).optional(),
+  deliveryDate: z.string().optional(),
+  deliveryTimeSlot: z.string().optional(),
+  fulfillmentMethod: z.enum(["delivery", "pickup"]).optional(),
   // Optional promo code (Phase 2.4). The client sends ONLY the code; placeOrder
   // re-validates and computes the amount server-side under a row lock.
   discountCode: z.string().trim().max(40).optional(),
@@ -163,6 +166,9 @@ export async function submitCheckout(
       items: input.items,
       paymentMethod: input.paymentMethod,
       note: input.note ?? null,
+      deliveryDate: input.deliveryDate ?? null,
+      deliveryTimeSlot: input.deliveryTimeSlot ?? null,
+      fulfillmentMethod: input.fulfillmentMethod ?? "delivery",
       source: "storefront",
       discountCode: input.discountCode ?? null,
       shippingTotal: shipQuote.amount ?? 0,

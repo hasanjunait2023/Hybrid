@@ -47,11 +47,21 @@ export function CheckoutForm({
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
   const [promoCode, setPromoCode] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [deliveryTimeSlot, setDeliveryTimeSlot] = useState("");
+  const [fulfillmentMethod, setFulfillmentMethod] = useState<"delivery" | "pickup">("delivery");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Live shipping charge for display (null = not configured / not yet quoted).
   // The authoritative value is re-computed server-side at submit.
   const [shipping, setShipping] = useState<number | null>(null);
+
+  // Minimum selectable delivery date: tomorrow (today + 1 day).
+  function minDeliveryDate(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0]!;
+  }
 
   // Quote shipping whenever the destination (division+district) or cart changes.
   const destDivision = division?.bn ?? null;
@@ -111,6 +121,9 @@ export function CheckoutForm({
       addressLine: addressLine.trim(),
       paymentMethod: method,
       note: note.trim() || undefined,
+      deliveryDate: deliveryDate || undefined,
+      deliveryTimeSlot: deliveryTimeSlot || undefined,
+      fulfillmentMethod,
       discountCode: promoCode.trim() || undefined,
       items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
     });
@@ -246,6 +259,37 @@ export function CheckoutForm({
           />
         </fieldset>
 
+        {/* Fulfillment method — delivery vs in-store pickup. */}
+        <fieldset className="flex flex-col gap-3">
+          <legend className="bn-body mb-1 text-sm font-semibold text-ink">{t.fulfillmentLabel}</legend>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setFulfillmentMethod("delivery")}
+              aria-pressed={fulfillmentMethod === "delivery"}
+              className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                fulfillmentMethod === "delivery"
+                  ? "border-primary ring-2 ring-primary bg-primary-weak"
+                  : "border-border bg-surface"
+              }`}
+            >
+              <span className="text-sm font-semibold text-ink">{t.deliveryOption}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFulfillmentMethod("pickup")}
+              aria-pressed={fulfillmentMethod === "pickup"}
+              className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                fulfillmentMethod === "pickup"
+                  ? "border-primary ring-2 ring-primary bg-primary-weak"
+                  : "border-border bg-surface"
+              }`}
+            >
+              <span className="text-sm font-semibold text-ink">{t.pickupOption}</span>
+            </button>
+          </div>
+        </fieldset>
+
         {/* Optional note — collapsed by default. */}
         {showNote ? (
           <Field label={t.noteLabel}>
@@ -280,6 +324,37 @@ export function CheckoutForm({
             className="h-11 rounded-sm border border-border-strong bg-surface px-3 text-base uppercase text-ink placeholder:normal-case placeholder:text-ink-subtle"
           />
         </Field>
+
+        {/* Optional delivery slot — preferred date + time window. */}
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-semibold text-ink">{t.deliverySlotLabel}</legend>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-ink-muted">{t.deliveryDateLabel}</label>
+              <input
+                type="date"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                min={minDeliveryDate()}
+                className="h-11 w-full rounded-sm border border-border-strong bg-surface px-3 text-base text-ink"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-muted">{t.deliveryTimeLabel}</label>
+              <select
+                value={deliveryTimeSlot}
+                onChange={(e) => setDeliveryTimeSlot(e.target.value)}
+                className="h-11 w-full rounded-sm border border-border-strong bg-surface px-3 text-base text-ink"
+              >
+                <option value="">{t.deliveryTimeAny}</option>
+                <option value="09:00-12:00">09:00-12:00</option>
+                <option value="12:00-15:00">12:00-15:00</option>
+                <option value="15:00-18:00">15:00-18:00</option>
+                <option value="18:00-21:00">18:00-21:00</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
 
         {/* Order summary. */}
         <OrderSummary

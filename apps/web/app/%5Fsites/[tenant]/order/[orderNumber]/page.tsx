@@ -82,7 +82,24 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
       {/* What happens next. */}
       <div className="mb-6 flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
         <p className="bn-body text-sm font-semibold text-ink">{t.whatNext}</p>
-        <p className="bn-body text-sm text-ink-muted">{t.nextCall}</p>
+        {order.fulfillmentMethod === "pickup" ? (
+          <>
+            <p className="bn-body text-sm text-ink-muted">{t.pickupNext}</p>
+            {order.pickupLocation && (
+              <p className="bn-body text-sm font-medium text-ink">{order.pickupLocation}</p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="bn-body text-sm text-ink-muted">{t.nextCall}</p>
+            {order.deliveryDate && (
+              <p className="bn-body text-sm text-ink-muted">
+                {t.deliveryDateLabel}: {order.deliveryDate}
+                {order.deliveryTimeSlot ? ` (${order.deliveryTimeSlot})` : ""}
+              </p>
+            )}
+          </>
+        )}
         {isCod && (
           <p className="bn-body text-sm text-ink-muted">
             {t.nextPay.replace("{amount}", formatMoney(order.codAmount, locale))}

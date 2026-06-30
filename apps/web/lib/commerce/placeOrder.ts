@@ -110,6 +110,14 @@ export interface PlaceOrderInput {
    * not on delivery).
    */
   creditSale?: boolean;
+  /** Optional preferred delivery date (ISO date string, e.g. "2026-07-05"). */
+  deliveryDate?: string | null;
+  /** Optional preferred time window (free-text, e.g. "10:00-13:00"). */
+  deliveryTimeSlot?: string | null;
+  /** Optional in-store pickup. When set, fulfillment_method = 'pickup'. */
+  fulfillmentMethod?: "delivery" | "pickup";
+  /** Store name / address for pickup (required when fulfillmentMethod = 'pickup'). */
+  pickupLocation?: string | null;
 }
 
 export interface PlaceOrderResult {
@@ -223,8 +231,8 @@ async function reserveLine(
     return toPricedLine(decremented[0]!, item.quantity);
   }
 
-  // 0 rows: either an untracked variant, or a tracked variant out of stock.
-  // Distinguish by reading the variant within the same tenant/txn.
+  // 0 rows: either an untracked variant, a tracked variant out of stock,
+  // or a preorder variant. Distinguish by reading the variant + product.
   const variant = await tx<
     {
       id: string;
@@ -233,19 +241,33 @@ async function reserveLine(
       title: string | null;
       sku: string | null;
       track_inventory: boolean;
+      preorder_enabled: boolean;
     }[]
   >`
-    select id, price, product_id, title, sku, track_inventory
-      from product_variant
-     where id = ${item.variantId} and tenant_id = ${tenantId}
+    select pv.id, pv.price, pv.product_id, pv.title, pv.sku, pv.track_inventory,
+           p.preorder_enabled
+      from product_variant pv
+      join product p on p.id = pv.product_id and p.tenant_id = ${tenantId}
+     where pv.id = ${item.variantId} and pv.tenant_id = ${tenantId}
      limit 1
   `;
 
   const found = variant[0];
-  if (!found || found.track_inventory) {
-    // Not found (cross-tenant / bad id) OR tracked-but-insufficient → reject.
+  if (!found) {
+    // Not found (cross-tenant / bad id) → reject.
     throw new InsufficientStockError(item.variantId);
   }
+
+  if (found.preorder_enabled) {
+    // Preorder — sell without decrementing inventory.
+    return toPricedLine(found, item.quantity);
+  }
+
+  if (found.track_inventory) {
+    // Tracked-but-insufficient → reject.
+    throw new InsufficientStockError(item.variantId);
+  }
+
   // Untracked variant — sell without decrementing.
   return toPricedLine(found, item.quantity);
 }
@@ -538,7 +560,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         payment_status, fulfillment_status, source, channel, marketplace_order_id,
         order_mode, credit_due, credit_approved, note,
         sla_zone, sla_handover_deadline_at, sla_delivery_deadline_at,
-        cancel_after_at
+        cancel_after_at,
+        delivery_date, delivery_time_slot,
+        fulfillment_method, pickup_location
       ) values (
         ${input.tenantId}, ${customerId},
         ${input.customer.name}, ${input.customer.phone}, ${input.customer.email ?? null},
@@ -558,7 +582,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         ${orderModeValue}, ${creditDue}, ${isCreditSale},
         ${input.note ?? null},
         ${sla.zone}, ${sla.handover.toISOString()}, ${sla.delivery.toISOString()},
-        ${cancelAfterAt.toISOString()}
+        ${input.cancelAfterAt?.toISOString() ?? null},
+        ${input.deliveryDate ?? null}::date, ${input.deliveryTimeSlot ?? null},
+        ${input.fulfillmentMethod ?? "delivery"}::fulfillment_method, ${input.pickupLocation ?? null}
       )
       returning id, order_number
     `;

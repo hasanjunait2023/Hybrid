@@ -108,6 +108,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 {formatMoney(product.compareAtPrice, locale)}
               </span>
             )}
+            {product.preorderEnabled && (
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                {d.storefront.product.preorder}
+                {product.preorderAvailableAt
+                  ? ` · ${new Date(product.preorderAvailableAt).toLocaleDateString(locale === "bn" ? "bn-BD" : "en-GB", { day: "numeric", month: "short" })}`
+                  : ""}
+              </span>
+            )}
           </div>
 
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-cod-weak px-3 py-1 text-xs font-semibold text-cod">

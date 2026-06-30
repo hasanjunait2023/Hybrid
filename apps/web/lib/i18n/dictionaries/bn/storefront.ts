@@ -27,6 +27,7 @@ export const storefront: typeof EnStorefront = {
     added: "যোগ হয়েছে ✓",
     addToCart: "কার্টে যোগ করুন",
     outOfStock: "স্টক নেই",
+    preorder: "প্রি-অর্ডার",
     cart: "কার্ট",
     viewCart: "কার্ট দেখুন",
     price: "মূল্য",
@@ -122,6 +123,15 @@ export const storefront: typeof EnStorefront = {
     searchPlaceholder: "খুঁজুন…",
     noResults: "কিছু পাওয়া যায়নি",
     countSuffix: "টি",
+    // Delivery slot
+    deliverySlotLabel: "পছন্দের ডেলিভারি সময়",
+    deliveryDateLabel: "তারিখ",
+    deliveryTimeLabel: "সময়",
+    deliveryTimeAny: "যেকোনো সময়",
+    // Fulfillment method
+    fulfillmentLabel: "কিভাবে নেবেন",
+    deliveryOption: "হোম ডেলিভারি",
+    pickupOption: "দোকান থেকে নেব",
   },
   order: {
     confirmed: "অর্ডার কনফার্ম হয়েছে!",
@@ -129,6 +139,8 @@ export const storefront: typeof EnStorefront = {
     whatNext: "এরপর কী হবে",
     nextCall: "১. আমরা আপনাকে কল করে কনফার্ম করব",
     nextPay: "২. {amount} ডেলিভারিতে দিন",
+    pickupNext: "দোকান থেকে আপনার অর্ডার নিয়ে আসুন।",
+    deliveryDateLabel: "পছন্দের ডেলিভারি তারিখ",
     orderSummary: "অর্ডার সারাংশ",
     total: "সর্বমোট",
     collectOnDelivery: "ডেলিভারিতে সংগ্রহ",

@@ -230,6 +230,10 @@ export interface StorefrontOrder {
   paymentMethod: string;
   codAmount: number;
   grandTotal: number;
+  deliveryDate: string | null;
+  deliveryTimeSlot: string | null;
+  fulfillmentMethod: string;
+  pickupLocation: string | null;
   items: StorefrontOrderItem[];
 }
 
@@ -260,10 +264,16 @@ export async function getStorefrontOrder(
         cod_amount: string;
         grand_total: string;
         customer_phone: string | null;
+        delivery_date: string | null;
+        delivery_time_slot: string | null;
+        fulfillment_method: string;
+        pickup_location: string | null;
       }[]
     >`
       select id, order_number, fulfillment_status, payment_status,
-             cod_amount, grand_total, customer_phone
+             cod_amount, grand_total, customer_phone,
+             delivery_date, delivery_time_slot,
+             fulfillment_method, pickup_location
         from orders
        where order_number = ${orderNumber}
        limit 1
@@ -292,6 +302,10 @@ export async function getStorefrontOrder(
       paymentMethod: payment[0]?.provider ?? "cod",
       codAmount: Number(order.cod_amount),
       grandTotal: Number(order.grand_total),
+      deliveryDate: order.delivery_date ?? null,
+      deliveryTimeSlot: order.delivery_time_slot ?? null,
+      fulfillmentMethod: order.fulfillment_method ?? "delivery",
+      pickupLocation: order.pickup_location ?? null,
       items: items.map((i) => ({
         title: i.title,
         variantTitle: i.variant_title,
@@ -312,6 +326,7 @@ export interface StorefrontVariant {
   price: number;
   compareAtPrice: number | null;
   inStock: boolean;
+  preorderEnabled: boolean;
 }
 
 export interface StorefrontProductDetail {
@@ -325,6 +340,8 @@ export interface StorefrontProductDetail {
   price: number;
   compareAtPrice: number | null;
   inStock: boolean;
+  preorderEnabled: boolean;
+  preorderAvailableAt: string | null;
   /** R1 — product videos ordered by position asc. Empty array when none. */
   videos: StorefrontProductVideo[];
   /** R3 — free-text category used to look up a per-category size chart on
@@ -354,9 +371,12 @@ export async function getStorefrontProductBySlug(
             slug: string;
             description: string | null;
             product_type: string | null;
+            preorder_enabled: boolean;
+            preorder_available_at: string | null;
           }[]
         >`
-          select id, title, slug, description, product_type
+          select id, title, slug, description, product_type,
+                 preorder_enabled, preorder_available_at
             from product
            where slug = ${slug} and status = 'active'
            limit 1
@@ -372,9 +392,10 @@ export async function getStorefrontProductBySlug(
             compare_at_price: string | null;
             inventory_quantity: number;
             track_inventory: boolean;
+            preorder_enabled: boolean;
           }[]
         >`
-          select id, title, price, compare_at_price, inventory_quantity, track_inventory
+          select id, title, price, compare_at_price, inventory_quantity, track_inventory, preorder_enabled
             from product_variant
            where product_id = ${row.id} and is_active = true
            order by price asc
@@ -415,6 +436,7 @@ export async function getStorefrontProductBySlug(
         price: Number(v.price),
         compareAtPrice: v.compare_at_price != null ? Number(v.compare_at_price) : null,
         inStock: !v.track_inventory || v.inventory_quantity > 0,
+        preorderEnabled: v.preorder_enabled,
       }));
 
       const lowest = variants.reduce<StorefrontVariant | null>(
@@ -432,6 +454,8 @@ export async function getStorefrontProductBySlug(
         price: lowest?.price ?? 0,
         compareAtPrice: lowest?.compareAtPrice ?? null,
         inStock: variants.some((v) => v.inStock),
+        preorderEnabled: product.row.preorder_enabled,
+        preorderAvailableAt: product.row.preorder_available_at ?? null,
         videos: product.videos.map((v) => ({
           url: v.url,
           posterUrl: v.poster_url,
