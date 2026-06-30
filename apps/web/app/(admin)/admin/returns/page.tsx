@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import {
   listReturns,
@@ -44,8 +44,7 @@ const STATUS_VALUES: ReturnStatus[] = [
 ];
 
 export default async function AdminReturnsPage({ searchParams }: ReturnsPageProps) {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

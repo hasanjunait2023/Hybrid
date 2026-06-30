@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import {
   getPaymentSettings,
@@ -21,8 +21,7 @@ import { Breadcrumbs } from "../../_ui";
 // Nagad/SSLCommerz callback/IPN URLs are SERVER-DERIVED from the verified domain
 // (never client-supplied) and shown as copy-able — the silent-failure guard.
 export default async function PaymentSettingsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
   const userId = session.userId;

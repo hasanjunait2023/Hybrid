@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import Link from "next/link";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
@@ -39,8 +39,7 @@ async function getDashboardSnapshot(tenantId: string, userId: string) {
 }
 
 export default async function MobileDashboard() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

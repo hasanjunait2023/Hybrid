@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getDomainsView } from "@/lib/domains/data";
 import { getDict } from "@/lib/i18n/server";
@@ -9,8 +9,7 @@ import { DomainsManager } from "./DomainsManager";
 // set primary. Backed by tenant_domain; live Vercel calls behind
 // VERCEL_DOMAINS_ENABLED (flag off → honest "pending live Vercel").
 export default async function DomainsSettingsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

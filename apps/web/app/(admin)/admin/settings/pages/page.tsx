@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { requireSession } from "@/lib/auth/requireSession";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listStorePages } from "@/lib/admin/pages";
 
@@ -9,8 +9,7 @@ import { listStorePages } from "@/lib/admin/pages";
 export const dynamic = "force-dynamic";
 
 export default async function StorePagesSettings() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

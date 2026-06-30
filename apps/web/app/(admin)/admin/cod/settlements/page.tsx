@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { StatusBadge, DeltaAmount, DiscrepancyStat, EmptyState } from "@hybrid/ui";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getSettlements } from "@/lib/admin/cod";
 import { getDict } from "@/lib/i18n/server";
@@ -13,8 +13,7 @@ import { ResolveButton } from "./ResolveButton";
 // row tint + left edge bar + গরমিল chip; matched rows stay calm. Every amount is
 // REAL — written only by the reconciliation engine from a courier CSV.
 export default async function SettlementsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

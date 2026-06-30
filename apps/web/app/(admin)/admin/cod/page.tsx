@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { StatusBadge } from "@hybrid/ui";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getCodPending } from "@/lib/admin/cod";
 import { getDict } from "@/lib/i18n/server";
@@ -11,8 +11,7 @@ import { formatMoney, formatNumber } from "@/lib/i18n/format";
 // Operator-facing → Latin numerals, mono amounts. We show the honest EXPECTED
 // total — remittance reconciliation is Phase-2 (no Steadfast remittance API).
 export default async function CodPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getOrderDetail } from "@/lib/admin/orders";
 import { getStoreProfile } from "@/lib/admin/settings";
@@ -21,8 +21,7 @@ export default async function OrderPrintPage({ params, searchParams }: PrintPage
   const { doc } = await searchParams;
   const isPacking = doc === "packing";
 
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

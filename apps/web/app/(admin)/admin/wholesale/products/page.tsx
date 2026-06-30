@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { PlusIcon } from "@hybrid/ui";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listWholesaleProducts, getWholesaleProductStats } from "@/lib/admin/wholesale";
 import { getDict } from "@/lib/i18n/server";
@@ -9,8 +9,7 @@ import { PageHeader, StatStrip, StatCard } from "../../_ui";
 
 // Wholesale product list — shows MOQ, wholesale price, tier pricing.
 export default async function WholesaleProductsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

@@ -1,15 +1,14 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { withTenant } from "@hybrid/db";
 import { formatBdtBangla } from "@hybrid/ui";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 
 export const dynamic = "force-dynamic";
 
 // Vendor's marketplace commission ledger (record-only; no payout in the base).
 export default async function MarketplaceCommissionPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { isPlatformAdmin } from "@/lib/platform/auth";
 import {
   listDbidQueue,
@@ -25,8 +25,7 @@ interface PageProps {
 }
 
 export default async function PlatformDbidPage({ searchParams }: PageProps) {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=super");
+  const session = await requireSession();
   if (!(await isPlatformAdmin(session.userId))) {
     redirect("/platform");
   }

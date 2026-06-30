@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { withTenant } from "@hybrid/db";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getStoreProfile } from "@/lib/admin/settings";
 import { getDict } from "@/lib/i18n/server";
@@ -45,8 +45,7 @@ export default async function WholesaleOrderPrintPage({ params, searchParams }: 
   const doc = normalizeDoc((await searchParams).doc);
   const showPrices = doc !== "challan";
 
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

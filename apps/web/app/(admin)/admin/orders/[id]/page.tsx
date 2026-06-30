@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { StatusBadge, StatusStepper, PhoneIcon, ChatIcon } from "@hybrid/ui";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getOrderDetail, nextAction } from "@/lib/admin/orders";
 import { getDict } from "@/lib/i18n/server";
@@ -22,8 +22,7 @@ interface OrderDetailPageProps {
 
 export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
   const { id } = await params;
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

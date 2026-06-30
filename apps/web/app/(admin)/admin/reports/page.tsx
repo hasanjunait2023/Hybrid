@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import {
   getSalesReport,
@@ -48,8 +48,7 @@ function rangeFor(sp: { from?: string; to?: string; r?: string }): { range: Date
 }
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

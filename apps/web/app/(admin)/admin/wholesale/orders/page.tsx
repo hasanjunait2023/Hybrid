@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listWholesaleOrders, getWholesaleOrderCounts } from "@/lib/admin/wholesale";
 import { timeAgo } from "@/lib/admin/format";
@@ -9,8 +9,7 @@ import { PageHeader, StatStrip, StatCard } from "../../_ui";
 
 // Wholesale orders list — filters order_mode='wholesale'.
 export default async function WholesaleOrdersPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

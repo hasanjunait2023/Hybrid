@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { StatusBadge, PlusIcon } from "@hybrid/ui";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listOrders, getOrderStatusCounts } from "@/lib/admin/orders";
 import { timeAgo } from "@/lib/admin/format";
@@ -33,8 +33,7 @@ const STATUS_KEYS = [
 ] as const;
 
 export default async function OrdersPage({ searchParams }: OrdersPageProps) {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

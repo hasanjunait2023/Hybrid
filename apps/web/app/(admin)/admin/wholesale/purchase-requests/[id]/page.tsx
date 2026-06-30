@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import Link from "next/link";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getPurchaseRequest } from "../actions";
 import { timeAgo } from "@/lib/admin/format";
@@ -16,8 +16,7 @@ import { StatusTimeline } from "./StatusTimeline";
 export default async function PurchaseRequestDetailPage(props: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

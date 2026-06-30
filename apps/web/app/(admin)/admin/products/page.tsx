@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { PlusIcon } from "@hybrid/ui";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listProducts, getProductStats } from "@/lib/admin/catalog";
 import { LOW_STOCK_THRESHOLD } from "@/lib/admin/dashboard";
@@ -19,8 +19,7 @@ interface ProductsPageProps {
 const STATUS_PILL_KEYS = ["all", "active", "draft", "archived"] as const;
 
 export default async function AdminProductsPage({ searchParams }: ProductsPageProps) {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

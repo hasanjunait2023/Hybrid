@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth/requireSession";
 import { PlusIcon } from "@hybrid/ui";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listCollections } from "@/lib/admin/catalog";
 import { getDict } from "@/lib/i18n/server";
@@ -10,8 +10,7 @@ import { PageHeader } from "../_ui";
 // Collections list (DESIGN §P4). The "আরও" tab destination on mobile. Simple
 // manual collections; rule-based is Phase 2.
 export default async function CollectionsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

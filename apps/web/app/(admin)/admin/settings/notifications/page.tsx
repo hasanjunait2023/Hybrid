@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getSmsSettings, getWhatsAppSettings } from "@/lib/admin/settings";
 import { getDict } from "@/lib/i18n/server";
@@ -10,8 +10,7 @@ import { WhatsAppForm } from "./WhatsAppForm";
 // WhatsApp Cloud API (own WABA creds), each on the shared <ProviderCard>.
 // WhatsApp is ADDITIVE to SMS and per-tenant opt-in.
 export default async function NotificationSettingsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

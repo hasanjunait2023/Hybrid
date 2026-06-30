@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getCourierSettings, getPathaoSettings } from "@/lib/admin/settings";
 import { getDict } from "@/lib/i18n/server";
@@ -10,8 +10,7 @@ import { ComingSoonCard } from "./ComingSoonCard";
 // Courier settings (DESIGN §Q4). Steadfast + Pathao on the shared <ProviderCard>;
 // RedX/Paperfly show honest "coming soon" (no public API docs yet — brief §2.5).
 export default async function CourierSettingsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

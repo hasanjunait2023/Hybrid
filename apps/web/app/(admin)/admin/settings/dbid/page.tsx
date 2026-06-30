@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getDbidSubmission } from "@/lib/admin/dbid";
 import { getDict } from "@/lib/i18n/server";
@@ -10,8 +10,7 @@ import { DbidForm } from "./DbidForm";
 // is fully client-driven after the initial server render — the form manages
 // its own step state and calls Server Actions on each save.
 export default async function DbidSettingsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

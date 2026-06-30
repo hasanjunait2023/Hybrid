@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listMembers, getMemberRole } from "@/lib/admin/staff";
 import { getDict } from "@/lib/i18n/server";
@@ -12,8 +12,7 @@ import { StaffManager } from "./StaffManager";
 export const dynamic = "force-dynamic";
 
 export default async function StaffPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

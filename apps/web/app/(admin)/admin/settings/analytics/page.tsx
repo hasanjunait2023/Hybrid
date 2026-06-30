@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getAnalyticsSettings } from "@/lib/admin/settings";
 import { getDict } from "@/lib/i18n/server";
@@ -8,8 +8,7 @@ import { AnalyticsForm } from "./AnalyticsForm";
 // Analytics settings (DESIGN §Q4; blueprint 2.7). GA4 + Meta Pixel/CAPI on the
 // shared <ProviderCard>. Public IDs shown in full; secrets write-masked.
 export default async function AnalyticsSettingsPage() {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

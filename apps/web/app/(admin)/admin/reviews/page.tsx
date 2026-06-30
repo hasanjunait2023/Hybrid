@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/requireSession";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { listReviews, getReviewStats, type ReviewStatus } from "@/lib/admin/reviews";
 import { getDict } from "@/lib/i18n/server";
@@ -23,8 +23,7 @@ const STATUSES = [
 ] as const;
 
 export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 

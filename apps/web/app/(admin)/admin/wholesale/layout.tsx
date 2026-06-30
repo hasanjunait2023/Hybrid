@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
+import { requireSession } from "@/lib/auth/requireSession";
 import { notFound, redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getTenantBusinessType } from "@/lib/admin/wholesale";
 
@@ -11,8 +11,7 @@ import { getTenantBusinessType } from "@/lib/admin/wholesale";
 export const dynamic = "force-dynamic";
 
 export default async function WholesaleAdminLayout({ children }: { children: ReactNode }) {
-  const session = await getSession();
-  if (!session) redirect("/dev-login?as=owner-a");
+  const session = await requireSession();
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) redirect("/platform");
 
