@@ -141,7 +141,7 @@ export default function LabelsPrintPage() {
         }
         .label-variant {
           font-size: 8px;
-          color: #444;
+          color: var(--color-ink-muted, dimgray);
           max-width: 100%;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -164,7 +164,7 @@ export default function LabelsPrintPage() {
         .label-code {
           font-size: 7px;
           letter-spacing: 0.5px;
-          color: #333;
+          color: var(--color-ink-muted, dimgray);
         }
       `}</style>
     </div>
