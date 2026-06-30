@@ -20,27 +20,34 @@ export async function POST(
 
   const rawBody = await req.text();
 
-  // Verify HMAC signature if the platform sent one
+  // Verify HMAC signature when a webhook secret is configured.
+  // If the secret is set, a signature header is REQUIRED — no signature = reject.
   if (integration.webhookSecret) {
-    const sig =
-      req.headers.get("x-shopify-hmac-sha256") ??
-      req.headers.get("x-wc-webhook-signature") ??
-      req.headers.get("x-hub-signature-256") ??
-      "";
+    // x-hub-signature-256 carries a "sha256=<hex>" prefix and uses hex encoding.
+    // Shopify (x-shopify-hmac-sha256) and WooCommerce use raw base64.
+    const hubSig   = req.headers.get("x-hub-signature-256");
+    const shopSig  = req.headers.get("x-shopify-hmac-sha256");
+    const wcSig    = req.headers.get("x-wc-webhook-signature");
+    const rawSig   = hubSig ?? shopSig ?? wcSig;
 
-    if (sig) {
-      const expected = crypto
-        .createHmac("sha256", integration.webhookSecret)
-        .update(rawBody, "utf8")
-        .digest("base64");
-      const sigBody = sig.replace(/^sha256=/, "");
-      const valid = crypto.timingSafeEqual(
-        Buffer.from(expected),
-        Buffer.from(sigBody.length === expected.length ? sigBody : Buffer.alloc(expected.length).toString("base64")),
-      );
-      if (!valid) {
-        return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
-      }
+    if (!rawSig) {
+      return NextResponse.json({ error: "missing_signature" }, { status: 401 });
+    }
+
+    // Strip the "sha256=" prefix used by the hub spec.
+    const incoming = rawSig.replace(/^sha256=/, "");
+    // Use hex for x-hub-signature-256, base64 for all others.
+    const encoding = hubSig ? "hex" : "base64";
+    const expected = crypto
+      .createHmac("sha256", integration.webhookSecret)
+      .update(rawBody, "utf8")
+      .digest(encoding);
+
+    if (
+      incoming.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(incoming))
+    ) {
+      return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
     }
   }
 

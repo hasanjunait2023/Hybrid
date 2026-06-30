@@ -4,13 +4,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listActiveIntegrationsForSync, updateIntegrationStatus } from "@/lib/integrations/data";
 import { runProductImport, runInventoryExport, runOrderImport } from "@/lib/integrations/sync";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min max (Vercel Pro / self-hosted generous timeout)
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret") ?? req.nextUrl.searchParams.get("secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  const cronSecret = process.env.CRON_SECRET;
+  // Secret must come from the Authorization header only — never from a URL query
+  // param which would leak into access logs, proxy logs, and CDN edge caches.
+  const secret = req.headers.get("x-cron-secret") ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!cronSecret || !secret) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  // Timing-safe compare prevents timing-oracle attacks on the secret value.
+  const expected = Buffer.from(cronSecret);
+  const provided = Buffer.from(secret);
+  if (expected.length !== provided.length || !crypto.timingSafeEqual(expected, provided)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

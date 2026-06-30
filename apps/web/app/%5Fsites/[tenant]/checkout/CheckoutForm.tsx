@@ -3,7 +3,7 @@
 // numerals. Phone-first, minimum fields, COD default (loudest, COD-green) +
 // bKash (single pink), Division→District→Thana bottom sheets, order summary,
 // sticky "অর্ডার করুন" bar. Submits to the submitCheckout Server Action.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, CheckIcon } from "@hybrid/ui";
 import type { LocationTree, CascadeOption } from "@/lib/location";
 import { useDict, useLocale } from "@/lib/i18n/provider";
@@ -60,6 +60,10 @@ export function CheckoutForm({
   const [showNote, setShowNote] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Synchronous guard (ref) prevents duplicate placeOrder calls in the window
+  // between the first handleSubmit call and the React state re-render that sets
+  // submitting=true. A ref update is synchronous; useState is not.
+  const submitLockRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Live shipping charge for display (null = not configured / not yet quoted).
   // The authoritative value is re-computed server-side at submit.
@@ -136,7 +140,8 @@ export function CheckoutForm({
     cart.lines.length > 0;
 
   async function handleSubmit() {
-    if (!isComplete || submitting) return;
+    if (!isComplete || submitting || submitLockRef.current) return;
+    submitLockRef.current = true;
     setSubmitting(true);
     setError(null);
 
@@ -158,6 +163,7 @@ export function CheckoutForm({
 
     if (!result.ok) {
       setError(result.error);
+      submitLockRef.current = false;
       setSubmitting(false);
       return;
     }

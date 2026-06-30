@@ -83,16 +83,23 @@ export async function addCustomDomain(
   // DNS provider before checkDomainStatus can advance the state.
   const token = randomUUID();
 
+  let inserted = false;
   try {
-    await withTenant(auth.tenantId, auth.userId, (tx) =>
-      tx`
+    const rows = await withTenant(auth.tenantId, auth.userId, (tx) =>
+      tx<{ id: string }[]>`
         insert into tenant_domain (tenant_id, domain, type, verified, ssl_status, verification_token)
         values (${auth.tenantId}, ${domain}, 'custom', false, 'none'::ssl_status, ${token})
         on conflict (domain) do nothing
+        returning id
       `,
     );
+    inserted = rows.length > 0;
   } catch {
-    return { ok: false, error: "ডোমেইন যোগ করা যায়নি। হয়তো এটি ইতিমধ্যে ব্যবহৃত হচ্ছে।" };
+    return { ok: false, error: "ডোমেইন যোগ করা যায়নি।" };
+  }
+
+  if (!inserted) {
+    return { ok: false, error: "এই ডোমেইনটি ইতিমধ্যে অন্য একটি স্টোরে ব্যবহৃত হচ্ছে।" };
   }
 
   revalidatePath("/admin/settings/domains");

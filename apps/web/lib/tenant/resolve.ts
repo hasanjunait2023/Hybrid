@@ -79,5 +79,10 @@ async function cacheSet(k: string, value: string, ttlSeconds: number): Promise<v
 
 // Called when a domain is added/verified/removed (Phase 2).
 export async function invalidateDomainCache(host: string): Promise<void> {
-  await getCache().del(key(host));
+  try {
+    await getCache().del(key(host));
+  } catch {
+    // best-effort: Redis outage during suspension must not prevent the tenant
+    // from being suspended. The stale cache entry will expire within TTL_HIT_SECONDS.
+  }
 }
