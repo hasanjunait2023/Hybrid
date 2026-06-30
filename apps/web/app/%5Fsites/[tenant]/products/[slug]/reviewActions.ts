@@ -1,7 +1,9 @@
 "use server";
 import { z } from "zod";
+import { headers } from "next/headers";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
 import { submitStorefrontReview } from "@/lib/admin/reviews";
+import { rateLimit, clientIpFrom } from "@/lib/ratelimit";
 
 const reviewSchema = z.object({
   tenantSlug: z.string().min(1),
@@ -16,6 +18,13 @@ export type SubmitReviewResult = { ok: true } | { ok: false; error: string };
 export async function submitReviewAction(
   raw: unknown,
 ): Promise<SubmitReviewResult> {
+  // Rate limit unauthenticated review submission: 5 reviews per IP per hour.
+  const ip = clientIpFrom(await headers());
+  const rl = await rateLimit({ bucket: "review", identifier: ip, limit: 5, windowSeconds: 3600 });
+  if (!rl.allowed) {
+    return { ok: false, error: "অনেক বেশি রিভিউ জমা দেওয়া হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।" };
+  }
+
   const parsed = reviewSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "অনুগ্রহ করে সব তথ্য সঠিকভাবে দিন।" };
   const input = parsed.data;

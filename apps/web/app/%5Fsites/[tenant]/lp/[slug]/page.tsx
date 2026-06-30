@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getTenantContextBySlug } from "@/lib/storefront/data";
 import { getPublishedLandingPage, type LpBlock } from "@/lib/admin/landingPages";
 import { writeLpViewed } from "@/lib/analytics/internal";
+import { safeUrl } from "@hybrid/ui";
 
 interface Props {
   params: Promise<{ tenant: string; slug: string }>;
@@ -56,11 +57,13 @@ export default async function LandingPageRoute({ params }: Props) {
 
 function BlockRenderer({ block }: { block: LpBlock }) {
   if (block.type === "hero") {
+    const heroImgSrc = safeUrl(block.image_url);
+    const heroHref = safeUrl(block.cta_url) ?? "#";
     return (
       <section className="relative flex min-h-[320px] flex-col items-center justify-center gap-4 bg-primary/5 px-4 py-12 text-center">
-        {block.image_url ? (
+        {heroImgSrc ? (
           <img
-            src={block.image_url}
+            src={heroImgSrc}
             alt=""
             className="absolute inset-0 h-full w-full object-cover opacity-20"
           />
@@ -74,7 +77,7 @@ function BlockRenderer({ block }: { block: LpBlock }) {
           ) : null}
           {block.cta_text && block.cta_url ? (
             <Link
-              href={block.cta_url}
+              href={heroHref}
               className="mt-2 inline-flex min-h-[48px] items-center rounded-lg bg-primary px-8 text-base font-semibold text-white shadow-md hover:bg-primary-hover"
             >
               {block.cta_text}
@@ -94,10 +97,12 @@ function BlockRenderer({ block }: { block: LpBlock }) {
   }
 
   if (block.type === "image") {
+    const imgSrc = safeUrl(block.url);
+    if (!imgSrc) return null;
     return (
       <section className="px-4 py-6">
         <img
-          src={block.url}
+          src={imgSrc}
           alt={block.alt}
           className="mx-auto max-w-2xl rounded-xl object-contain"
         />
@@ -106,10 +111,11 @@ function BlockRenderer({ block }: { block: LpBlock }) {
   }
 
   if (block.type === "cta") {
+    const ctaHref = safeUrl(block.url) ?? "#";
     return (
       <section className="flex justify-center px-4 py-8">
         <Link
-          href={block.url}
+          href={ctaHref}
           className="inline-flex min-h-[52px] items-center rounded-lg bg-primary px-10 text-lg font-bold text-white shadow-md hover:bg-primary-hover"
         >
           {block.text}

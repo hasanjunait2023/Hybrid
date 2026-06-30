@@ -11,6 +11,27 @@ import {
 
 type BlockType = LpBlock["type"];
 
+function isHttpUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function validateBlockUrls(blocks: LpBlock[]): string | null {
+  for (const block of blocks) {
+    if (block.type === "hero") {
+      if (block.cta_url && !isHttpUrl(block.cta_url)) return "Hero CTA URL: http বা https দরকার।";
+      if (block.image_url && !isHttpUrl(block.image_url)) return "Hero ছবির URL: http বা https দরকার।";
+    }
+    if (block.type === "image" && block.url && !isHttpUrl(block.url)) return "ছবির URL: http বা https দরকার।";
+    if (block.type === "cta" && block.url && !isHttpUrl(block.url)) return "CTA URL: http বা https দরকার।";
+  }
+  return null;
+}
+
 const BLOCK_LABELS: Record<BlockType, string> = {
   hero: "Hero ব্যানার",
   text: "টেক্সট",
@@ -143,6 +164,10 @@ export function BlockEditor({ page, abStats }: Props) {
   const save = () => {
     setError(null);
     setSaved(false);
+    const blockErr = validateBlockUrls(blocks);
+    if (blockErr) { setError(blockErr); return; }
+    const abErr = abEnabled ? validateBlockUrls(abVariantBlocks) : null;
+    if (abErr) { setError(abErr); return; }
     startTransition(async () => {
       const fc: FunnelConfig = {
         thank_you_url: thankYouUrl || undefined,

@@ -161,7 +161,9 @@ export async function updateIntegrationStatus(
   status: IntegrationStatus,
   syncError?: string | null,
 ): Promise<void> {
-  await asPlatformAdmin((tx) =>
+  // withTenant(tenantId, null) — background service context, no user session.
+  // RLS ensures only the correct tenant's integration is updated.
+  await withTenant(tenantId, null, (tx) =>
     tx`
       update external_integration
       set status = ${status},

@@ -14,6 +14,7 @@ import {
   type LpBlock,
   type FunnelConfig,
 } from "@/lib/admin/landingPages";
+import { safeUrl } from "@hybrid/ui";
 
 export interface LpActionResult {
   ok: boolean;
@@ -30,6 +31,21 @@ async function authTenant(): Promise<
   const tenantId = await getActiveTenantId(session.userId);
   if (!tenantId) return { ok: false, error: "কোনো স্টোর পাওয়া যায়নি।" };
   return { ok: true, tenantId, userId: session.userId };
+}
+
+// Returns an error message if any block contains a URL with a non-http(s) scheme.
+function validateBlockUrls(blocks: LpBlock[]): string | null {
+  for (const block of blocks) {
+    if (block.type === "hero") {
+      if (block.cta_url && !safeUrl(block.cta_url)) return "Hero CTA URL-এ শুধু http/https অনুমোদিত।";
+      if (block.image_url && !safeUrl(block.image_url)) return "Hero ছবির URL-এ শুধু http/https অনুমোদিত।";
+    } else if (block.type === "image") {
+      if (block.url && !safeUrl(block.url)) return "ছবির URL-এ শুধু http/https অনুমোদিত।";
+    } else if (block.type === "cta") {
+      if (block.url && !safeUrl(block.url)) return "CTA URL-এ শুধু http/https অনুমোদিত।";
+    }
+  }
+  return null;
 }
 
 function bustPageTags(tenantId: string, slug?: string): void {
@@ -91,9 +107,16 @@ export async function updateLandingPageAction(
 
   if (parsed.data.blocks != null) {
     try { blocks = JSON.parse(parsed.data.blocks) as LpBlock[]; } catch { return { ok: false, error: "Blocks JSON ভুল।" }; }
+    const urlErr = validateBlockUrls(blocks);
+    if (urlErr) return { ok: false, error: urlErr };
   }
   if (parsed.data.funnelConfig != null) {
     try { funnelConfig = JSON.parse(parsed.data.funnelConfig) as FunnelConfig; } catch { return { ok: false, error: "Funnel config JSON ভুল।" }; }
+    // Validate variant_blocks inside A/B config as well
+    if (funnelConfig.ab_test?.variant_blocks) {
+      const abErr = validateBlockUrls(funnelConfig.ab_test.variant_blocks);
+      if (abErr) return { ok: false, error: abErr };
+    }
   }
 
   try {

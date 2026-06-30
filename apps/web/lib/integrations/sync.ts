@@ -1,9 +1,10 @@
 // Core sync engine — imports/exports products, inventory, and orders
 // between external platforms and Hybrid's internal catalog.
 //
-// All DB writes go through asPlatformAdmin (cross-tenant engine context).
-// Product/variant resolution uses the catalog data layer (admin lib).
-import { asPlatformAdmin } from "@hybrid/db";
+// Tenant data writes (product/variant/order) use withTenant(tenantId, null)
+// so RLS is enforced. Platform infrastructure (entity map, sync log) uses
+// asPlatformAdmin — those tables are cross-tenant by design.
+import { withTenant } from "@hybrid/db";
 import {
   getEntityMap,
   upsertEntityMap,
@@ -67,7 +68,7 @@ export async function runInventoryExport(
     const adapter = getAdapter(creds);
 
     // Fetch all variants with their current inventory from Hybrid
-    const variants = await asPlatformAdmin((tx) =>
+    const variants = await withTenant(tenantId, null, (tx) =>
       tx<{ id: string; inventory: number; integration_ext_id: string | null }[]>`
         select v.id, v.inventory,
                eem.external_id as integration_ext_id
@@ -174,7 +175,7 @@ async function upsertProduct(
 
   if (existing) {
     // Update existing product
-    await asPlatformAdmin((tx) =>
+    await withTenant(tenantId, null, (tx) =>
       tx`
         update product
         set title       = ${product.title},
@@ -191,10 +192,12 @@ async function upsertProduct(
       await upsertVariant(integrationId, tenantId, existing.internalId, variant);
     }
 
-    await upsertEntityMap(integrationId, tenantId, "product", product.externalId, existing.internalId, hash);
+    // tenantId first — matches upsertEntityMap(tenantId, integrationId, ...) signature
+    await upsertEntityMap(tenantId, integrationId, "product", product.externalId, existing.internalId, hash);
   } else {
-    // Insert new product
-    const rows = await asPlatformAdmin((tx) =>
+    // Insert new product. Slug is derived from title + externalId for determinism
+    // and near-uniqueness without relying on Math.random().
+    const rows = await withTenant(tenantId, null, (tx) =>
       tx<{ id: string }[]>`
         insert into product (tenant_id, title, description, status, tags, images, slug)
         values (
@@ -204,8 +207,9 @@ async function upsertProduct(
           ${product.status},
           ${product.tags ?? []},
           ${JSON.stringify(product.images)}::jsonb,
-          ${slugify(product.title)}
+          ${slugify(product.title, product.externalId)}
         )
+        on conflict (tenant_id, slug) do update set slug = excluded.slug || '-x'
         returning id
       `,
     );
@@ -215,7 +219,7 @@ async function upsertProduct(
       await upsertVariant(integrationId, tenantId, productId, variant);
     }
 
-    await upsertEntityMap(integrationId, tenantId, "product", product.externalId, productId, hash);
+    await upsertEntityMap(tenantId, integrationId, "product", product.externalId, productId, hash);
   }
 }
 
@@ -228,7 +232,7 @@ async function upsertVariant(
   const existing = await getEntityMap(integrationId, "variant", variant.externalId);
 
   if (existing) {
-    await asPlatformAdmin((tx) =>
+    await withTenant(tenantId, null, (tx) =>
       tx`
         update product_variant
         set sku               = ${variant.sku ?? null},
@@ -242,7 +246,7 @@ async function upsertVariant(
       `,
     );
   } else {
-    const rows = await asPlatformAdmin((tx) =>
+    const rows = await withTenant(tenantId, null, (tx) =>
       tx<{ id: string }[]>`
         insert into product_variant
           (product_id, tenant_id, sku, title, price, compare_at_price, inventory, options)
@@ -260,7 +264,7 @@ async function upsertVariant(
       `,
     );
     const variantId = rows[0]!.id;
-    await upsertEntityMap(integrationId, tenantId, "variant", variant.externalId, variantId);
+    await upsertEntityMap(tenantId, integrationId, "variant", variant.externalId, variantId);
   }
 }
 
@@ -274,7 +278,7 @@ async function upsertOrder(
   if (existing?.externalHash === hash) return;
 
   if (existing) {
-    await asPlatformAdmin((tx) =>
+    await withTenant(tenantId, null, (tx) =>
       tx`
         update "order"
         set status     = ${order.status},
@@ -282,24 +286,32 @@ async function upsertOrder(
         where id = ${existing.internalId} and tenant_id = ${tenantId}
       `,
     );
-    await upsertEntityMap(integrationId, tenantId, "order", order.externalId, existing.internalId, hash);
+    await upsertEntityMap(tenantId, integrationId, "order", order.externalId, existing.internalId, hash);
   } else {
-    // Upsert customer by phone
-    let customerId: string | null = null;
-    if (order.customerPhone) {
-      const custRows = await asPlatformAdmin((tx) =>
-        tx<{ id: string }[]>`
+    // Pre-fetch variant maps before opening the tenant transaction to avoid
+    // nested connections (each withTenant/asPlatformAdmin opens a new one).
+    const variantMapByExtId = new Map<string, string | null>();
+    for (const li of order.lineItems) {
+      if (li.externalVariantId) {
+        const vm = await getEntityMap(integrationId, "variant", li.externalVariantId);
+        variantMapByExtId.set(li.externalVariantId, vm?.internalId ?? null);
+      }
+    }
+
+    // Upsert customer, insert order, and insert all line items in one transaction.
+    const orderId = await withTenant(tenantId, null, async (tx) => {
+      let customerId: string | null = null;
+      if (order.customerPhone) {
+        const custRows = await tx<{ id: string }[]>`
           insert into customer (tenant_id, phone, name)
           values (${tenantId}, ${order.customerPhone!}, ${order.customerName ?? ""})
           on conflict (tenant_id, phone) do update set name = excluded.name
           returning id
-        `,
-      );
-      customerId = custRows[0]?.id ?? null;
-    }
+        `;
+        customerId = custRows[0]?.id ?? null;
+      }
 
-    const rows = await asPlatformAdmin((tx) =>
-      tx<{ id: string }[]>`
+      const rows = await tx<{ id: string }[]>`
         insert into "order"
           (tenant_id, customer_id, order_number, status, total_amount, payment_method,
            shipping_name, shipping_phone, shipping_address, external_ref)
@@ -316,32 +328,30 @@ async function upsertOrder(
           ${order.externalId}
         )
         returning id
-      `,
-    );
-    const orderId = rows[0]!.id;
+      `;
+      const oid = rows[0]!.id;
 
-    // Insert line items
-    for (const li of order.lineItems) {
-      const variantMap = li.externalVariantId
-        ? await getEntityMap(integrationId, "variant", li.externalVariantId)
-        : null;
-      await asPlatformAdmin((tx) =>
-        tx`
+      for (const li of order.lineItems) {
+        const variantInternalId = li.externalVariantId
+          ? variantMapByExtId.get(li.externalVariantId) ?? null
+          : null;
+        await tx`
           insert into order_item
             (order_id, tenant_id, variant_id, title, quantity, unit_price)
           values (
-            ${orderId},
+            ${oid},
             ${tenantId},
-            ${variantMap?.internalId ?? null},
+            ${variantInternalId},
             ${li.title},
             ${li.qty},
             ${Math.round(li.unitPrice * 100)}
           )
-        `,
-      );
-    }
+        `;
+      }
+      return oid;
+    });
 
-    await upsertEntityMap(integrationId, tenantId, "order", order.externalId, orderId, hash);
+    await upsertEntityMap(tenantId, integrationId, "order", order.externalId, orderId, hash);
   }
 }
 
@@ -357,13 +367,18 @@ function hashPayload(payload: unknown): string {
     .slice(0, 16);
 }
 
-function slugify(title: string): string {
-  return title
+function slugify(title: string, externalId: string): string {
+  const base = title
     .toLowerCase()
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 80) + "-" + Math.random().toString(36).slice(2, 6);
+    .slice(0, 72);
+  // Use the last 6 chars of externalId (stripped to alnum) as a deterministic,
+  // per-product suffix so the same external product always maps to the same slug
+  // and two different products with identical titles still get distinct slugs.
+  const suffix = externalId.replace(/[^a-z0-9]/gi, "").slice(-6).toLowerCase() || "ext";
+  return `${base}-${suffix}`.replace(/^-|-$/g, "");
 }
 
 function payloadToExternalProduct(payload: Record<string, unknown>): ExternalProduct | null {

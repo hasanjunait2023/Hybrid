@@ -7,6 +7,7 @@ export const UI_PACKAGE = "@hybrid/ui" as const;
 // Helpers
 export { cn } from "./lib/cn";
 export { toBnDigits, formatBdtBangla, formatBdtLatin } from "./lib/format";
+export { safeUrl } from "./lib/safeUrl";
 
 // Primitives
 export { Button } from "./components/Button";

@@ -168,12 +168,12 @@ export async function confirmUpgrade(input: BillingCallbackInput): Promise<Billi
   // Execute the payment (server-side authoritative).
   let state: string;
   let chargedAmount: string | undefined;
-  let _trxId: string | undefined;
+  let trxId: string | undefined;
   try {
     const executed = await provider.executePayment({ paymentId: input.bkashPaymentId }, creds);
     state = executed.state;
     chargedAmount = executed.amount;
-    _trxId = executed.trxId;
+    trxId = executed.trxId;
 
     if (state !== "success") {
       // Safety net: fall back to query.
@@ -181,7 +181,7 @@ export async function confirmUpgrade(input: BillingCallbackInput): Promise<Billi
       if (queried.state === "success") {
         state = queried.state;
         chargedAmount = queried.amount ?? chargedAmount;
-        _trxId = queried.trxId ?? _trxId;
+        trxId = queried.trxId ?? trxId;
       }
     }
   } catch (err) {
@@ -203,6 +203,25 @@ export async function confirmUpgrade(input: BillingCallbackInput): Promise<Billi
     };
   }
 
+  // Log the bKash transaction ID for audit trail before any DB writes.
+  console.warn(`[billing-bkash] payment confirmed invoice=${inv.id} trxId=${trxId ?? "unknown"} amount=${chargedAmount}`);
+
+  // Atomically claim the invoice. If another concurrent callback already set
+  // status='paid', this UPDATE returns 0 rows → idempotent replay, no double activation.
+  const claimed = await asPlatformAdmin((tx) =>
+    tx<{ id: string }[]>`
+      update invoice
+         set status = 'paid',
+             paid_at = now(),
+             updated_at = now()
+       where id = ${inv.id} and status = 'open'
+       returning id
+    `,
+  );
+  if (claimed.length === 0) {
+    return { outcome: "replayed", tenantId: inv.tenant_id };
+  }
+
   // Find the plan the invoice was for (invoice_number stores the plan name;
   // resolve the plan id from the plan table).
   const planRows = await asPlatformAdmin((tx) =>
@@ -215,19 +234,9 @@ export async function confirmUpgrade(input: BillingCallbackInput): Promise<Billi
   );
   const planId = planRows[0]?.id ?? null;
 
-  // Activate subscription + mark invoice paid in one admin transaction.
-  await asPlatformAdmin(async (tx) => {
-    // Update invoice to paid.
-    await tx`
-      update invoice
-         set status = 'paid',
-             paid_at = now(),
-             updated_at = now()
-       where id = ${inv.id}
-    `;
-
-    if (planId) {
-      // Upsert subscription: activate for 1 month from today.
+  if (planId) {
+    // Activate subscription in a separate transaction now that the invoice is claimed.
+    await asPlatformAdmin(async (tx) => {
       await tx`
         insert into subscription (tenant_id, plan_id, status, current_period_start, current_period_end, billing_provider)
         values (
@@ -237,7 +246,6 @@ export async function confirmUpgrade(input: BillingCallbackInput): Promise<Billi
           'bkash'
         )
         on conflict (tenant_id)
-        where status in ('trialing','active','past_due')
         do update set
           plan_id               = excluded.plan_id,
           status                = 'active',
@@ -252,8 +260,8 @@ export async function confirmUpgrade(input: BillingCallbackInput): Promise<Billi
         update tenant set plan_id = ${planId}, updated_at = now()
         where id = ${inv.tenant_id}
       `;
-    }
-  });
+    });
+  }
 
   return { outcome: "activated", tenantId: inv.tenant_id };
 }
