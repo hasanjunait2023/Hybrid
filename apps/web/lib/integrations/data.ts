@@ -12,7 +12,6 @@ import type {
   SyncDirection,
   SyncTrigger,
   SyncStatusType,
-  DEFAULT_SYNC_CONFIG,
 } from "./types";
 import { DEFAULT_SYNC_CONFIG as DSC } from "./types";
 

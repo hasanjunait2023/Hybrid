@@ -4,7 +4,6 @@ import { getSession } from "@/lib/auth/session";
 import {
   sealIntegrationCredentials,
   createIntegration,
-  deleteIntegration,
 } from "@/lib/integrations/data";
 import { getAdapter } from "@/lib/integrations/adapters";
 import { DEFAULT_SYNC_CONFIG } from "@/lib/integrations/types";

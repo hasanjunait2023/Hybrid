@@ -35,7 +35,7 @@ export class WooCommerceAdapter implements PlatformAdapter {
   }
 
   async fetchProducts(): Promise<ExternalProduct[]> {
-    let products: ExternalProduct[] = [];
+    const products: ExternalProduct[] = [];
     let page = 1;
     const perPage = 100;
 

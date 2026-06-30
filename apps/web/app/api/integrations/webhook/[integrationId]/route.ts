@@ -4,7 +4,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIntegrationByToken, updateIntegrationStatus } from "@/lib/integrations/data";
 import { handleWebhookEvent } from "@/lib/integrations/sync";
-import { openIntegrationCredentials } from "@/lib/integrations/data";
 import crypto from "crypto";
 
 export async function POST(

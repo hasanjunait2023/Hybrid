@@ -1,6 +1,6 @@
 // Shopify Admin REST API adapter (2024-01 API version).
 // Normalises Shopify product/order responses to the platform-agnostic types.
-import type { PlatformAdapter, ExternalProduct, ExternalVariant, ExternalOrder, ShopifyCredentials } from "../types";
+import type { PlatformAdapter, ExternalProduct, ExternalOrder, ShopifyCredentials } from "../types";
 
 const API_VERSION = "2024-01";
 

@@ -53,7 +53,7 @@ export function ReviewSection({
   avgRating,
   reviewCount,
 }: Props) {
-  const [reviews, setReviews] = useState(initialReviews);
+  const [reviews] = useState(initialReviews);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [rating, setRating] = useState(5);

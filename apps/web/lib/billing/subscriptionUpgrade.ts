@@ -168,12 +168,12 @@ export async function confirmUpgrade(input: BillingCallbackInput): Promise<Billi
   // Execute the payment (server-side authoritative).
   let state: string;
   let chargedAmount: string | undefined;
-  let trxId: string | undefined;
+  let _trxId: string | undefined;
   try {
     const executed = await provider.executePayment({ paymentId: input.bkashPaymentId }, creds);
     state = executed.state;
     chargedAmount = executed.amount;
-    trxId = executed.trxId;
+    _trxId = executed.trxId;
 
     if (state !== "success") {
       // Safety net: fall back to query.
@@ -181,7 +181,7 @@ export async function confirmUpgrade(input: BillingCallbackInput): Promise<Billi
       if (queried.state === "success") {
         state = queried.state;
         chargedAmount = queried.amount ?? chargedAmount;
-        trxId = queried.trxId ?? trxId;
+        _trxId = queried.trxId ?? _trxId;
       }
     }
   } catch (err) {
