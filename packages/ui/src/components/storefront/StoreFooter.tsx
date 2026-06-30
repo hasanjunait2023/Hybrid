@@ -44,7 +44,7 @@ export function StoreFooter({ store, lang = "en", poweredByHref }: StoreFooterPr
   return (
     <footer className="border-t border-border bg-surface-2">
       <div className="mx-auto max-w-storefront px-4 py-section">
-        <div className="grid gap-8 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3 md:gap-8">
           <div>
             <p className="bn-heading text-lg font-bold text-ink">{store.name}</p>
             {phone && (
@@ -70,19 +70,19 @@ export function StoreFooter({ store, lang = "en", poweredByHref }: StoreFooterPr
 
           <nav aria-label={t.policies} className="bn-body text-sm">
             <p className="mb-2 font-semibold text-ink">{t.policies}</p>
-            <ul className="space-y-1.5 text-ink-muted">
+            <ul className="space-y-2 text-ink-muted">
               <li>
-                <a href="/pages/privacy" className="hover:text-primary">
+                <a href="/pages/privacy" className="inline-block py-1 hover:text-primary">
                   {t.privacy}
                 </a>
               </li>
               <li>
-                <a href="/pages/returns" className="hover:text-primary">
+                <a href="/pages/returns" className="inline-block py-1 hover:text-primary">
                   {t.returns}
                 </a>
               </li>
               <li>
-                <a href="/pages/terms" className="hover:text-primary">
+                <a href="/pages/terms" className="inline-block py-1 hover:text-primary">
                   {t.terms}
                 </a>
               </li>

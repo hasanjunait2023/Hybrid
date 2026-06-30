@@ -211,7 +211,8 @@ export default async function WholesalePDP({ params }: WholesalePDPProps) {
               <h3 className="bn-body mb-2 text-sm font-semibold text-ink">
                 📊 টায়ার মূল্য (Tier Pricing)
               </h3>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[200px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-ink-muted">
                     <th className="pb-1 pr-3 font-medium">পরিমাণ</th>
@@ -229,6 +230,7 @@ export default async function WholesalePDP({ params }: WholesalePDPProps) {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 

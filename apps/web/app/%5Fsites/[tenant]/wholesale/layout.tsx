@@ -41,25 +41,27 @@ export default async function WholesaleLayout({
         </div>
         <StoreHeader store={ctx.store} lang={locale} toggle={<LanguageToggle />} />
         {/* B2B nav bar */}
-        <nav className="flex items-center gap-4 border-b border-border bg-surface px-4 py-2 text-sm">
-          <a
-            href="/wholesale"
-            className="font-semibold text-primary hover:text-primary-hover"
-          >
-            পাইকারি পণ্য
-          </a>
-          <a
-            href="/wholesale/cart"
-            className="text-ink-muted hover:text-ink"
-          >
-            কার্ট
-          </a>
-          <a
-            href="/wholesale/checkout"
-            className="text-ink-muted hover:text-ink"
-          >
-            চেকআউট
-          </a>
+        <nav className="overflow-x-auto border-b border-border bg-surface" aria-label="পাইকারি নেভিগেশন">
+          <div className="flex min-w-max items-center gap-1 px-4 py-1 text-sm sm:gap-2">
+            <a
+              href="/wholesale"
+              className="inline-flex min-h-[40px] items-center px-3 font-semibold text-primary hover:text-primary-hover"
+            >
+              পাইকারি পণ্য
+            </a>
+            <a
+              href="/wholesale/cart"
+              className="inline-flex min-h-[40px] items-center px-3 text-ink-muted hover:text-ink"
+            >
+              কার্ট
+            </a>
+            <a
+              href="/wholesale/checkout"
+              className="inline-flex min-h-[40px] items-center px-3 text-ink-muted hover:text-ink"
+            >
+              চেকআউট
+            </a>
+          </div>
         </nav>
         <main className="flex-1">{children}</main>
         <StoreFooter

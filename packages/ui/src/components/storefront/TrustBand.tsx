@@ -29,7 +29,7 @@ export function TrustBand({ lang = "en" }: TrustBandProps) {
       <div className="mx-auto grid max-w-storefront grid-cols-2 gap-4 px-4 py-section md:grid-cols-4">
         {PROMISES[lang].map(({ Icon, label, sub }) => (
           <div key={label} className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-cod-weak text-cod">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-cod-weak text-cod">
               <Icon />
             </span>
             <div>

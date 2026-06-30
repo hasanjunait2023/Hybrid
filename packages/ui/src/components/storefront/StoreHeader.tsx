@@ -36,14 +36,14 @@ export function StoreHeader({ store, cartCount = 0, lang = "en", toggle }: Store
     <header className="sticky top-0 z-sticky bg-surface">
       {/* Row 1 — trust strip */}
       <div className="bg-cod-weak text-cod">
-        <div className="mx-auto flex max-w-storefront items-center justify-between gap-3 px-4 py-1.5 text-xs">
+        <div className="mx-auto flex max-w-storefront items-center justify-between gap-2 px-4 py-2 text-xs sm:gap-3">
           <span className="bn-body font-semibold">
             {t.trust}
           </span>
           {phone && (
             <a
               href={`tel:${phone}`}
-              className="inline-flex shrink-0 items-center gap-1 font-semibold hover:underline"
+              className="inline-flex min-h-[36px] shrink-0 items-center gap-1 font-semibold hover:underline"
             >
               <PhoneIcon width={13} height={13} />
               {lang === "bn" ? toBnDigits(phone) : phone}

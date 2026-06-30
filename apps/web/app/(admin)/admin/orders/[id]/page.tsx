@@ -105,6 +105,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           {/* Items */}
           <section className="overflow-hidden rounded-lg border border-border bg-surface">
             <h2 className="border-b border-border px-4 py-3 text-sm font-bold text-ink">{t.items.heading}</h2>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody className="divide-y divide-border">
                 {order.items.map((it) => (
@@ -128,6 +129,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 ))}
               </tbody>
             </table>
+            </div>
             <dl className="space-y-1.5 border-t border-border px-4 py-3 text-sm">
               <Row label={t.items.subtotal} value={formatMoney(order.subtotal, locale)} />
               <Row label={t.items.deliveryCharge} value={formatMoney(order.shippingTotal, locale)} />

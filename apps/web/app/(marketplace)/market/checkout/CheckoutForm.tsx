@@ -155,7 +155,7 @@ export function CheckoutForm({ savedAddresses }: Props) {
           placeholder={label}
           value={form[k]}
           onChange={set(k)}
-          className="rounded-md border border-border bg-surface px-3 py-2"
+          className="min-h-[44px] rounded-md border border-border bg-surface px-3 py-2.5 text-sm"
         />
       ))}
 

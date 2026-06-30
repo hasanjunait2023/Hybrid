@@ -10,6 +10,7 @@ import {
 } from "../../lib/i18n/marketing";
 import { HybridLogo } from "./_components/HybridLogo";
 import { LangToggle } from "./_components/LangToggle";
+import { MobileMenu } from "./_components/MobileMenu";
 import { FaqAccordion } from "./_components/FaqAccordion";
 import { PartnerLogos } from "./_components/PartnerLogos";
 import { MarketingImage } from "./_components/MarketingImage";
@@ -103,15 +104,29 @@ function SiteHeader({
           />
           <a
             href={loginUrl}
-            className="bn-body text-sm font-medium text-ink-muted transition-colors hover:text-primary"
+            className="bn-body hidden text-sm font-medium text-ink-muted transition-colors hover:text-primary lg:block"
           >
             {t.nav.login}
           </a>
-          <Link href="/signup" className="cta-glow">
+          <Link href="/signup" className="cta-glow hidden lg:block">
             <Button variant="primary" size="sm">
               {t.nav.cta}
             </Button>
           </Link>
+          <MobileMenu
+            links={[
+              { href: "#features", label: t.nav.features },
+              { href: "#pricing", label: t.nav.pricing },
+              { href: "#how", label: t.nav.how },
+              { href: "#faq", label: t.nav.faq },
+            ]}
+            loginUrl={loginUrl}
+            loginLabel={t.nav.login}
+            ctaHref="/signup"
+            ctaLabel={t.nav.cta}
+            menuLabel="মেনু"
+            closeLabel="বন্ধ করুন"
+          />
         </div>
       </div>
     </header>

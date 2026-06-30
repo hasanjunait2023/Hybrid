@@ -14,6 +14,12 @@ export const metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default async function RootLayout({ children }: { children: ReactNode }) {
   // English is the default locale; the active language comes from the
   // hybrid_lang cookie so <html lang> matches what the user toggled. The font
@@ -23,7 +29,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const locale = await getLocale();
   return (
     <html lang={locale} className={fontVariables}>
-      <body>
+      <body className="overflow-x-hidden">
         {children}
         <CookieConsent />
         <ServiceWorkerRegister />
