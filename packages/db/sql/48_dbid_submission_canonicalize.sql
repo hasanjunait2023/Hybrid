@@ -21,7 +21,22 @@
 -- 3. Behaviour-equivalent to 22_dbid.sql:88-91.
 
 do $$
+declare
+  tbl_exists boolean;
 begin
+  -- Check if the table exists at all (it won't in a fresh CI database).
+  select exists (
+    select 1 from pg_class c
+      join pg_namespace n on c.relnamespace = n.oid
+    where n.nspname = 'public'
+      and c.relname = 'dbid_submission'
+  ) into tbl_exists;
+
+  if not tbl_exists then
+    raise notice 'dbid_submission table does not exist — skipping migration 48';
+    return;
+  end if;
+
   -- Idempotent enable (skip if already enabled).
   if not exists (
     select 1 from pg_class c
