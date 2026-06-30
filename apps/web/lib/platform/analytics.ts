@@ -144,13 +144,14 @@ export async function getWholesaleStats(): Promise<WholesaleStats> {
 
     const byCategory = await tx<{ category: string; count: number }[]>`
       select
-        coalesce(category, 'Uncategorized') as category,
+        coalesce(c.name_bn, c.name_en, 'Uncategorized') as category,
         count(*)::int as count
-      from marketplace_listing
-      where is_wholesale = true
-        and status = 'active'
-        and hidden = false
-      group by category
+      from marketplace_listing ml
+      left join marketplace_category c on c.id = ml.category_id
+      where ml.is_wholesale = true
+        and ml.status = 'active'
+        and ml.hidden = false
+      group by c.name_bn, c.name_en
       order by count desc
       limit 20
     `;
