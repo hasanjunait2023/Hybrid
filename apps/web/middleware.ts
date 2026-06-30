@@ -21,6 +21,17 @@ function isAuthPath(pathname: string): boolean {
   );
 }
 
+// Re-attach the original query string to a rewritten URL. new URL(rel, base)
+// inherits NOTHING from `base` for the relative resolution — including the
+// query — so any server-side rewrite that does `new URL("/_sites/.../path",
+// req.url)` silently drops `?phone=...` style params the page component needs
+// (DESIGN P1.7 order lookup, ?payment=bkash on checkout, etc.). Pass the
+// raw `url.search` ("?phone=017...") through unchanged.
+function withQuery(target: URL, search: string): URL {
+  if (search) target.search = search;
+  return target;
+}
+
 // Map a subdomain request onto its route-group prefix. The admin/platform shells
 // are served at the SUBDOMAIN ROOT (admin.{ROOT}/orders -> /admin/orders), so a
 // bare or root-relative path gets the prefix prepended. But the in-app nav links
@@ -77,9 +88,17 @@ export default async function middleware(req: NextRequest): Promise<NextResponse
   const businessType = await getTenantBusinessTypeBySlug(tenant.slug);
   if (businessType === "wholesale" || businessType === "both") {
     return NextResponse.rewrite(
-      new URL(`/_sites/${tenant.slug}/wholesale${url.pathname}`, req.url),
+      withQuery(
+        new URL(`/_sites/${tenant.slug}/wholesale${url.pathname}`, req.url),
+        url.search,
+      ),
     );
   }
 
-  return NextResponse.rewrite(new URL(`/_sites/${tenant.slug}${url.pathname}`, req.url));
+  return NextResponse.rewrite(
+    withQuery(
+      new URL(`/_sites/${tenant.slug}${url.pathname}`, req.url),
+      url.search,
+    ),
+  );
 }

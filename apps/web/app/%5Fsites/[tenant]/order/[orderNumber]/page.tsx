@@ -25,11 +25,8 @@ interface OrderPageProps {
 // with one it shows the confirmation + read-only status stepper + COD amount.
 export default async function OrderPage({ params, searchParams }: OrderPageProps) {
   const { tenant: slug, orderNumber: orderNumberRaw } = await params;
-  const sp = await searchParams;
-  const phone = sp?.phone;
-  console.log("[order-page] slug=", slug, "orderNumberRaw=", orderNumberRaw, "phone=", phone, "sp=", JSON.stringify(sp));
+  const { phone } = await searchParams;
   const ctx = await getTenantContextBySlug(slug);
-  console.log("[order-page] ctx=", ctx ? { id: ctx.id, slug: ctx.slug } : null);
   if (!ctx) notFound();
 
   const orderNumber = Number(orderNumberRaw);
@@ -37,12 +34,10 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
 
   // No phone yet → render the track-later lookup form.
   if (!phone) {
-    console.log("[order-page] no phone → OrderLookup");
     return <OrderLookup orderNumber={orderNumber} />;
   }
 
   const order = await getStorefrontOrder(ctx.id, orderNumber, phone);
-  console.log("[order-page] order=", order ? "FOUND" : "NULL");
   // Wrong phone / unknown order → lookup form again (no information leak).
   if (!order) {
     return <OrderLookup orderNumber={orderNumber} />;
