@@ -154,7 +154,9 @@ export async function bulkSendToCourier(
 export async function bulkPrintInvoices(
   orderIds: string[],
 ): Promise<BulkActionResult> {
-  const session = await requireSession();
+  // requireSession is called so unauthenticated requests are rejected
+  // (the page does its own auth check, but defense-in-depth).
+  await requireSession();
   if (!Array.isArray(orderIds) || orderIds.length === 0) {
     return { ok: true, succeeded: 0, failed: [], urls: [] };
   }
