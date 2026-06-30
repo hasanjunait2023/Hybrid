@@ -102,6 +102,15 @@ async function reconcileOne(
   // Live network call (stubbed in tests via the injected adapter).
   const status = await provider.getStatus(shipment.consignmentId, creds);
   const delivered = status.status === "delivered";
+  // O7 — NDR (Non-Delivery Report) detection. When the courier returns
+  // 'cancelled' or 'returned' (i.e. the parcel is coming back without
+  // delivery), stamp ndr_at + ndr_count + ndr_reason so the admin can
+  // see the failure mode and decide between re-attempt / RTS / refund.
+  // We extract the reason from the raw payload when the courier includes
+  // it (Steadfast puts it on the `reason` / `cancellation_reason` field);
+  // otherwise we fall back to 'other' and the admin can amend it.
+  const isNdr = status.status === "cancelled" || status.status === "returned";
+  const ndrReason = isNdr ? extractNdrReason(status.raw) : null;
 
   await withTenant(tenantId, null, async (tx) => {
     // Delivery stamps delivered_at + the delivered status only. cod_status stays
@@ -112,6 +121,9 @@ async function reconcileOne(
          set status = ${status.status}::shipment_status,
              raw_status = ${typeof status.raw === "object" ? JSON.stringify(status.raw) : String(status.raw)},
              delivered_at = ${delivered ? new Date() : null},
+             ndr_at = ${isNdr ? new Date() : null},
+             ndr_reason = ${ndrReason},
+             ndr_count = case when ${isNdr} then ndr_count + 1 else ndr_count end,
              updated_at = now()
        where id = ${shipment.id}
     `;
@@ -121,5 +133,44 @@ async function reconcileOne(
              updated_at = now()
        where id = ${shipment.orderId}
     `;
+    // O7 — when the first NDR lands, write an admin-visible note so the
+    // order detail timeline shows what happened without admin having to
+    // dig into the courier dashboard. author_id is NULL for system notes
+    // (the only column the schema offers; the system vs human distinction
+    // is encoded in the note body itself).
+    if (isNdr) {
+      const noteBody = `NDR (Non-Delivery Report): ${ndrReason ?? "other"} — parcel returned by courier`;
+      await tx`
+        insert into order_note (tenant_id, order_id, author_id, body)
+        values (${tenantId}, ${shipment.orderId}, null, ${noteBody})
+      `;
+    }
   });
+}
+
+// Map a raw courier payload to one of our NDR reason tags. The vocabulary
+// is intentionally narrow (see the CHECK in 35_o7_ndr.sql); unmapped values
+// fall through to 'other' so the admin can amend.
+function extractNdrReason(raw: unknown): string {
+  if (!raw || typeof raw !== "object") return "other";
+  const obj = raw as Record<string, unknown>;
+  // Steadfast puts the reason in `reason`, `cancellation_reason`,
+  // `delivery_failure_reason`, or `note` — be permissive.
+  const candidates = [
+    obj.reason,
+    obj.cancellation_reason,
+    obj.delivery_failure_reason,
+    obj.note,
+  ];
+  for (const c of candidates) {
+    if (typeof c !== "string") continue;
+    const lower = c.toLowerCase();
+    if (lower.includes("refus") || lower.includes("cancel")) return "customer_refused";
+    if (lower.includes("address") || lower.includes("location") || lower.includes("wrong")) return "wrong_address";
+    if (lower.includes("phone") || lower.includes("unreachable") || lower.includes("off")) return "phone_off";
+    if (lower.includes("unavailable") || lower.includes("not home") || lower.includes("absent")) return "customer_unavailable";
+    if (lower.includes("damage")) return "damaged_in_transit";
+    if (lower.includes("cod") || lower.includes("not ready")) return "cod_not_ready";
+  }
+  return "other";
 }

@@ -47,11 +47,15 @@ export interface TokenStore {
 }
 
 // Internal shipment status, decoupled from any single courier's vocabulary.
+//   "returned" was added for O7 (NDR handling) so the sync layer can
+//   distinguish "delivered" (parcel reached customer) from "returned"
+//   (parcel came back without delivery = the NDR state).
 export type ShipmentStatus =
   | "created"
   | "in_transit"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "returned";
 
 // Order-level fulfillment status the storefront/orders surface tracks.
 export type OrderFulfillmentStatus =
