@@ -74,6 +74,7 @@ const VariantSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().trim().max(120).nullable().default(null),
   sku: z.string().trim().max(80).nullable().default(null),
+  barcode: z.string().trim().max(80).nullable().default(null),
   price: z.coerce.number().min(0).max(10_000_000),
   inventory: z.coerce.number().int().min(0).max(1_000_000),
   options: z.record(z.string()).default({}),
@@ -370,7 +371,7 @@ async function writeVariants(
     if (v.id) {
       await tx`
         update product_variant
-           set title = ${title}, sku = ${v.sku}, price = ${v.price},
+           set title = ${title}, sku = ${v.sku}, barcode = ${v.barcode}, price = ${v.price},
                inventory_quantity = ${v.inventory}, options = ${tx.json(v.options)},
                is_active = ${v.isActive}, position = ${position}, updated_at = now()
          where id = ${v.id} and product_id = ${productId}
@@ -379,8 +380,8 @@ async function writeVariants(
     } else {
       const rows = await tx<{ id: string }[]>`
         insert into product_variant
-          (tenant_id, product_id, title, sku, price, inventory_quantity, options, is_active, position)
-        values (${tenantId}, ${productId}, ${title}, ${v.sku}, ${v.price},
+          (tenant_id, product_id, title, sku, barcode, price, inventory_quantity, options, is_active, position)
+        values (${tenantId}, ${productId}, ${title}, ${v.sku}, ${v.barcode}, ${v.price},
                 ${v.inventory}, ${tx.json(v.options)}, ${v.isActive}, ${position})
         returning id
       `;

@@ -41,6 +41,9 @@ importers:
       bangladesh-location-data:
         specifier: ^1.0.6
         version: 1.0.6(react@19.2.7)
+      bwip-js:
+        specifier: ^4.11.1
+        version: 4.11.1
       ioredis:
         specifier: ^5.4.2
         version: 5.11.1
@@ -1677,6 +1680,10 @@ packages:
   browserslist@4.28.4:
     resolution: {integrity: sha512-MTc8i/x9jBQd1iMw2CFGS+rwMa07eYjLR0CCTLDACl9xhxy+nIs3KeML/biicXtk9JrZ6dnnTatmc7ErPXIxqw==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
+    hasBin: true
+
+  bwip-js@4.11.1:
+    resolution: {integrity: sha512-9KCjsJF/VSETOS6jPgNxd6X9yCHTbqcm2zccDceX7bOmxDDjQ92V9S+iFf+UD5+hijUZDw7SFsYT7vL2rW7qcQ==}
     hasBin: true
 
   cac@6.7.14:
@@ -4051,6 +4058,8 @@ snapshots:
       electron-to-chromium: 1.5.376
       node-releases: 2.0.48
       update-browserslist-db: 1.2.3(browserslist@4.28.4)
+
+  bwip-js@4.11.1: {}
 
   cac@6.7.14: {}
 

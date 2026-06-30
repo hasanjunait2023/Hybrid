@@ -70,6 +70,7 @@ export const products = {
     priceWithUnit: "Price (৳)",
     stock: "Stock",
     sku: "SKU",
+    barcode: "Barcode",
     // R1 — product video upload
     videos: "Videos",
     videoLabel: "Video",

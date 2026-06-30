@@ -71,6 +71,7 @@ export const products: typeof En = {
     priceWithUnit: "দাম (৳)",
     stock: "স্টক",
     sku: "SKU",
+    barcode: "বারকোড",
     // R1 — পণ্যের ভিডিও আপলোড
     videos: "ভিডিও",
     videoLabel: "ভিডিও",

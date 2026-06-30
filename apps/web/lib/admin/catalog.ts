@@ -169,6 +169,7 @@ export interface AdminVariant {
   id: string;
   title: string | null;
   sku: string | null;
+  barcode: string | null;
   price: number;
   inventory: number;
   options: Record<string, string>;
@@ -242,6 +243,7 @@ export async function getProductFull(
         id: string;
         title: string | null;
         sku: string | null;
+        barcode: string | null;
         price: string;
         inventory_quantity: number;
         options: Record<string, string>;
@@ -249,7 +251,7 @@ export async function getProductFull(
         is_active: boolean;
       }[]
     >`
-      select id, title, sku, price, inventory_quantity, options, position, is_active
+      select id, title, sku, barcode, price, inventory_quantity, options, position, is_active
       from product_variant where product_id = ${productId} order by position asc
     `;
 
@@ -291,6 +293,7 @@ export async function getProductFull(
         id: v.id,
         title: v.title,
         sku: v.sku,
+        barcode: v.barcode,
         price: Number(v.price),
         inventory: v.inventory_quantity,
         options: v.options ?? {},

@@ -27,6 +27,7 @@ export interface ProductFormVariant {
   options: Record<string, string>;
   title: string | null;
   sku: string | null;
+  barcode?: string | null;
   price: number;
   inventory: number;
   isActive: boolean;
@@ -472,6 +473,7 @@ function VariantMatrix({
               <th className="py-2 pr-2">{t.form.price}</th>
               <th className="py-2 pr-2">{t.form.stock}</th>
               <th className="py-2 pr-2">{t.form.sku}</th>
+              <th className="py-2">{t.form.barcode}</th>
             </tr>
           </thead>
           <tbody>
@@ -500,6 +502,14 @@ function VariantMatrix({
                   <input
                     value={v.sku ?? ""}
                     onChange={(e) => onField(i, { sku: e.target.value || null })}
+                    className="h-8 w-28 rounded-sm border border-border-strong bg-surface px-2 font-mono text-sm"
+                  />
+                </td>
+                <td className="py-1.5">
+                  <input
+                    value={v.barcode ?? ""}
+                    onChange={(e) => onField(i, { barcode: e.target.value || null })}
+                    placeholder="Barcode"
                     className="h-8 w-28 rounded-sm border border-border-strong bg-surface px-2 font-mono text-sm"
                   />
                 </td>

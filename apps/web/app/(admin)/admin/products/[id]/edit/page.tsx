@@ -39,6 +39,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       options: v.options,
       title: v.title,
       sku: v.sku,
+      barcode: v.barcode,
       price: v.price,
       inventory: v.inventory,
       isActive: v.isActive,
