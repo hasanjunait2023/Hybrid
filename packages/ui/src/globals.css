@@ -187,6 +187,8 @@
     --color-primary-hover: #c4b5fd; /* Violet 300 */
     --color-primary-active: #8b5cf6; /* Violet 500 — press state */
     --color-primary-weak: #2d1b69; /* dark violet tint for badges / weak bg */
+    /* Dark text on Violet 400 bg = 6.7:1 (white on #a78bfa is only 2.7:1 — fails) */
+    --color-text-on-primary: #1a0a2e;
 
     /* Accent: Marigold unchanged — it glows beautifully against dark */
     --color-accent-weak: #2a1e06;
@@ -201,7 +203,7 @@
     /* Text */
     --color-text: #f0edff;
     --color-text-muted: #b8b0d6;
-    --color-text-subtle: #7a7299;
+    --color-text-subtle: #8c84b0; /* lifted from #7a7299 — 5.72:1 on #16122b (was 4.1:1, failed AA) */
 
     /* Semantic: brighter variants for dark-bg contrast */
     --color-success: #4ade80; /* Green 400 */
