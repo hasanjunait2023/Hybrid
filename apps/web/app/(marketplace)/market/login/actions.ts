@@ -6,10 +6,7 @@ import { issueOtp, verifyOtp } from "@/lib/auth/otp";
 import { getSmsAdapter } from "@/lib/sms";
 import { otpMessage } from "@/lib/auth/otp";
 import { upsertBuyerByPhone, createBuyerSession } from "@/lib/marketplace/session";
-
-function normalizePhone(input: string): string {
-  return input.replace(/[^\d+]/g, "");
-}
+import { normalizeBdPhone } from "@/lib/phone";
 
 export interface AuthResult {
   ok: boolean;
@@ -17,8 +14,8 @@ export interface AuthResult {
 }
 
 export async function requestBuyerOtp(phoneRaw: string): Promise<AuthResult> {
-  const phone = normalizePhone(phoneRaw);
-  if (phone.length < 11) return { ok: false, error: "সঠিক মোবাইল নম্বর দিন।" };
+  const phone = normalizeBdPhone(phoneRaw);
+  if (!phone) return { ok: false, error: "সঠিক মোবাইল নম্বর দিন।" };
 
   const issued = await issueOtp(phone, "login");
   if (!issued.ok || !issued.code) {
@@ -37,7 +34,8 @@ export async function verifyBuyerOtp(
   code: string,
   name?: string,
 ): Promise<AuthResult> {
-  const phone = normalizePhone(phoneRaw);
+  const phone = normalizeBdPhone(phoneRaw);
+  if (!phone) return { ok: false, error: "সঠিক মোবাইল নম্বর দিন।" };
   const result = await verifyOtp(phone, "login", code.trim());
   if (result.outcome !== "ok") {
     const msg =

@@ -4,6 +4,7 @@
 // per-vendor COD sub-orders via the orchestrator. Server re-prices everything.
 import { z } from "zod";
 import { getBuyerSession } from "@/lib/marketplace/session";
+import { rateLimit } from "@/lib/ratelimit";
 import {
   placeMarketplaceOrder,
   type PlaceMarketplaceOrderResult,
@@ -40,6 +41,19 @@ export type CheckoutResult =
 export async function submitMarketplaceCheckout(raw: unknown): Promise<CheckoutResult> {
   const session = await getBuyerSession();
   if (!session) return { ok: false, error: "চেকআউটের আগে লগইন করুন।", needsLogin: true };
+
+  // Throttle order placement per buyer (abuse / accidental double-fire). Fails
+  // OPEN on a Redis outage so a real shopper is never blocked — the saga's
+  // idempotency key is the second line of defence against duplicates.
+  const limit = await rateLimit({
+    bucket: "mp-checkout",
+    identifier: session.buyerId,
+    limit: 10,
+    windowSeconds: 60,
+  });
+  if (!limit.allowed) {
+    return { ok: false, error: "অনেকবার চেষ্টা করেছেন। কিছুক্ষণ পর আবার চেষ্টা করুন।" };
+  }
 
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "তথ্য সম্পূর্ণ নয়। সব ঘর পূরণ করুন।" };

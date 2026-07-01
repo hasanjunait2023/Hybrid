@@ -130,19 +130,37 @@ export async function placeMarketplaceOrder(
 
   // (1) Parent shell (buyer-owned). One COD-only checkout, all vendors share the
   // ship-to + contact snapshot.
-  const parent = await withBuyer(input.buyerId, (tx) =>
-    tx<{ id: string }[]>`
-      insert into marketplace_order
-        (buyer_id, status, idempotency_key, vendor_count,
-         contact_name, contact_phone, ship_division, ship_district, ship_thana, ship_line)
-      values
-        (${input.buyerId}, 'pending', ${idemKey}, ${groups.size},
-         ${input.contact.name}, ${input.contact.phone}, ${input.shipTo.division},
-         ${input.shipTo.district}, ${input.shipTo.thana}, ${input.shipTo.line})
-      returning id
-    `,
-  );
-  const mpOrderId = parent[0]!.id;
+  let mpOrderId: string;
+  try {
+    const parent = await withBuyer(input.buyerId, (tx) =>
+      tx<{ id: string }[]>`
+        insert into marketplace_order
+          (buyer_id, status, idempotency_key, vendor_count,
+           contact_name, contact_phone, ship_division, ship_district, ship_thana, ship_line)
+        values
+          (${input.buyerId}, 'pending', ${idemKey}, ${groups.size},
+           ${input.contact.name}, ${input.contact.phone}, ${input.shipTo.division},
+           ${input.shipTo.district}, ${input.shipTo.thana}, ${input.shipTo.line})
+        returning id
+      `,
+    );
+    mpOrderId = parent[0]!.id;
+  } catch (err) {
+    // Lost the race to a concurrent submit carrying the same idempotency key
+    // (the mo_idempotency_idx unique index rejected this insert). Return the
+    // parent the winner created instead of erroring — a true idempotent replay.
+    if (idemKey && (err as { code?: string }).code === "23505") {
+      const winner = await withBuyer(input.buyerId, (tx) =>
+        tx<{ id: string; status: string }[]>`
+          select id, status from marketplace_order
+           where buyer_id = ${input.buyerId} and idempotency_key = ${idemKey}
+           limit 1
+        `,
+      );
+      if (winner[0]) return rebuildResult(input.buyerId, winner[0].id, winner[0].status, true);
+    }
+    throw err;
+  }
 
   // (2) Per-vendor sub-orders (sequential saga). Each placeOrder is its own
   // atomic withTenant commit; a stock failure on one vendor does not roll back
@@ -212,51 +230,59 @@ export async function placeMarketplaceOrder(
 
   // (3) Bridge rows for the successful legs (platform-tooling: spans buyer-owned
   // marketplace tables + tenant order/vendor data). One asPlatformAdmin txn.
-  await asPlatformAdmin(async (tx) => {
-    const cfg = await tx<{ commission_rate: string }[]>`
-      select commission_rate from marketplace_config where id = true limit 1
-    `;
-    const rate = Number(cfg[0]?.commission_rate ?? 0.05);
+  // Skipped entirely when every vendor failed (status 'failed', nothing to bridge).
+  if (successes.length > 0) {
+    await asPlatformAdmin(async (tx) => {
+      const cfg = await tx<{ commission_rate: string }[]>`
+        select commission_rate from marketplace_config where id = true limit 1
+      `;
+      const rate = Number(cfg[0]?.commission_rate ?? 0.05);
 
-    for (const leg of successes) {
+      // Batch the per-leg lookups (one query each, not per-leg N+1).
+      const orderIds = successes.map((l) => l.orderId);
+      const tenantIds = [...new Set(successes.map((l) => l.tenantId))];
       const orderRows = await tx<
-        { subtotal: string; shipping_total: string; grand_total: string; cod_amount: string }[]
+        { id: string; subtotal: string; shipping_total: string; grand_total: string; cod_amount: string }[]
       >`
-        select subtotal, shipping_total, grand_total, cod_amount
-          from orders where id = ${leg.orderId}
+        select id, subtotal, shipping_total, grand_total, cod_amount
+          from orders where id in ${tx(orderIds)}
       `;
-      const o = orderRows[0]!;
-      leg.itemsSubtotal = Number(o.subtotal);
-      leg.shippingTotal = Number(o.shipping_total);
-      leg.grandTotal = Number(o.grand_total);
-      leg.codAmount = Number(o.cod_amount);
+      const tenantRows = await tx<{ id: string; name: string }[]>`
+        select id, name from tenant where id in ${tx(tenantIds)}
+      `;
+      const orderById = new Map(orderRows.map((o) => [o.id, o]));
+      const nameById = new Map(tenantRows.map((t) => [t.id, t.name]));
 
-      const vendorRows = await tx<{ name: string }[]>`
-        select name from tenant where id = ${leg.tenantId}
-      `;
-      leg.vendorName = vendorRows[0]?.name ?? "";
+      for (const leg of successes) {
+        const o = orderById.get(leg.orderId)!;
+        leg.itemsSubtotal = Number(o.subtotal);
+        leg.shippingTotal = Number(o.shipping_total);
+        leg.grandTotal = Number(o.grand_total);
+        leg.codAmount = Number(o.cod_amount);
+        leg.vendorName = nameById.get(leg.tenantId) ?? "";
 
-      const subRows = await tx<{ id: string }[]>`
-        insert into marketplace_suborder
-          (marketplace_order_id, buyer_id, tenant_id, vendor_name, order_id, order_number,
-           status, payment_status, items_subtotal, shipping_total, grand_total, cod_amount)
-        values
-          (${mpOrderId}, ${input.buyerId}, ${leg.tenantId}, ${leg.vendorName},
-           ${leg.orderId}, ${leg.orderNumber}, 'confirmed', 'unpaid',
-           ${leg.itemsSubtotal}, ${leg.shippingTotal}, ${leg.grandTotal}, ${leg.codAmount})
-        returning id
-      `;
-      const suborderId = subRows[0]!.id;
+        const subRows = await tx<{ id: string }[]>`
+          insert into marketplace_suborder
+            (marketplace_order_id, buyer_id, tenant_id, vendor_name, order_id, order_number,
+             status, payment_status, items_subtotal, shipping_total, grand_total, cod_amount)
+          values
+            (${mpOrderId}, ${input.buyerId}, ${leg.tenantId}, ${leg.vendorName},
+             ${leg.orderId}, ${leg.orderNumber}, 'confirmed', 'unpaid',
+             ${leg.itemsSubtotal}, ${leg.shippingTotal}, ${leg.grandTotal}, ${leg.codAmount})
+          returning id
+        `;
+        const suborderId = subRows[0]!.id;
 
-      const commission = Math.round(leg.itemsSubtotal * rate * 100) / 100;
-      await tx`
-        insert into marketplace_commission
-          (marketplace_order_id, suborder_id, tenant_id, gross, rate, commission_amount)
-        values
-          (${mpOrderId}, ${suborderId}, ${leg.tenantId}, ${leg.itemsSubtotal}, ${rate}, ${commission})
-      `;
-    }
-  });
+        const commission = Math.round(leg.itemsSubtotal * rate * 100) / 100;
+        await tx`
+          insert into marketplace_commission
+            (marketplace_order_id, suborder_id, tenant_id, gross, rate, commission_amount)
+          values
+            (${mpOrderId}, ${suborderId}, ${leg.tenantId}, ${leg.itemsSubtotal}, ${rate}, ${commission})
+        `;
+      }
+    });
+  }
 
   // (4) Finalize the parent (buyer-owned).
   const status: PlaceMarketplaceOrderResult["status"] =
