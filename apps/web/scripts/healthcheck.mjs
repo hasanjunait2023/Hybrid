@@ -10,7 +10,7 @@
  *   - keeping this readable makes future edits painless
  */
 
-import http from "node:http";
+import http from "http";
 
 const TIMEOUT_MS = 4000;
 

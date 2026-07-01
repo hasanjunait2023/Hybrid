@@ -9,7 +9,7 @@ import "server-only";
 // asPlatformAdmin (the buyer isn't known yet, so it can't run under withBuyer —
 // the exact same chicken/egg as getPasswordSession). Every subsequent buyer data
 // access then uses withBuyer(buyerId, ...) so RLS stays sacred.
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { asPlatformAdmin } from "@hybrid/db";
 

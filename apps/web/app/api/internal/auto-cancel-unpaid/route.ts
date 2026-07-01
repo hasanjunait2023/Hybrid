@@ -12,7 +12,7 @@
 // `app_runtime_login` connection slots.
 
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "crypto";
 import { runAutoCancelSweep } from "@/lib/orders/autoCancel";
 
 export const dynamic = "force-dynamic";

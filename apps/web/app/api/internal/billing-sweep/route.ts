@@ -10,7 +10,7 @@
 // Secret handling mirrors courier-sync: CRON_SECRET from env only, fail-closed
 // when unset (never open), never logged.
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "crypto";
 import { runBillingSweep } from "@/lib/billing/sweep";
 import { bustTenantDomainCache } from "@/lib/platform/cache";
 

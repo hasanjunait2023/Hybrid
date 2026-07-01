@@ -17,7 +17,7 @@
 //     bKash create-payment API call + webhook are done by the CHECKOUT slice
 //     AFTER this commits; here we just set status 'pending' and return
 //     bkashRequired so the caller knows to kick off the popup flow.
-import { randomUUID } from "node:crypto";
+import { randomUUID } from "crypto";
 import { withTenant } from "@hybrid/db";
 import type { Tx } from "@hybrid/db";
 import { upsertCustomerByPhone } from "./customer";

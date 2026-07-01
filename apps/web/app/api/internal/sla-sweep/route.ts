@@ -9,7 +9,7 @@
 // under 1s even at 100k orders.
 
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "crypto";
 import { runSlaSweep } from "@/lib/sla/sweep";
 
 export const dynamic = "force-dynamic";

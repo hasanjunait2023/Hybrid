@@ -11,7 +11,7 @@
 // flags the user can flip in their analytics settings. The server mirror
 // helpers are added in `meta-capi.ts` / `ga4.ts` and orchestrated in
 // `notify.ts` when called from a server action that has the cookies.
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID, createHash } from "crypto";
 import type { AnalyticsItem } from "./events";
 
 /** Funnel events fired on the storefront (client islands + optional server mirror). */

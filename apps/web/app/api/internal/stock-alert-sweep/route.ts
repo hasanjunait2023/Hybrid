@@ -10,7 +10,7 @@
 // means we hit a stuck-low variant at most once per 24h.
 
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "crypto";
 import { runStockAlertSweep } from "@/lib/marketing/stockAlert";
 
 export const dynamic = "force-dynamic";

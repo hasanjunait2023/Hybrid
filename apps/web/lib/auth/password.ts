@@ -12,8 +12,8 @@
 //
 // Argon2 is ~19MB/call; signup/login are rare paths so this is acceptable
 // (FastAPI offload is the escape hatch under concurrency pressure).
-import { randomBytes, scrypt as scryptCb, timingSafeEqual, type ScryptOptions } from "node:crypto";
-import { promisify } from "node:util";
+import { randomBytes, scrypt as scryptCb, timingSafeEqual, type ScryptOptions } from "crypto";
+import { promisify } from "util";
 
 // promisify loses the options-overload of scrypt; re-type it explicitly so the
 // (password, salt, keylen, options) form (we need `maxmem`) type-checks.

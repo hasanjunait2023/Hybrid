@@ -4,7 +4,7 @@
 //
 //   GET /dev-login?as=owner-a|owner-b|admin[&key=<DEV_LOGIN_KEY>]
 import { NextResponse, type NextRequest } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "crypto";
 import { DEV_SESSION_COOKIE, DEV_USERS, signDevCookie } from "@/lib/auth/session";
 
 // Constant-time compare of the presented key against DEV_LOGIN_KEY. Returns
