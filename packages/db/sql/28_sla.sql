@@ -37,7 +37,7 @@ alter table orders
   add column if not exists sla_handover_deadline_at    timestamptz,
   add column if not exists sla_delivery_deadline_at    timestamptz,
   add column if not exists sla_refund_window_closes_at timestamptz,
-  add column if not exists sla_overridden_by            uuid references auth.users(id) on delete set null,
+  add column if not exists sla_overridden_by            uuid constraint orders_sla_overridden_by_fk references app_user(id) on delete set null,
   add column if not exists sla_overridden_reason       text;
 
 -- Partial index — sweeper only scans active orders (not delivered/cancelled/
@@ -66,7 +66,7 @@ create table if not exists sla_alert_log (
     )),
   -- Who got pinged (merchant user id; the merchant is who needs to act on a
   -- courier-side breach, not the customer).
-  recipient_user_id uuid references auth.users(id) on delete set null,
+  recipient_user_id uuid constraint sla_alert_log_recipient_user_id_fk references app_user(id) on delete set null,
   channel      text not null check (channel in ('sms','email','in_app')),
   sent_at      timestamptz not null default now(),
   -- Composite uniqueness ensures the sweeper never re-pings the same order for

@@ -32,7 +32,7 @@ alter type return_type add value if not exists 'manual_refund';
 alter table return_request
   add column if not exists payout_reference text,
   add column if not exists payout_at        timestamptz,
-  add column if not exists initiated_by     uuid references auth.users(id) on delete set null;
+  add column if not exists initiated_by     uuid constraint return_request_initiated_by_fk references app_user(id) on delete set null;
 
 -- ---- index for refund history queries -------------------------------------
 -- "Show me all refunds for this order, newest first" — common admin query.
