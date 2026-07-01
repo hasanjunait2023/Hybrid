@@ -73,8 +73,7 @@ declare t text;
     'payment_account','payment',
     'courier_account','cod_remittance','shipment',
     'subscription','invoice','usage_counter',
-    'analytics_event','audit_log','webhook_event',
-    'dbid_submission'
+    'analytics_event','audit_log','webhook_event'
   ];
 begin
   foreach t in array tenant_tables loop
