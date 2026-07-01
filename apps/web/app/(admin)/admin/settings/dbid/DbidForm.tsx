@@ -28,10 +28,10 @@ interface DbidFormProps {
 
 const STATUS_BADGE_CLASS: Record<DbidStatus, string> = {
   not_started: "bg-surface-2 text-ink-muted",
-  in_progress: "bg-amber-100 text-amber-900",
-  submitted: "bg-blue-100 text-blue-900",
-  approved: "bg-emerald-100 text-emerald-900",
-  rejected: "bg-rose-100 text-rose-900",
+  in_progress: "bg-warning-weak text-warning",
+  submitted: "bg-info-weak text-info",
+  approved: "bg-success-weak text-success",
+  rejected: "bg-danger-weak text-danger",
 };
 
 export function DbidForm({ submission }: DbidFormProps) {
@@ -108,7 +108,7 @@ export function DbidForm({ submission }: DbidFormProps) {
 
       {/* Reviewer notes (only on rejection) */}
       {status === "rejected" && submission?.reviewerNotes && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className="rounded-lg border border-border bg-danger-weak px-4 py-3 text-sm text-danger">
           <div className="font-semibold">{t.reviewNotes}</div>
           <div className="mt-1">{submission.reviewerNotes}</div>
         </div>
@@ -240,7 +240,7 @@ function StepIndicator({
                 isActive
                   ? "bg-primary text-white"
                   : isDone
-                    ? "bg-emerald-100 text-emerald-800"
+                    ? "bg-success-weak text-success"
                     : "bg-surface-2 text-ink-muted",
                 reachable ? "cursor-pointer hover:opacity-80" : "cursor-not-allowed",
               ].join(" ")}
@@ -546,16 +546,16 @@ function Step4Review({
       </div>
 
       {alreadySubmitted ? (
-        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+        <div className="rounded-md border border-border bg-info-weak p-3 text-sm text-info">
           ✓ {t.status.submitted}
           {submission?.submittedAt && (
-            <span className="ml-2 text-blue-700">
+            <span className="ml-2 text-info">
               {t.submittedOn}: {new Date(submission.submittedAt).toLocaleString("en-GB")}
             </span>
           )}
         </div>
       ) : isApproved ? (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div className="rounded-md border border-border bg-success-weak p-3 text-sm text-success">
           ✓ {t.status.approved}
           {submission?.dbidNumber && (
             <span className="ml-2 font-mono">{submission.dbidNumber}</span>
@@ -580,7 +580,7 @@ function Step4Review({
           >
             {pending ? "..." : t.submitForReview}
           </button>
-          {error && <p className="text-sm text-rose-700">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
         </>
       )}
     </form>
@@ -622,7 +622,7 @@ function SubmitRow({
       >
         {pending ? "..." : nextLabel}
       </button>
-      {error && <p className="text-sm text-rose-700">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   );
 }

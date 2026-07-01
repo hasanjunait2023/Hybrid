@@ -8,6 +8,7 @@
 import type { ThemeColors } from "@/lib/theme/schema";
 import { passesAaContrast, contrastRatio } from "@/lib/theme/schema";
 import { useDict } from "@/lib/i18n/provider";
+import { COLOR_PRESETS } from "../../palettes";
 
 interface ColorControlsProps {
   colors: ThemeColors;
@@ -22,38 +23,7 @@ const FIELD_KEYS: (keyof ThemeColors)[] = [
   "text",
 ];
 
-const PRESETS: { key: "dorejaClassic" | "green" | "blueGold"; colors: ThemeColors }[] = [
-  {
-    key: "dorejaClassic",
-    colors: {
-      primary: "#1D4ED8",
-      accent: "#F59E0B",
-      background: "#FBFAF8",
-      surface: "#FFFFFF",
-      text: "#1C1917",
-    },
-  },
-  {
-    key: "green",
-    colors: {
-      primary: "#047857",
-      accent: "#F59E0B",
-      background: "#F8FAFC",
-      surface: "#FFFFFF",
-      text: "#0F172A",
-    },
-  },
-  {
-    key: "blueGold",
-    colors: {
-      primary: "#1E3A8A",
-      accent: "#D4AF37",
-      background: "#FFFFFF",
-      surface: "#F8FAFC",
-      text: "#111827",
-    },
-  },
-];
+const PRESETS = COLOR_PRESETS;
 
 export function ColorControls({ colors, onChange }: ColorControlsProps) {
   const t = useDict().admin.themes;

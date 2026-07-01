@@ -65,9 +65,9 @@ export default async function TrackingPage() {
       </div>
 
       {/* Event log table */}
-      <div className="overflow-hidden rounded-xl border border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-border bg-surface">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-900 text-left text-xs uppercase tracking-wide text-zinc-400">
+          <thead className="border-b border-border bg-surface-2 text-left text-xs uppercase tracking-wide text-ink-muted">
             <tr>
               <th className="px-3 py-2">When</th>
               <th className="px-3 py-2">Event</th>
@@ -78,36 +78,36 @@ export default async function TrackingPage() {
               <th className="px-3 py-2">Detail</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800">
+          <tbody className="divide-y divide-border">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={7} className="px-3 py-6 text-center text-ink-muted">
                   No events yet. Once your first order confirms, server-side
                   tracking will appear here.
                 </td>
               </tr>
             ) : (
               rows.map((r) => (
-                <tr key={r.id} className="hover:bg-zinc-900/40">
-                  <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-zinc-300">
+                <tr key={r.id} className="hover:bg-surface-2">
+                  <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-ink-subtle">
                     {new Date(r.occurredAt).toLocaleString("en-GB", {
                       hour12: false,
                     })}
                   </td>
-                  <td className="px-3 py-2 font-medium text-zinc-100">
+                  <td className="px-3 py-2 font-medium text-ink">
                     {r.eventName}
                   </td>
-                  <td className="px-3 py-2 capitalize text-zinc-300">
+                  <td className="px-3 py-2 capitalize text-ink-muted">
                     {r.platform}
                   </td>
-                  <td className="px-3 py-2 text-zinc-400">{r.source}</td>
+                  <td className="px-3 py-2 text-ink-subtle">{r.source}</td>
                   <td className="px-3 py-2">
                     <StatusPill status={r.status} />
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs text-zinc-400">
+                  <td className="px-3 py-2 font-mono text-xs text-ink-subtle">
                     {r.responseCode ?? "—"}
                   </td>
-                  <td className="max-w-xs truncate px-3 py-2 text-xs text-zinc-400">
+                  <td className="max-w-xs truncate px-3 py-2 text-xs text-ink-subtle">
                     {r.errorMessage ?? ""}
                   </td>
                 </tr>
@@ -133,10 +133,10 @@ function SummaryTile({
 }) {
   const colors =
     tone === "ok"
-      ? "border-emerald-700/40 bg-emerald-950/20 text-emerald-200"
+      ? "border-border bg-success-weak text-success"
       : tone === "warn"
-        ? "border-amber-700/40 bg-amber-950/20 text-amber-200"
-        : "border-zinc-800 bg-zinc-900/40 text-zinc-300";
+        ? "border-border bg-warning-weak text-warning"
+        : "border-border bg-surface-2 text-ink-muted";
   return (
     <div className={`rounded-xl border p-4 ${colors}`}>
       <div className="text-xs uppercase tracking-wide opacity-70">{label}</div>
@@ -148,12 +148,12 @@ function SummaryTile({
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
-    sent: "bg-emerald-900/40 text-emerald-200 border-emerald-700/50",
-    failed: "bg-rose-900/40 text-rose-200 border-rose-700/50",
-    skipped_consent: "bg-zinc-800 text-zinc-300 border-zinc-700",
-    duplicate: "bg-zinc-800 text-zinc-300 border-zinc-700",
+    sent: "bg-success-weak text-success border-border",
+    failed: "bg-danger-weak text-danger border-border",
+    skipped_consent: "bg-surface-2 text-ink-muted border-border",
+    duplicate: "bg-surface-2 text-ink-muted border-border",
   };
-  const cls = map[status] ?? "bg-zinc-800 text-zinc-300 border-zinc-700";
+  const cls = map[status] ?? "bg-surface-2 text-ink-muted border-border";
   return (
     <span
       className={`inline-block rounded-full border px-2 py-0.5 text-xs ${cls}`}

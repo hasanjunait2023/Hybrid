@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Button, cn } from "@hybrid/ui";
 import { useDict } from "@/lib/i18n/provider";
 import { activateThemeAction } from "./actions";
+import { THEME_GRADIENTS } from "./palettes";
 
 interface ThemeCard {
   code: string;
@@ -125,16 +126,13 @@ export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogPr
 // this wave; the tile communicates the theme's primary palette instead).
 function ThemePreviewTile({ code, isActive }: { code: string; isActive: boolean }) {
   const t = useDict().admin.themes;
-  const palette: Record<string, string> = {
-    doreja: "from-[#1D4ED8] to-[#F59E0B]",
-    megh: "from-[#7C3AED] to-[#EC4899]",
-    bazar: "from-[#047857] to-[#F59E0B]",
-  };
+  const g = THEME_GRADIENTS[code];
+  const gradientClass = g ? `from-[${g.from}] to-[${g.to}]` : "from-primary to-accent";
   return (
     <div
       className={cn(
         "relative grid aspect-[1.4/1] place-items-center bg-gradient-to-br",
-        palette[code] ?? "from-primary to-accent",
+        gradientClass,
       )}
     >
       {isActive && (
