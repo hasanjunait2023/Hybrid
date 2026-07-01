@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash } from "crypto";
 import { describe, it, expect } from "vitest";
 import type { AnalyticsItem } from "../events";
 import {

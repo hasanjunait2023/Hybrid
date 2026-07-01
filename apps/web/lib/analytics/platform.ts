@@ -14,7 +14,7 @@
 //
 // All env reads are guarded so a missing var degrades to a no-op (the
 // platform can run with only some providers configured).
-import { randomUUID } from "node:crypto";
+import { randomUUID } from "crypto";
 import type { PlatformLeadPayload } from "./events";
 
 // ---- Env resolution --------------------------------------------------------

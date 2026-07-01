@@ -10,7 +10,7 @@
 // cadence gives us up to 2 chances per nudge window to fire the SMS.
 
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "crypto";
 import { runCartRecoverySweep } from "@/lib/marketing/cartRecovery";
 
 export const dynamic = "force-dynamic";

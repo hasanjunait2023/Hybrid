@@ -65,7 +65,7 @@ async function getWindowAggregate(
   userId: string,
   days: number,
 ): Promise<{ sent: number; failed: number; skipped: number }> {
-  const rows = await withTenant(tenantId, userId, (tx) =
+  const rows = await withTenant(tenantId, userId, (tx) =>
     tx<{ status: TrackingEventStatus; count: string }[]>`
       select status, count(*)::text as count
         from tracking_event_log
@@ -93,7 +93,7 @@ async function getTopEvents(
   userId: string,
   limit = 5,
 ): Promise<{ eventName: string; count: number }[]> {
-  const rows = await withTenant(tenantId, userId, (tx) =
+  const rows = await withTenant(tenantId, userId, (tx) =>
     tx<{ event_name: string; count: string }[]>`
       select event_name, count(*)::text as count
         from tracking_event_log
@@ -115,7 +115,7 @@ async function getTopPlatforms(
   userId: string,
   limit = 3,
 ): Promise<{ platform: "meta" | "google" | "tiktok"; count: number }[]> {
-  const rows = await withTenant(tenantId, userId, (tx) =
+  const rows = await withTenant(tenantId, userId, (tx) =>
     tx<{ platform: "meta" | "google" | "tiktok"; count: string }[]>`
       select platform, count(*)::text as count
         from tracking_event_log
@@ -137,7 +137,7 @@ export async function getRecentAnalyticsEvents(
   userId: string,
   limit = 200,
 ): Promise<AnalyticsEventRow[]> {
-  const rows = await withTenant(tenantId, userId, (tx) =
+  const rows = await withTenant(tenantId, userId, (tx) =>
     tx<{
       id: string;
       event_id: string;
@@ -175,7 +175,7 @@ export async function getAnalyticsDaySeries(
   userId: string,
   days = 30,
 ): Promise<AnalyticsDaySeries> {
-  const rows = await withTenant(tenantId, userId, (tx) =
+  const rows = await withTenant(tenantId, userId, (tx) =>
     tx<{ day: string; status: TrackingEventStatus; count: string }[]>`
       select date_trunc('day', occurred_at)::date as day,
              status,
@@ -219,7 +219,7 @@ export async function getAnalyticsTestEventsStatus(
   testEvents: AnalyticsEventRow[];
   last24h: { sent: number; failed: number; skipped: number };
 }> {
-  const rows = await withTenant(tenantId, userId, (tx) =
+  const rows = await withTenant(tenantId, userId, (tx) =>
     tx<{
       id: string;
       event_id: string;
@@ -266,14 +266,14 @@ export async function getRetryQueueOverview(
   queued: number;
   dead: number;
 }> {
-  const queuedRows = await withTenant(tenantId, userId, (tx) =
+  const queuedRows = await withTenant(tenantId, userId, (tx) =>
     tx<{ count: string }[]>`
       select count(*)::text as count
         from tracking_event_queue
        where tenant_id = ${tenantId}::uuid
     `,
   );
-  const deadRows = await withTenant(tenantId, userId, (tx) =
+  const deadRows = await withTenant(tenantId, userId, (tx) =>
     tx<{ count: string }[]>`
       select count(*)::text as count
         from tracking_event_dead_letter

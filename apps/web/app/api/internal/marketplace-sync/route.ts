@@ -14,7 +14,7 @@
 // under its own withTenant inside syncMarketplaceListingsForTenant. Degrades
 // cleanly: one tenant's failure never aborts the sweep.
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "crypto";
 import { asPlatformAdmin } from "@hybrid/db";
 import { syncMarketplaceListingsForTenant } from "@/lib/marketplace/sync";
 

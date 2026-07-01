@@ -9,7 +9,7 @@
 // target issuance rate-limit (3 / 10 min) via the existing Redis limiter.
 // user_id is NULLABLE at signup (the OTP precedes the app_user row), so all
 // reads/writes run via asPlatformAdmin (otp_code is admin-gated in RLS).
-import { createHash, randomInt, timingSafeEqual } from "node:crypto";
+import { createHash, randomInt, timingSafeEqual } from "crypto";
 import { asPlatformAdmin } from "@hybrid/db";
 import { rateLimit } from "@/lib/ratelimit";
 
