@@ -118,6 +118,30 @@ export interface PlaceOrderInput {
   fulfillmentMethod?: "delivery" | "pickup";
   /** Store name / address for pickup (required when fulfillmentMethod = 'pickup'). */
   pickupLocation?: string | null;
+  /**
+   * UTM attribution (Phase B / TRACK-V2-B1). All fields are optional; the
+   * checkout slice reads them from the request's `hybrid_utm` cookie set by
+   * the storefront layout's UTM capture on first visit. Written to the
+   * `orders.utm_*` columns (last-touch per order) and — on the customer's
+   * FIRST order — also stamped onto `customer.first_utm_source` as a
+   * first-touch snapshot (idempotent: only set when the column is still NULL).
+   */
+  utmAttribution?: {
+    source?: string | null;
+    medium?: string | null;
+    campaign?: string | null;
+    content?: string | null;
+    term?: string | null;
+  } | null;
+  /**
+   * Shared purchase-event dedup key (Phase B / TRACK-V2-B1). The storefront
+   * CheckoutForm mints a UUID client-side and forwards it via the form; the
+   * server uses it for the CAPI / GA4-MP / TikTok Events API fire so the
+   * browser Pixel event and the server event share a single dedup id. When
+   * omitted the server mints a fresh UUID (same behavior as the previous
+   * phase 2.7 implementation). Persisted to payment.payload.analytics.eventId.
+   */
+  analyticsEventId?: string;
 }
 
 export interface PlaceOrderResult {
@@ -582,7 +606,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         ${orderModeValue}, ${creditDue}, ${isCreditSale},
         ${input.note ?? null},
         ${sla.zone}, ${sla.handover.toISOString()}, ${sla.delivery.toISOString()},
-        ${input.cancelAfterAt?.toISOString() ?? null},
+        ${cancelAfterAt.toISOString()},
         ${input.deliveryDate ?? null}::date, ${input.deliveryTimeSlot ?? null},
         ${input.fulfillmentMethod ?? "delivery"}::fulfillment_method, ${input.pickupLocation ?? null}
       )

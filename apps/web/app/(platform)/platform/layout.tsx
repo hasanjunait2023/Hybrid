@@ -12,6 +12,7 @@ import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
 import { PlatformSidebar } from "./PlatformSidebar";
 import { PlatformBottomNav } from "./PlatformBottomNav";
 import { PwaRegister } from "./PwaRegister";
+import { PlatformTracker } from "@/app/_components/PlatformTracker";
 
 // Auth-gated super-admin shell (blueprint S-PLATFORM). app.{root} -> /platform.
 // Middleware rewrites the host but does NOT gate by role, so this layout enforces
@@ -52,6 +53,13 @@ export default async function PlatformLayout({ children }: { children: ReactNode
 
   return (
     <LocaleProvider locale={locale}>
+      {/* TRACK-V2-A1: platform-owned tracker on the super-admin console. */}
+      <PlatformTracker
+        ga4Id={process.env.NEXT_PUBLIC_HYBRID_GA4_ID || null}
+        fbPixelId={process.env.NEXT_PUBLIC_HYBRID_FB_PIXEL_ID || null}
+        tiktokId={process.env.NEXT_PUBLIC_HYBRID_TIKTOK_ID || null}
+        clarityId={process.env.NEXT_PUBLIC_HYBRID_CLARITY_ID || null}
+      />
       <PwaRegister />
       <div className="platform-shell flex min-h-screen">
         <PlatformSidebar adminName={name} />

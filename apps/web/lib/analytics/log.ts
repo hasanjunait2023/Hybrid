@@ -11,7 +11,14 @@ export type TrackingEventStatus =
   | "skipped_consent"
   | "duplicate";
 
-type JsonValue = Parameters<Tx["json"]>[0];
+/** Log payload value: JSON-serializable primitives only. */
+export type TrackingLogPayload =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: TrackingLogPayload }
+  | TrackingLogPayload[];
 
 export type LogTrackingEventInput = {
   tenantId: string;
@@ -21,10 +28,16 @@ export type LogTrackingEventInput = {
   platform: "meta" | "google" | "tiktok";
   source: "browser" | "server" | "test";
   status: TrackingEventStatus;
-  payload?: JsonValue;
+  payload?: TrackingLogPayload;
   responseCode?: number;
   responseBody?: string;
   errorMessage?: string;
+  /** Optional TikTok / Meta test event code. */
+  testEventCode?: string | null;
+  /** Optional external dedup key (TikTok event_id etc.). */
+  externalId?: string | null;
+  /** Optional match-quality score (Phase C placeholder). */
+  matchScore?: number | null;
 };
 
 /**
@@ -37,7 +50,8 @@ export async function logTrackingEvent(input: LogTrackingEventInput): Promise<vo
       tx`
         insert into tracking_event_log (
           tenant_id, event_id, event_name, platform, event_source,
-          status, payload, response_code, response_body, error_message
+          status, payload, response_code, response_body, error_message,
+          test_event_code, external_id, match_score
         ) values (
           ${input.tenantId}::uuid,
           ${input.eventId},
@@ -45,16 +59,17 @@ export async function logTrackingEvent(input: LogTrackingEventInput): Promise<vo
           ${input.platform},
           ${input.source},
           ${input.status},
-          ${input.payload ? tx.json(input.payload) : null},
+          ${input.payload ? tx.json(input.payload as Parameters<Tx["json"]>[0]) : null},
           ${input.responseCode ?? null},
           ${input.responseBody ? input.responseBody.slice(0, 4096) : null},
-          ${input.errorMessage ?? null}
+          ${input.errorMessage ?? null},
+          ${input.testEventCode ?? null},
+          ${input.externalId ?? null},
+          ${input.matchScore ?? null}
         )
       `,
     );
   } catch (err) {
-    // The webhook pipeline already returns success to the customer; a failed
-    // log insert is logged to stderr but never thrown.
     console.error("[tracking] logTrackingEvent failed:", err);
   }
 }
@@ -71,10 +86,6 @@ export type TrackingEventLogRow = {
   occurredAt: Date;
 };
 
-/**
- * Recent events for the admin dashboard. Capped at 200 rows; pagination is
- * out of scope for v1 (a full audit UI is P2).
- */
 export async function getRecentTrackingEvents(
   tenantId: string,
   userId: string,
@@ -114,9 +125,6 @@ export async function getRecentTrackingEvents(
   }));
 }
 
-/**
- * Summary counts for the dashboard header (24h window).
- */
 export async function getTrackingSummary(
   tenantId: string,
   userId: string,
@@ -141,10 +149,10 @@ export async function getTrackingSummary(
   let skipped = 0;
   for (const r of rows) {
     const n = Number(r.count);
-    if (r.status === "sent") sent = n;
-    else if (r.status === "failed") failed = n;
-    else if (r.status === "skipped_consent" || r.status === "duplicate")
-      skipped += n;
+    if (Number.isNaN(n)) continue;
+    if (r.status === "sent") sent += n;
+    else if (r.status === "failed") failed += n;
+    else if (r.status === "skipped_consent" || r.status === "duplicate") skipped += n;
   }
   return { last24h: { sent, failed, skipped } };
 }

@@ -62,6 +62,7 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
         <PurchaseTracker
           ga4MeasurementId={purchaseFire.publicIds.ga4MeasurementId}
           fbPixelId={purchaseFire.publicIds.fbPixelId}
+          tiktokPixelId={purchaseFire.publicIds.tiktokPixelId}
           payload={purchaseFire.payload}
         />
       )}
