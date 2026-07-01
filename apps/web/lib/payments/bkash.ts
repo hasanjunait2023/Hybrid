@@ -33,6 +33,8 @@ function redisTokenStore(): TokenStore {
     get: (key: string) => cache.get(key),
     set: (key: string, value: string, ttlSeconds: number) =>
       cache.set(key, value, ttlSeconds),
+    setNx: (key: string, value: string, ttlSeconds: number) =>
+      cache.setNx(key, value, ttlSeconds),
   };
 }
 

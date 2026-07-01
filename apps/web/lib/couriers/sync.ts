@@ -76,8 +76,12 @@ export async function syncTenantShipments(
       provider: row.provider,
       codAmount: Number(row.cod_amount),
     };
-    await reconcileOne(tenantId, binding.provider, binding.creds, shipment);
-    count += 1;
+    try {
+      await reconcileOne(tenantId, binding.provider, binding.creds, shipment);
+      count += 1;
+    } catch (err) {
+      console.error(`[courier-sync] tenant=${tenantId} shipment=${shipment.id} error:`, err);
+    }
   }
   return count;
 }
@@ -112,7 +116,7 @@ async function reconcileOne(
       update shipment
          set status = ${status.status}::shipment_status,
              raw_status = ${typeof status.raw === "object" ? JSON.stringify(status.raw) : String(status.raw)},
-             delivered_at = ${delivered ? new Date() : null},
+             delivered_at = case when ${delivered} then coalesce(delivered_at, now()) else delivered_at end,
              updated_at = now()
        where id = ${shipment.id}
     `;

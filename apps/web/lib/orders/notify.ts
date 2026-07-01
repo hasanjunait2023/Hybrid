@@ -61,7 +61,11 @@ export async function getOrderNotificationStream(
     }
   };
 
-  await adminSql.listen(NOTIFY_CHANNEL, listener);
+  try {
+    await adminSql.listen(NOTIFY_CHANNEL, listener);
+  } catch (err) {
+    throw new Error(`Order notification stream failed to subscribe: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   return {
     async unsubscribe() {

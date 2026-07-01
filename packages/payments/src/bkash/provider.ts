@@ -74,9 +74,21 @@ export class BkashProvider implements PaymentProvider {
 
   // Returns a cached id_token or grants a fresh one. Cached for TOKEN_TTL minus a
   // safety margin so a token never expires mid-request.
+  // SET NX lock key prevents concurrent cache misses from stampeding bKash grant.
   async grant(creds: ProviderCreds): Promise<string> {
     const cached = await this.tokenStore.get(this.tokenCacheKey);
     if (cached) return cached;
+
+    if (this.tokenStore.setNx) {
+      const lockKey = `${this.tokenCacheKey}:lock`;
+      const lockAcquired = await this.tokenStore.setNx(lockKey, "1", 10);
+      if (!lockAcquired) {
+        // Another instance is refreshing — wait briefly then read the freshly cached token.
+        await new Promise((r) => setTimeout(r, 300));
+        const afterWait = await this.tokenStore.get(this.tokenCacheKey);
+        if (afterWait) return afterWait;
+      }
+    }
 
     const { username, password, appKey, appSecret } = this.requireCreds(creds);
 
@@ -91,6 +103,9 @@ export class BkashProvider implements PaymentProvider {
       body: JSON.stringify({ app_key: appKey, app_secret: appSecret }),
     });
 
+    if (!res.ok) {
+      throw new Error(`bKash grant HTTP ${res.status}`);
+    }
     const body = (await res.json()) as { id_token?: string; statusCode?: string; statusMessage?: string };
     if (!body.id_token) {
       throw new Error(`bKash grant failed: ${body.statusMessage ?? body.statusCode ?? res.status}`);
@@ -116,6 +131,9 @@ export class BkashProvider implements PaymentProvider {
       body: JSON.stringify(payload),
     });
 
+    if (!res.ok) {
+      throw new Error(`bKash HTTP ${res.status} for ${path}`);
+    }
     return res.json();
   }
 

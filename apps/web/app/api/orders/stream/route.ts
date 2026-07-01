@@ -24,41 +24,45 @@ export async function GET(req: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (data: object, event?: string) => {
-        const payload = event ? `event: ${event}\n` : "";
-        controller.enqueue(
-          encoder.encode(`${payload}data: ${JSON.stringify(data)}\n\n`),
+      try {
+        const send = (data: object, event?: string) => {
+          const payload = event ? `event: ${event}\n` : "";
+          controller.enqueue(
+            encoder.encode(`${payload}data: ${JSON.stringify(data)}\n\n`),
+          );
+        };
+
+        // Initial hello so the client knows the stream is alive.
+        send({ ok: true, tenantId, t: Date.now() }, "ready");
+
+        const subscription = await getOrderNotificationStream(
+          tenantId,
+          (event) => send(event),
         );
-      };
 
-      // Initial hello so the client knows the stream is alive.
-      send({ ok: true, tenantId, t: Date.now() }, "ready");
+        // Heartbeat every 25s — proxies/nginx often close idle connections.
+        const heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(`: ping\n\n`));
+          } catch {
+            // controller closed — handled by cancel()
+          }
+        }, 25_000);
 
-      const subscription = await getOrderNotificationStream(
-        tenantId,
-        (event) => send(event),
-      );
-
-      // Heartbeat every 25s — proxies/nginx often close idle connections.
-      const heartbeat = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(`: ping\n\n`));
-        } catch {
-          // controller closed — handled by cancel()
-        }
-      }, 25_000);
-
-      // Close when client disconnects.
-      const onAbort = () => {
-        clearInterval(heartbeat);
-        subscription.unsubscribe().catch(() => undefined);
-        try {
-          controller.close();
-        } catch {
-          // already closed
-        }
-      };
-      req.signal.addEventListener("abort", onAbort);
+        // Close when client disconnects.
+        const onAbort = () => {
+          clearInterval(heartbeat);
+          subscription.unsubscribe().catch(() => undefined);
+          try {
+            controller.close();
+          } catch {
+            // already closed
+          }
+        };
+        req.signal.addEventListener("abort", onAbort);
+      } catch (err) {
+        controller.error(err);
+      }
     },
   });
 

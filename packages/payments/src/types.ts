@@ -134,4 +134,6 @@ export interface PaymentProvider {
 export interface TokenStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ttlSeconds: number): Promise<void>;
+  /** Set only if the key does not already exist. Returns true if set, false if already existed. */
+  setNx?(key: string, value: string, ttlSeconds: number): Promise<boolean>;
 }

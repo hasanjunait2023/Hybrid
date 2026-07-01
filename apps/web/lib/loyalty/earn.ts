@@ -127,7 +127,7 @@ export async function getLoyaltyBalance(
   customerId: string,
 ): Promise<LoyaltyBalance> {
   const program = await getLoyaltyProgram(tenantId);
-  return withTenant(tenantId, customerId, async (tx) => {
+  return withTenant(tenantId, null, async (tx) => {
     const rows = await tx<{
       balance: number;
       lifetime_earned: number;
@@ -157,7 +157,7 @@ export async function listLedgerEntries(
   customerId: string,
   limit = 20,
 ): Promise<LedgerEntry[]> {
-  return withTenant(tenantId, customerId, async (tx) => {
+  return withTenant(tenantId, null, async (tx) => {
     const rows = await tx<{
       id: string;
       points: number;

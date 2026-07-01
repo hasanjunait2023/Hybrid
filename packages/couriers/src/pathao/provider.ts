@@ -115,6 +115,9 @@ export class PathaoProvider implements CourierAdapter {
       }),
     });
 
+    if (!res.ok) {
+      throw new Error(`Pathao issue-token HTTP ${res.status}`);
+    }
     const body = (await res.json()) as { access_token?: string; expires_in?: number; message?: string };
     if (!body.access_token) {
       throw new Error(`Pathao issue-token failed: ${body.message ?? res.status}`);
@@ -172,6 +175,9 @@ export class PathaoProvider implements CourierAdapter {
       }),
     });
 
+    if (!res.ok) {
+      throw new Error(`Pathao create order HTTP ${res.status}`);
+    }
     const body = (await res.json()) as {
       data?: { consignment_id?: string; merchant_order_id?: string; order_status?: string };
       message?: string;
@@ -197,6 +203,9 @@ export class PathaoProvider implements CourierAdapter {
       { method: "GET", headers },
     );
 
+    if (!res.ok) {
+      throw new Error(`Pathao order info HTTP ${res.status}`);
+    }
     const body = (await res.json()) as { data?: { order_status?: string } };
     // Fallback to in_transit when the status endpoint is unavailable/undocumented
     // — the parcel is in-network, never wrongly terminalized.

@@ -84,6 +84,9 @@ async function getDevSession(): Promise<Session | null> {
   // Staging override: ALLOW_DEV_LOGIN=true re-enables dev-login on a deployed
   // (NODE_ENV=production) box for founder check/QA. Default OFF — real prod stays closed.
   if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_LOGIN !== "true") return null;
+  // ALLOW_DEV_LOGIN without an explicit AUTH_PROVIDER is a misconfiguration risk
+  // in production — the real auth path must already be wired before opening a backdoor.
+  if (process.env.NODE_ENV === "production" && !process.env.AUTH_PROVIDER) return null;
 
   const store = await cookies();
   const raw = store.get(DEV_SESSION_COOKIE)?.value;

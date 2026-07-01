@@ -39,7 +39,8 @@ export async function runProductImport(
       try {
         await upsertProduct(integrationId, tenantId, product);
         synced++;
-      } catch {
+      } catch (err) {
+        console.error(`[integration-sync] product upsert failed integration=${integrationId}:`, err);
         failed++;
       }
     }
@@ -88,7 +89,8 @@ export async function runInventoryExport(
       try {
         await adapter.updateInventory(variant.integration_ext_id, variant.inventory_quantity);
         synced++;
-      } catch {
+      } catch (err) {
+        console.error(`[integration-sync] inventory export failed integration=${integrationId} variant=${variant.id}:`, err);
         failed++;
       }
     }
@@ -122,7 +124,8 @@ export async function runOrderImport(
       try {
         await upsertOrder(integrationId, tenantId, order);
         synced++;
-      } catch {
+      } catch (err) {
+        console.error(`[integration-sync] order import failed integration=${integrationId}:`, err);
         failed++;
       }
     }

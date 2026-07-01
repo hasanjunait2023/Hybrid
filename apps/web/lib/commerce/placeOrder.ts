@@ -371,9 +371,7 @@ async function applyDiscount(
   } else if (row.type === "fixed_amount") {
     amount = Math.min(Number(row.value), subtotal);
   } else {
-    // free_shipping: requires a known (non-null) shipping charge to zero. When
-    // there is no shipping line the discount is a no-op amount but still valid.
-    if (shippingTotal == null) throw new DiscountError("DISCOUNT_NOT_APPLICABLE");
+    // free_shipping: zeroes the shipping line; always applicable regardless of amount.
     zeroesShipping = true;
   }
   amount = Math.max(0, Math.round(amount * 100) / 100);

@@ -24,4 +24,11 @@ export class MemoryTokenStore implements TokenStore {
   async set(key: string, value: string, ttlSeconds: number): Promise<void> {
     this.map.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
   }
+
+  async setNx(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+    const entry = this.map.get(key);
+    if (entry && Date.now() < entry.expiresAt) return false;
+    this.map.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
+    return true;
+  }
 }

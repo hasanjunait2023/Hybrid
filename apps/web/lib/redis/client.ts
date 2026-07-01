@@ -6,6 +6,8 @@ export interface CacheClient {
   get(key: string): Promise<string | null>;
   // ttlSeconds is required so we never accidentally write a non-expiring key.
   set(key: string, value: string, ttlSeconds: number): Promise<void>;
+  /** Set only if key does not exist. Returns true if set, false if already existed. */
+  setNx(key: string, value: string, ttlSeconds: number): Promise<boolean>;
   del(key: string): Promise<void>;
 }
 
@@ -33,6 +35,11 @@ class IoRedisClient implements CacheClient {
 
   async set(key: string, value: string, ttlSeconds: number): Promise<void> {
     await this.redis.set(key, value, "EX", ttlSeconds);
+  }
+
+  async setNx(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+    const result = await this.redis.set(key, value, "EX", ttlSeconds, "NX");
+    return result === "OK";
   }
 
   async del(key: string): Promise<void> {

@@ -62,6 +62,9 @@ export class SteadfastProvider implements CourierAdapter {
       }),
     });
 
+    if (!res.ok) {
+      throw new Error(`Steadfast create_order HTTP ${res.status}`);
+    }
     const body = (await res.json()) as {
       status?: number;
       consignment?: { consignment_id?: number | string; tracking_code?: string };
@@ -86,6 +89,9 @@ export class SteadfastProvider implements CourierAdapter {
       headers: this.headers(creds),
     });
 
+    if (!res.ok) {
+      throw new Error(`Steadfast status_by_cid HTTP ${res.status}`);
+    }
     const body = (await res.json()) as { delivery_status?: string; status?: number };
     const mapped = mapSteadfastStatus(body.delivery_status ?? "");
 
@@ -102,6 +108,9 @@ export class SteadfastProvider implements CourierAdapter {
       headers: this.headers(creds),
     });
 
+    if (!res.ok) {
+      throw new Error(`Steadfast get_balance HTTP ${res.status}`);
+    }
     const body = (await res.json()) as { current_balance?: number; status?: number };
     return body.current_balance ?? 0;
   }
