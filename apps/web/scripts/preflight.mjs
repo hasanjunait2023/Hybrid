@@ -21,8 +21,8 @@
  * Designed to add <2s to container startup. No external deps — pure Node stdlib.
  */
 
-import { lookup as dnsLookup } from "node:dns/promises";
-import net from "node:net";
+import { lookup as dnsLookup } from "dns/promises";
+import net from "net";
 
 const PROVIDERS = new Set(["supabase", "password", "dev"]);
 
