@@ -26,8 +26,8 @@
 // Always fast-fails; never throws to caller. Safe to wire as a Docker healthcheck.
 
 import { NextResponse } from "next/server";
-import { lookup as dnsLookup } from "node:dns/promises";
-import net from "node:net";
+import { lookup as dnsLookup } from "dns/promises";
+import net from "net";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
