@@ -5,7 +5,7 @@
 
 import type { ColumnType } from "kysely";
 
-export type AuditAction = "dbid.review_approve" | "dbid.review_reject" | "member.invite" | "member.remove" | "member.role_change" | "order.cancel" | "order.refund" | "payment_account.update" | "platform_admin.login" | "product.create" | "product.delete" | "product.update" | "settings.update" | "tenant.plan_change" | "tenant.reactivate" | "tenant.suspend";
+export type AuditAction = "dbid.review_approve" | "dbid.review_reject" | "member.invite" | "member.remove" | "member.role_change" | "order.cancel" | "order.refund" | "order.update" | "payment_account.update" | "platform_admin.login" | "product.create" | "product.delete" | "product.update" | "settings.update" | "tenant.plan_change" | "tenant.reactivate" | "tenant.suspend";
 
 export type BillingProvider = "bkash" | "manual" | "nagad";
 
@@ -20,6 +20,8 @@ export type DiscountStatus = "active" | "disabled" | "expired" | "scheduled";
 export type DiscountType = "fixed_amount" | "free_shipping" | "percentage";
 
 export type DomainType = "custom" | "subdomain";
+
+export type FulfillmentMethod = "delivery" | "pickup";
 
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
@@ -71,7 +73,7 @@ export type ReturnReason = "customer_refused" | "damaged" | "fake_order" | "not_
 
 export type ReturnStatus = "approved" | "cancelled" | "completed" | "in_transit" | "received" | "refunded" | "rejected" | "requested";
 
-export type ReturnType = "exchange" | "return" | "rto";
+export type ReturnType = "exchange" | "manual_refund" | "return" | "rto";
 
 export type ShipmentStatus = "cancelled" | "created" | "delivered" | "hold" | "in_transit" | "picked_up" | "returned";
 
@@ -84,11 +86,6 @@ export type TenantBusinessType = "both" | "retail" | "wholesale";
 export type TenantStatus = "active" | "cancelled" | "past_due" | "suspended" | "trial";
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
-
-export interface _Migrations {
-  appliedAt: Generated<Timestamp>;
-  filename: string;
-}
 
 export interface AnalyticsEvent {
   createdAt: Generated<Timestamp>;
@@ -126,6 +123,15 @@ export interface AuditLog {
   userAgent: string | null;
 }
 
+export interface AutoCancelLog {
+  ageHours: Numeric;
+  cancelledAt: Generated<Timestamp>;
+  id: Generated<string>;
+  orderId: string;
+  tenantId: string;
+  thresholdHours: number;
+}
+
 export interface Campaign {
   audience: Generated<string>;
   channel: Generated<string>;
@@ -147,8 +153,10 @@ export interface Cart {
   email: string | null;
   id: Generated<string>;
   items: Json;
+  lastReminderAt: Timestamp | null;
   phone: string | null;
   recoveredAt: Timestamp | null;
+  recoveryAttempts: Generated<number>;
   recoveryToken: Generated<string | null>;
   tenantId: string;
   total: Generated<Numeric>;
@@ -300,6 +308,30 @@ export interface Discount {
   usageLimit: number | null;
   usedCount: Generated<number>;
   value: Generated<Numeric>;
+}
+
+export interface EmailLog {
+  body: string;
+  customerId: string | null;
+  error: string | null;
+  id: Generated<string>;
+  sentAt: Generated<Timestamp>;
+  status: Generated<string>;
+  subject: string;
+  templateKey: string;
+  tenantId: string;
+  toEmail: string;
+}
+
+export interface ErrorLog {
+  id: Generated<string>;
+  level: Generated<string>;
+  message: string;
+  module: string;
+  occurredAt: Generated<Timestamp>;
+  requestId: string | null;
+  stack: Generated<string>;
+  tenantId: string | null;
 }
 
 export interface Invoice {
@@ -516,8 +548,21 @@ export interface OrderCounter {
   tenantId: string;
 }
 
+export interface OrderEdits {
+  actorUserId: string | null;
+  after: Generated<Json>;
+  before: Generated<Json>;
+  editSeq: number;
+  id: Generated<string>;
+  occurredAt: Generated<Timestamp>;
+  orderId: string;
+  reason: string;
+  tenantId: string;
+}
+
 export interface OrderItem {
   createdAt: Generated<Timestamp>;
+  editOf: string | null;
   id: Generated<string>;
   lineTotal: Generated<Numeric>;
   orderId: string;
@@ -544,7 +589,9 @@ export interface Orders {
   assignedAt: Timestamp | null;
   assigneeId: string | null;
   billingAddress: Generated<Json>;
+  cancelAfterAt: Timestamp | null;
   cancelledAt: Timestamp | null;
+  cancelReason: string | null;
   channel: Generated<string>;
   codAmount: Generated<Numeric>;
   createdAt: Generated<Timestamp>;
@@ -556,8 +603,20 @@ export interface Orders {
   customerId: string | null;
   customerName: string | null;
   customerPhone: string | null;
+  /**
+   * Preferred delivery date (optional, set by customer at checkout).
+   */
+  deliveryDate: Timestamp | null;
+  /**
+   * Preferred time window, e.g. "10:00-13:00" (optional, free-text).
+   */
+  deliveryTimeSlot: string | null;
   discountCode: string | null;
   discountTotal: Generated<Numeric>;
+  /**
+   * How the customer receives the order: delivery (courier) or pickup (in-store).
+   */
+  fulfillmentMethod: Generated<FulfillmentMethod>;
   fulfillmentStatus: Generated<OrderFulfillmentStatus>;
   grandTotal: Generated<Numeric>;
   id: Generated<string>;
@@ -567,12 +626,23 @@ export interface Orders {
   orderMode: Generated<OrderMode>;
   orderNumber: Int8 | null;
   paymentStatus: Generated<OrderPaymentStatus>;
+  /**
+   * Store name / address for pickup (set when fulfillment_method = pickup).
+   */
+  pickupLocation: string | null;
   placedAt: Generated<Timestamp>;
   poReference: string | null;
   shippingAddress: Generated<Json>;
   shippingTotal: Generated<Numeric>;
+  slaDeliveryDeadlineAt: Timestamp | null;
+  slaHandoverDeadlineAt: Timestamp | null;
+  slaOverriddenBy: string | null;
+  slaOverriddenReason: string | null;
+  slaRefundWindowClosesAt: Timestamp | null;
+  slaZone: string | null;
   source: Generated<OrderSource>;
   subtotal: Generated<Numeric>;
+  tags: Generated<string[]>;
   taxTotal: Generated<Numeric>;
   tenantId: string;
   updatedAt: Generated<Timestamp>;
@@ -711,6 +781,7 @@ export interface PlatformMember {
 }
 
 export interface Product {
+  barcode: string | null;
   createdAt: Generated<Timestamp>;
   description: string | null;
   id: Generated<string>;
@@ -718,6 +789,18 @@ export interface Product {
   marketplaceHidden: Generated<boolean>;
   moq: number | null;
   options: Generated<Json>;
+  /**
+   * Expected availability date for preorder customers.
+   */
+  preorderAvailableAt: Timestamp | null;
+  /**
+   * Allow customers to preorder this product when stock is 0.
+   */
+  preorderEnabled: Generated<boolean>;
+  /**
+   * Maximum number of preorders allowed (null = unlimited).
+   */
+  preorderMax: number | null;
   productType: string | null;
   seo: Generated<Json>;
   slug: string;
@@ -769,6 +852,8 @@ export interface ProductVariant {
   id: Generated<string>;
   inventoryQuantity: Generated<number>;
   isActive: Generated<boolean>;
+  lastLowStockAlertAt: Timestamp | null;
+  lowStockThreshold: number | null;
   moq: number | null;
   options: Generated<Json>;
   position: Generated<number>;
@@ -782,6 +867,18 @@ export interface ProductVariant {
   updatedAt: Generated<Timestamp>;
   weightGrams: number | null;
   wholesalePrice: Numeric | null;
+}
+
+export interface ProductVideo {
+  createdAt: Generated<Timestamp>;
+  durationSeconds: number | null;
+  id: Generated<string>;
+  position: Generated<number>;
+  posterUrl: string | null;
+  productId: string;
+  tenantId: string;
+  title: string | null;
+  url: string;
 }
 
 export interface PurchaseRequest {
@@ -813,8 +910,11 @@ export interface ReturnItem {
 export interface ReturnRequest {
   createdAt: Generated<Timestamp>;
   id: Generated<string>;
+  initiatedBy: string | null;
   note: string | null;
   orderId: string;
+  payoutAt: Timestamp | null;
+  payoutReference: string | null;
   reason: Generated<ReturnReason>;
   refundAmount: Generated<Numeric>;
   refundedAt: Timestamp | null;
@@ -838,6 +938,9 @@ export interface Shipment {
   deliveredAt: Timestamp | null;
   discrepancyAmount: Generated<Numeric>;
   id: Generated<string>;
+  ndrAt: Timestamp | null;
+  ndrCount: Generated<number>;
+  ndrReason: string | null;
   orderId: string;
   payload: Generated<Json>;
   provider: CourierProvider;
@@ -870,6 +973,38 @@ export interface ShippingZoneRate {
   zone: string;
 }
 
+export interface SizeChart {
+  category: string;
+  chartData: Json;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  tenantId: string;
+  unit: Generated<string>;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface SlaAlertLog {
+  alertKind: string;
+  channel: string;
+  id: Generated<string>;
+  orderId: string;
+  recipientUserId: string | null;
+  sentAt: Generated<Timestamp>;
+  tenantId: string;
+}
+
+export interface SmsLog {
+  body: string;
+  customerId: string | null;
+  error: string | null;
+  id: Generated<string>;
+  phone: string;
+  sentAt: Generated<Timestamp>;
+  status: Generated<string>;
+  templateKey: string;
+  tenantId: string;
+}
+
 export interface StorePage {
   blocks: Generated<Json>;
   createdAt: Generated<Timestamp>;
@@ -898,6 +1033,7 @@ export interface Subscription {
 }
 
 export interface Tenant {
+  bin: string | null;
   businessType: Generated<TenantBusinessType>;
   createdAt: Generated<Timestamp>;
   currency: Generated<string>;
@@ -907,13 +1043,20 @@ export interface Tenant {
   kycStatus: Generated<string>;
   marketplaceMonthlyFee: Generated<Numeric>;
   name: string;
+  orderTagVocabulary: Generated<string[]>;
   ownerUserId: string | null;
   planId: string | null;
   settings: Generated<Json>;
   slug: string;
+  smsCartRecoveryEnabled: Generated<boolean>;
+  smsCartRecoveryHours: Generated<number[]>;
   status: Generated<TenantStatus>;
+  stockAlertDefaultThreshold: Generated<number>;
+  stockAlertEnabled: Generated<boolean>;
+  stockAlertRecipients: Generated<string[]>;
   suspendedAt: Timestamp | null;
   timezone: Generated<string>;
+  tin: string | null;
   trialEndsAt: Timestamp | null;
   updatedAt: Generated<Timestamp>;
   wholesaleApproved: Generated<boolean>;
@@ -1022,10 +1165,10 @@ export interface WebhookEvent {
 }
 
 export interface DB {
-  _Migrations: _Migrations;
   analyticsEvent: AnalyticsEvent;
   appUser: AppUser;
   auditLog: AuditLog;
+  autoCancelLog: AutoCancelLog;
   campaign: Campaign;
   cart: Cart;
   cartReminder: CartReminder;
@@ -1038,6 +1181,8 @@ export interface DB {
   customerSegment: CustomerSegment;
   dbidSubmission: DbidSubmission;
   discount: Discount;
+  emailLog: EmailLog;
+  errorLog: ErrorLog;
   invoice: Invoice;
   landingPage: LandingPage;
   loyaltyLedger: LoyaltyLedger;
@@ -1055,6 +1200,7 @@ export interface DB {
   marketplaceSuborder: MarketplaceSuborder;
   navigationMenu: NavigationMenu;
   orderCounter: OrderCounter;
+  orderEdits: OrderEdits;
   orderItem: OrderItem;
   orderNote: OrderNote;
   orders: Orders;
@@ -1072,12 +1218,16 @@ export interface DB {
   productImage: ProductImage;
   productReview: ProductReview;
   productVariant: ProductVariant;
+  productVideo: ProductVideo;
   purchaseRequest: PurchaseRequest;
   returnItem: ReturnItem;
   returnRequest: ReturnRequest;
   shipment: Shipment;
   shippingConfig: ShippingConfig;
   shippingZoneRate: ShippingZoneRate;
+  sizeChart: SizeChart;
+  slaAlertLog: SlaAlertLog;
+  smsLog: SmsLog;
   storePage: StorePage;
   subscription: Subscription;
   tenant: Tenant;
