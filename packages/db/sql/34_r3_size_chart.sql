@@ -61,7 +61,7 @@ begin
     ) then
       create trigger size_chart_updated_at_trg
         before update on size_chart
-        for each row execute function app.touch_updated_at();
+        for each row execute function public.set_updated_at();
     end if;
   end if;
 end $$;

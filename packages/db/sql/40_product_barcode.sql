@@ -17,8 +17,6 @@
 --   • Else if first variant has a barcode → use that
 --   • Else render a placeholder "NO BARCODE" tile so the admin notices
 
-begin;
-
 alter table product
   add column if not exists barcode text;
 
@@ -29,5 +27,3 @@ create unique index if not exists product_variant_barcode_uniq
 create unique index if not exists product_barcode_uniq
   on product(tenant_id, barcode)
   where barcode is not null;
-
-commit;

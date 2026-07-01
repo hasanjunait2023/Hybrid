@@ -36,7 +36,8 @@ alter table return_request
 
 -- ---- index for refund history queries -------------------------------------
 -- "Show me all refunds for this order, newest first" — common admin query.
--- Partial on type='manual_refund' to keep it small.
+-- NOTE: not partial — ALTER TYPE ADD VALUE in the same transaction cannot be
+-- used in a WHERE clause until committed (Postgres restriction). A full index
+-- on (tenant_id, order_id, created_at) is still fast for this query pattern.
 create index if not exists return_request_refund_idx
-  on return_request (tenant_id, order_id, created_at desc)
-  where type = 'manual_refund';
+  on return_request (tenant_id, order_id, created_at desc);
