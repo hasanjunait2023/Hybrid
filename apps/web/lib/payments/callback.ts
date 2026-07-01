@@ -197,9 +197,12 @@ export async function processGatewayCallback(
     return { outcome: "unknown", tenantSlug: lookup.tenantSlug, orderNumber: lookup.orderNumber };
   }
 
-  // Short-circuit: payment already in a terminal success state — skip the gateway
-  // call entirely. A concurrent callback that lost the claimWebhookEvent race would
-  // have committed the status flip; re-executing would waste a gateway round-trip.
+  // Best-effort short-circuit: skip executePayment when payment is already 'success'.
+  // This read is outside the transaction so two *sequential* retries avoid the extra
+  // gateway call. Truly *concurrent* callbacks can both see 'pending' and both call
+  // executePayment — bKash returns an error on the second call; queryPayment recovers
+  // it; claimWebhookEvent (unique constraint) then prevents a double-commit.
+  // DB integrity is guaranteed by claimWebhookEvent regardless.
   if (lookup.paymentStatus === "success") {
     return { outcome: "replayed", tenantSlug: lookup.tenantSlug, orderNumber: lookup.orderNumber };
   }

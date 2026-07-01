@@ -83,10 +83,15 @@ export class BkashProvider implements PaymentProvider {
       const lockKey = `${this.tokenCacheKey}:lock`;
       const lockAcquired = await this.tokenStore.setNx(lockKey, "1", 10);
       if (!lockAcquired) {
-        // Another instance is refreshing — wait briefly then read the freshly cached token.
-        await new Promise((r) => setTimeout(r, 300));
-        const afterWait = await this.tokenStore.get(this.tokenCacheKey);
-        if (afterWait) return afterWait;
+        // Another instance is refreshing — poll up to 5× (200ms each = 1s total) to
+        // wait for the in-flight grant to write the token. bKash grant typically takes
+        // 300–800ms so 5 polls covers even slow responses without a fixed single sleep.
+        for (let i = 0; i < 5; i++) {
+          await new Promise((r) => setTimeout(r, 200));
+          const afterWait = await this.tokenStore.get(this.tokenCacheKey);
+          if (afterWait) return afterWait;
+        }
+        // Lock-holder took >1s — fall through as last resort to avoid hanging.
       }
     }
 

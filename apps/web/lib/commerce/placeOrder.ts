@@ -396,8 +396,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   return withTenant(input.tenantId, input.userId, async (tx) => {
     // (0) Idempotency pre-check: return the existing order if the key was seen before.
     if (input.idempotencyKey) {
-      const existing = await tx<{ id: string; order_number: string; payment_id: string }[]>`
-        select o.id, o.order_number, p.id as payment_id
+      const existing = await tx<{
+        id: string;
+        order_number: string;
+        payment_id: string;
+        provider: string;
+        payload: { analytics?: { eventId?: string } } | null;
+      }[]>`
+        select o.id, o.order_number, p.id as payment_id, p.provider, p.payload
           from orders o
           join payment p on p.order_id = o.id
          where o.tenant_id = ${input.tenantId}
@@ -406,14 +412,15 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       `;
       if (existing[0]) {
         const row = existing[0]!;
+        const isBkash = row.provider === "bkash";
         return {
           orderId: row.id,
           orderNumber: Number(row.order_number),
           paymentId: row.payment_id,
-          bkashRequired: false,
-          onlineRequired: false,
+          bkashRequired: isBkash,
+          onlineRequired: row.provider !== "cod",
           discount: null,
-          analyticsEventId: "",
+          analyticsEventId: row.payload?.analytics?.eventId ?? "",
         };
       }
     }

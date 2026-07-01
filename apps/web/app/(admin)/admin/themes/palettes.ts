@@ -52,8 +52,10 @@ export const COLOR_PRESETS: { key: "dorejaClassic" | "green" | "blueGold"; color
   },
 ];
 
-export const THEME_GRADIENTS: Record<string, { from: string; to: string }> = {
-  doreja: { from: HEX.indigo,   to: HEX.marigold },
-  megh:   { from: HEX.violet,   to: HEX.rose },
-  bazar:  { from: HEX.emerald,  to: HEX.marigold },
+// Full Tailwind class strings as static literals so the JIT scanner can detect them
+// at build time. Never build these via template interpolation — they would be purged.
+export const THEME_GRADIENTS: Record<string, { gradientClass: string }> = {
+  doreja: { gradientClass: "from-[#1D4ED8] to-[#F59E0B]" },
+  megh:   { gradientClass: "from-[#7C3AED] to-[#EC4899]" },
+  bazar:  { gradientClass: "from-[#047857] to-[#F59E0B]" },
 };

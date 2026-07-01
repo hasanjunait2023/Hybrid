@@ -127,7 +127,7 @@ export function ThemeCatalog({ themes, activeCode, previewBase }: ThemeCatalogPr
 function ThemePreviewTile({ code, isActive }: { code: string; isActive: boolean }) {
   const t = useDict().admin.themes;
   const g = THEME_GRADIENTS[code];
-  const gradientClass = g ? `from-[${g.from}] to-[${g.to}]` : "from-primary to-accent";
+  const gradientClass = g?.gradientClass ?? "from-primary to-accent";
   return (
     <div
       className={cn(
