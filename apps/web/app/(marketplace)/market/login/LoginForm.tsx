@@ -56,6 +56,7 @@ export function LoginForm() {
             type="tel"
             inputMode="tel"
             placeholder="মোবাইল নম্বর"
+            aria-label="মোবাইল নম্বর"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="min-h-[44px] rounded-md border border-border bg-surface px-3 py-2"
@@ -63,6 +64,7 @@ export function LoginForm() {
           <input
             type="text"
             placeholder="আপনার নাম (ঐচ্ছিক)"
+            aria-label="আপনার নাম"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="min-h-[44px] rounded-md border border-border bg-surface px-3 py-2"
@@ -83,6 +85,7 @@ export function LoginForm() {
             type="text"
             inputMode="numeric"
             placeholder="৬ সংখ্যার কোড"
+            aria-label="যাচাই কোড"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             className="rounded-md border border-border bg-surface px-3 py-2 tracking-widest"

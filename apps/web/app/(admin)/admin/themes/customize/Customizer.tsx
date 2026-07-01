@@ -8,7 +8,7 @@
 //                      toggle (📱360 / 💻1280) above the preview.
 // The preview is the storefront's admin-gated ?preview=1 route in an iframe; we
 // autosave the draft before refreshing it so the preview reflects edits.
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type RefObject } from "react";
 import { Button } from "@hybrid/ui";
 import type { ThemeSettings } from "@/lib/theme/schema";
 import type { HomePageBlocks } from "@/lib/theme/pageBuilder";
@@ -233,32 +233,14 @@ export function Customizer({
 
       {/* Mobile bottom sheet */}
       {sheetOpen && (
-        <div
-          className="fixed inset-0 z-modal flex flex-col justify-end bg-black/30 lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t.customizer.controlsLabel}
+        <MobileSheet
+          label={t.customizer.controlsLabel}
+          closeLabel={t.customizer.closeSheet}
+          onClose={() => setSheetOpen(false)}
+          statusChip={<StatusChip dirty={dirty} saveState={saveState} published={published} />}
         >
-          <button
-            type="button"
-            aria-label={t.customizer.closeSheet}
-            className="flex-1"
-            onClick={() => setSheetOpen(false)}
-          />
-          <div className="max-h-[70vh] overflow-y-auto rounded-t-2xl bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <StatusChip dirty={dirty} saveState={saveState} published={published} />
-              <button
-                type="button"
-                onClick={() => setSheetOpen(false)}
-                className="rounded-md px-3 py-1 text-sm font-medium text-ink-muted hover:bg-surface-2"
-              >
-                {t.customizer.sheetClose}
-              </button>
-            </div>
-            {controls}
-          </div>
-        </div>
+          {controls}
+        </MobileSheet>
       )}
 
       {publishOpen && (
@@ -368,6 +350,76 @@ function PreviewFrame({
   );
 }
 
+function MobileSheet({
+  label,
+  closeLabel,
+  onClose,
+  statusChip,
+  children,
+}: {
+  label: string;
+  closeLabel: string;
+  onClose: () => void;
+  statusChip: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const trapRef = useFocusTrap();
+  return (
+    <div
+      ref={trapRef}
+      className="fixed inset-0 z-modal flex flex-col justify-end bg-black/30 lg:hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+    >
+      <button
+        type="button"
+        aria-label={closeLabel}
+        className="flex-1"
+        onClick={onClose}
+      />
+      <div className="max-h-[70vh] overflow-y-auto rounded-t-2xl bg-surface p-4">
+        <div className="mb-3 flex items-center justify-between">
+          {statusChip}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md px-3 py-1 text-sm font-medium text-ink-muted hover:bg-surface-2"
+          >
+            {closeLabel}
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function useFocusTrap(): RefObject<HTMLDivElement | null> {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const items = () => Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE));
+    const first = items()[0];
+    first?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = items();
+      if (!list.length) return;
+      if (e.shiftKey && document.activeElement === list[0]) {
+        e.preventDefault(); list[list.length - 1].focus();
+      } else if (!e.shiftKey && document.activeElement === list[list.length - 1]) {
+        e.preventDefault(); list[0].focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  return ref;
+}
+
 function PublishConfirm({
   publishing,
   error,
@@ -380,8 +432,10 @@ function PublishConfirm({
   onConfirm: () => void;
 }) {
   const t = useDict().admin.themes;
+  const trapRef = useFocusTrap();
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-modal flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"

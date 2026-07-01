@@ -576,7 +576,7 @@ function Step4Review({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[44px] rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pending ? "..." : t.submitForReview}
           </button>
@@ -618,7 +618,7 @@ function SubmitRow({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[44px] rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {pending ? "..." : nextLabel}
       </button>

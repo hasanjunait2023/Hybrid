@@ -76,7 +76,7 @@ export function CartIsland() {
         </section>
       ))}
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-border bg-surface px-4 py-3">
+      <div className="fixed inset-x-0 bottom-0 border-t border-border bg-surface px-4 py-3" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
           <span className="text-sm">
             মোট: <strong>{formatBdtBangla(cart.subtotal)}</strong>
