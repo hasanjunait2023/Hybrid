@@ -135,7 +135,17 @@ export async function preparePurchaseFire(
     const publicIds = await getPublicAnalyticsIds(tenantId, null);
     if (!publicIds.enabled) return null;
 
-    return { publicIds: { ga4MeasurementId: publicIds.ga4MeasurementId, fbPixelId: publicIds.fbPixelId }, payload };
+    // TRACK-V2-A1: surface the TikTok Pixel ID alongside GA4 + Meta so the
+    // PurchaseTracker client island can fire ttq.track('CompletePayment', ...)
+    // with the same shared event_id.
+    return {
+      publicIds: {
+        ga4MeasurementId: publicIds.ga4MeasurementId,
+        fbPixelId: publicIds.fbPixelId,
+        tiktokPixelId: publicIds.tiktokPixelId,
+      },
+      payload,
+    };
   } catch (error) {
     console.error(`[analytics] preparePurchaseFire failed (order #${orderNumber}):`, error);
     return null;

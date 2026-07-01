@@ -23,6 +23,7 @@ import { supabaseAdminClient } from "@/lib/auth/supabaseAuth";
 import { DEV_SESSION_COOKIE, signDevCookie, createSession } from "@/lib/auth/session";
 import { passwordSchema, PASSWORD_TOO_WEAK_BN, GENERIC_ERROR_BN } from "@/lib/auth/validate";
 import { rateLimit, clientIpFrom } from "@/lib/ratelimit";
+import { firePlatformLead } from "@/lib/analytics/platform";
 import { normalizeSlug, suggestSlugs, validateSlug, SLUG_ERROR_BN } from "./slug";
 
 const STORE_NAME_MAX = 60;
@@ -212,6 +213,22 @@ export async function signupAction(
     }
 
     const host = (await getRequestHost()) ?? rootDomain();
+
+    // TRACK-V2-A1 §10: fire the platform-owned CompleteRegistration event to
+    // GA4 + Meta + TikTok. Best-effort — wrapped in try/catch so a tracking
+    // outage can never break a successful signup. The marketing landing's
+    // page_view (PlatformTracker) and the form-fill Lead (Phase A.10) give
+    // the platform admin a full funnel from impression → trial.
+    try {
+      await firePlatformLead({
+        email: emailRaw,
+        businessType,
+        eventName: "complete_registration",
+      });
+    } catch (trackErr) {
+      console.error("[signup] platform tracking failed (non-blocking):", trackErr);
+    }
+
     return { ok: true, redirectTo: adminUrl(host) };
   } catch (err: unknown) {
     // Provisioning failed → the app_user we just minted owns no tenant. Drop the

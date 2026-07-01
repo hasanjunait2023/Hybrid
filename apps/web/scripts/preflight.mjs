@@ -55,7 +55,7 @@ function banner() {
 function checkEnv() {
   const provider = process.env.AUTH_PROVIDER;
   if (!provider) {
-    fail("AUTH_PROVIDER is not set. Add to .env.deploy and interpolate via \${AUTH_PROVIDER} in docker-compose.prod.yml");
+    fail("AUTH_PROVIDER is not set. Add to .env.deploy and interpolate via ${AUTH_PROVIDER} in docker-compose.prod.yml");
     return;
   }
   if (!PROVIDERS.has(provider)) {
@@ -99,7 +99,7 @@ async function checkNetwork() {
   let parsed;
   try {
     parsed = new URL(url);
-  } catch (e) {
+  } catch {
     fail(`SUPABASE_URL is not a valid URL: ${url}`);
     return;
   }
