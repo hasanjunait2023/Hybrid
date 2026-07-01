@@ -26,11 +26,12 @@ import {
   computeCancelAfterAt,
 } from "../../../apps/web/lib/orders/autoCancel";
 
-// Stable IDs from the seed (03_seed.sql) — tenant a + the active variants.
 const TENANT_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa000a";
 const TENANT_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb000b";
-const OWNER_A = "11111111-1111-1111-1111-111111111001";
-const VAR_ACTIVE = "f0000001-0000-0000-0000-0000000000f1";
+
+// Self-contained fixtures — unique IDs so this suite never clashes with admin.test.ts or seed data.
+const AC_PROD    = "ac000001-0000-0000-0000-000000000001";
+const VAR_ACTIVE = "ac000001-0000-0000-0000-000000000002";
 
 function addr() {
   return {
@@ -59,6 +60,18 @@ async function cleanup(tx: Tx): Promise<void> {
 async function seed(): Promise<void> {
   await asPlatformAdmin(async (tx) => {
     await cleanup(tx);
+    // Drop stale fixtures from a previous aborted run (if any).
+    await tx`delete from product_variant where id = ${VAR_ACTIVE}`;
+    await tx`delete from product where id = ${AC_PROD}`;
+    // One product + one tracked variant at 10 units for inventory restore checks.
+    await tx`
+      insert into product (id, tenant_id, title, slug, status)
+      values (${AC_PROD}, ${TENANT_A}, 'Auto Cancel Shirt', 'auto-cancel-shirt', 'active')
+    `;
+    await tx`
+      insert into product_variant (id, tenant_id, product_id, title, sku, price, inventory_quantity, track_inventory)
+      values (${VAR_ACTIVE}, ${TENANT_A}, ${AC_PROD}, 'M', 'SHIRT-M', 500, 10, true)
+    `;
   });
 }
 
@@ -114,14 +127,21 @@ async function insertOverdueOrder(input: InsertOverdueOrderInput): Promise<strin
     `;
     const orderId = orderRows[0]!.id;
 
-    // One order_item + inventory decrement to make the cancel-meaningful
-    // inventory restore observable.
+    // One order_item + explicit inventory decrement (mirrors placeOrder's atomic
+    // stock decrement so runAutoCancelSweep's restoreInventory has something to
+    // credit back).
     await tx`
       insert into order_item (
         tenant_id, order_id, variant_id, title, sku, unit_price, quantity, line_total
       ) values (
         ${input.tenantId}, ${orderId}, ${VAR_ACTIVE}, 'Auto Cancel Shirt', 'SHIRT-M', 500, 1, 500
       )
+    `;
+    await tx`
+      update product_variant
+         set inventory_quantity = inventory_quantity - 1
+       where id = ${VAR_ACTIVE}
+         and track_inventory = true
     `;
 
     return orderId;
@@ -165,10 +185,14 @@ async function getAuditRow(orderId: string): Promise<{
 describe("O20 — auto-cancel-unpaid integration", () => {
   beforeAll(seed);
   afterAll(async () => {
-    await asPlatformAdmin(cleanup);
+    await asPlatformAdmin(async (tx) => {
+      await cleanup(tx);
+      await tx`delete from product_variant where id = ${VAR_ACTIVE}`;
+      await tx`delete from product where id = ${AC_PROD}`;
+    });
   });
   beforeEach(async () => {
-    // Ensure defaults between tests.
+    // Ensure defaults between tests (keeps product+variant alive, resets inventory).
     await asPlatformAdmin(cleanup);
   });
 
