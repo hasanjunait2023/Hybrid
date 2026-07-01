@@ -151,7 +151,7 @@ export function buildMetaUserData(input: MetaUserData): Record<string, string> {
   if (ph) out.ph = ph;
   if (input.fbp) out.fbp = input.fbp;
   if (input.fbc) out.fbc = input.fbc;
-  if (input.clientIp) out.client_ip = input.clientIp;
+  if (input.clientIp) out.client_ip_address = input.clientIp;
   if (input.userAgent) out.client_user_agent = input.userAgent;
   if (input.externalId) out.external_id = input.externalId;
   if (input.subscriptionId) out.subscription_id = input.subscriptionId;

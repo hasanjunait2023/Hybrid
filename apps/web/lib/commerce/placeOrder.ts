@@ -636,7 +636,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     // (Phase 2.7): the success page reads it for the client Pixel eventID and the
     // server CAPI/GA4-MP fire so both sides share one id. (The bKash checkout
     // slice later merges create-payment data into the same payload jsonb.)
-    const analyticsEventId = randomUUID();
+    const analyticsEventId = input.analyticsEventId?.trim() && input.analyticsEventId.trim().length >= 10
+      ? input.analyticsEventId.trim()
+      : randomUUID();
     const paymentRows = await tx<{ id: string }[]>`
       insert into payment (tenant_id, order_id, provider, status, amount, payload)
       values (

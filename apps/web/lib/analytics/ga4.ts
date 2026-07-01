@@ -40,10 +40,14 @@ export interface Ga4UserData {
 // dot-segments ("1234567890.1700000000"). Returns null when absent/malformed.
 export function clientIdFromGaCookie(gaCookie: string | null | undefined): string | null {
   if (!gaCookie) return null;
+  // Some SDKs strip the leading "GA1.1." prefix — tolerate both forms.
   const parts = gaCookie.split(".");
-  if (parts.length < 4) return null;
-  const clientId = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
-  return /^\d+\.\d+$/.test(clientId) ? clientId : null;
+  if (parts.length >= 4) {
+    const clientId = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+    if (/^\d+\.\d+$/.test(clientId)) return clientId;
+  }
+  if (parts.length === 2 && /^\d+\.\d+$/.test(gaCookie)) return gaCookie;
+  return null;
 }
 
 function ga4Enabled(): boolean {

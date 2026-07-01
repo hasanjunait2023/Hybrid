@@ -297,7 +297,12 @@ async function safeGetConfig(tenantId: string) {
 async function safeSend(send: () => Promise<boolean>, context: string): Promise<void> {
   try {
     const ok = await send();
-    if (!ok) console.warn(`[analytics] send returned not-ok (${context})`);
+    if (!ok) {
+      console.warn(`[analytics] send returned not-ok (${context})`);
+      // Queue for retry when a network/platform issue is suspected.
+      // (queueFailedEvent call sites are added per-phase; kept as no-op here to
+      // avoid circular imports and preserve existing non-blocking contract.)
+    }
   } catch (error) {
     console.error(`[analytics] send failed (${context}):`, error);
   }

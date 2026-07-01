@@ -5,6 +5,10 @@ import { getTenantContextBySlug } from "@/lib/storefront/data";
 import { getDict } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/provider";
 import { LanguageToggle } from "@/lib/i18n/LanguageToggle";
+import { getPublicAnalyticsIds } from "@/lib/analytics/config";
+import { StorefrontTracker } from "@/app/_components/StorefrontTracker";
+import { readConsentFromCookieHeader } from "@/lib/analytics/consent";
+import { cookies } from "next/headers";
 
 interface StorefrontLayoutProps {
   children: ReactNode;
@@ -38,9 +42,20 @@ export default async function StorefrontLayout({
     "--color-text": c.text,
   } as React.CSSProperties;
 
+  const publicIds = await getPublicAnalyticsIds(ctx.id, null);
+  const consent = readConsentFromCookieHeader((await cookies()).toString());
+
   return (
     <LocaleProvider locale={locale}>
       <div style={themeStyle} className="flex min-h-screen flex-col bg-bg">
+        <StorefrontTracker
+          ids={{
+            ga4MeasurementId: publicIds.ga4MeasurementId,
+            fbPixelId: publicIds.fbPixelId,
+            tiktokPixelId: publicIds.tiktokPixelId,
+          }}
+          consent={consent.categories.analytics ?? true}
+        />
         <StoreHeader store={ctx.store} lang={locale} toggle={<LanguageToggle />} />
         <main className="flex-1">{children}</main>
         <StoreFooter

@@ -13,6 +13,7 @@ import type { Messages } from "@/lib/i18n/dictionaries";
 import { useCart } from "../cart/useCart";
 import { submitCheckout, quoteShipping } from "./actions";
 import { LocationSheet } from "./LocationSheet";
+import { buildFunnelEventId } from "@/lib/analytics/funnel";
 
 interface CheckoutFormProps {
   tenantSlug: string;
@@ -126,6 +127,7 @@ export function CheckoutForm({
       fulfillmentMethod,
       discountCode: promoCode.trim() || undefined,
       items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+      analyticsEventId: buildFunnelEventId(),
     });
 
     if (!result.ok) {

@@ -2,6 +2,7 @@
 // so the server-side Events API (which imports @hybrid/db for logging) never
 // leaks into the client bundle.
 import type { PurchasePayload } from "./events";
+import type { MetaUserData } from "./funnel";
 import type { TikTokQueue } from "./tiktok-queue";
 
 const PIXEL_JS = "https://analytics.tiktok.com/i18n/pixel/events.js";
@@ -31,7 +32,11 @@ function getTikTokQueue(): TikTokQueue | undefined {
   return w.ttq;
 }
 
-export function fireTikTokPixel(pixelId: string, payload: PurchasePayload): void {
+export function fireTikTokPixel(
+  pixelId: string,
+  payload: PurchasePayload,
+  userData?: MetaUserData,
+): void {
   if (typeof window === "undefined") return;
   if (!pixelId) return;
   if (!tiktokPixelEnabled()) return;
@@ -49,15 +54,23 @@ export function fireTikTokPixel(pixelId: string, payload: PurchasePayload): void
     quantity: i.quantity,
   }));
 
-  ttq.track(
-    "CompletePayment",
-    {
-      currency: payload.currency,
-      value: payload.value,
-      contents,
-      content_type: "product",
-      order_id: String(payload.orderNumber),
-    },
-    { event_id: payload.eventId },
-  );
+  const eventData: Record<string, unknown> = {
+    currency: payload.currency,
+    value: payload.value,
+    contents,
+    content_type: "product",
+    order_id: String(payload.orderNumber),
+  };
+
+  // Enhanced match for TikTok — forward external_id, phone, email, fbp/fbc when
+  // available. TikTok Pixel supports limited PII inside the event payload.
+  if (userData?.externalId) eventData.external_id = userData.externalId;
+  if (userData?.phone) eventData.phone = userData.phone;
+  if (userData?.email) eventData.email = userData.email;
+
+  const options: { event_id?: string; fbp?: string; fbc?: string } = { event_id: payload.eventId };
+  if (userData?.fbp) options.fbp = userData.fbp;
+  if (userData?.fbc) options.fbc = userData.fbc;
+
+  ttq.track("CompletePayment", eventData, options);
 }
