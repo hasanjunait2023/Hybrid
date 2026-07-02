@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@hybrid/ui";
+import { oauthStartUrl, defaultPostLoginNext } from "@/lib/auth/oauthStartUrl";
 import { signupAction, type SignupState } from "./actions";
 import { normalizeSlug, validateSlug, SLUG_ERROR_BN } from "./slug";
 
@@ -27,6 +28,9 @@ interface SignupLabels {
   submit: string;
   submitting: string;
   trialNote: string;
+  oauthGoogle?: string;
+  oauthFacebook?: string;
+  oauthDivider?: string;
 }
 
 // Labels are resolved server-side (cookie locale) and passed in, so the form
@@ -45,6 +49,15 @@ export function SignupForm({ labels }: { labels: SignupLabels }) {
       window.location.assign(state.redirectTo);
     }
   }, [state.ok, state.redirectTo]);
+
+  const next =
+    typeof window !== "undefined"
+      ? defaultPostLoginNext(window.location.host)
+      : "/";
+
+  function startOAuth(provider: "google" | "facebook") {
+    window.location.assign(oauthStartUrl(provider, next));
+  }
 
   // Live client-side slug validation for instant feedback. The server re-validates
   // (and owns uniqueness) — this only mirrors the same rules for a faster UX.
@@ -66,6 +79,40 @@ export function SignupForm({ labels }: { labels: SignupLabels }) {
           {state.errors.form}
         </p>
       ) : null}
+
+      {/* OAuth — primary path on mobile (no typing) */}
+      {(labels.oauthGoogle || labels.oauthFacebook) && (
+        <div className="flex flex-col gap-2">
+          {labels.oauthGoogle ? (
+            <button
+              type="button"
+              onClick={() => startOAuth("google")}
+              className="flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 font-semibold text-ink hover:bg-bg"
+            >
+              <GoogleG size={18} />
+              {labels.oauthGoogle}
+            </button>
+          ) : null}
+          {labels.oauthFacebook ? (
+            <button
+              type="button"
+              onClick={() => startOAuth("facebook")}
+              className="flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 font-semibold text-ink hover:bg-bg"
+            >
+              <FacebookF size={18} />
+              {labels.oauthFacebook}
+            </button>
+          ) : null}
+
+          {labels.oauthDivider ? (
+            <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-ink-muted">
+              <span className="h-px flex-1 bg-border" />
+              <span>{labels.oauthDivider}</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Store type — seller self-selects retailer vs wholesaler. The hidden
           input carries the choice to the Server Action; the cards toggle it. */}
@@ -276,4 +323,38 @@ function inputClass(hasError: boolean): string {
     "placeholder:text-ink-subtle",
     hasError ? "border-danger" : "border-border-strong",
   ].join(" ");
+}
+
+function GoogleG({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+      <path
+        fill="#FFC107" // eslint-disable-line hybrid/no-hardcoded-color
+        d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.3 35.5 24 35.5c-6.4 0-11.5-5.1-11.5-11.5S17.6 12.5 24 12.5c3 0 5.7 1.1 7.8 2.9l5.7-5.7C33.6 6.5 29 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.4-.4-3.5z"
+      />
+      <path
+        fill="#FF3D00" // eslint-disable-line hybrid/no-hardcoded-color
+        d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12.5 24 12.5c3 0 5.7 1.1 7.8 2.9l5.7-5.7C33.6 6.5 29 4.5 24 4.5c-7.7 0-14.3 4.4-17.7 10.2z"
+      />
+      <path
+        fill="#4CAF50" // eslint-disable-line hybrid/no-hardcoded-color
+        d="M24 43.5c5 0 9.5-1.9 12.9-5l-6-4.9c-1.9 1.4-4.3 2.2-6.9 2.2-5.3 0-9.7-3.4-11.3-8.1l-6.5 5C9.6 39.1 16.2 43.5 24 43.5z"
+      />
+      <path
+        fill="#1976D2" // eslint-disable-line hybrid/no-hardcoded-color
+        d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.4 5.5l6 4.9c-.4.4 6.5-4.7 6.5-14.4 0-1.2-.1-2.4-.4-3.5z"
+      />
+    </svg>
+  );
+}
+
+function FacebookF({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#1877F2" // eslint-disable-line hybrid/no-hardcoded-color
+        d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.668 4.533-4.668 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.875V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"
+      />
+    </svg>
+  );
 }
