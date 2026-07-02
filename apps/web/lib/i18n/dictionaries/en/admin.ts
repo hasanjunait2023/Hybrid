@@ -17,9 +17,13 @@ import { settingsComms } from "./admin/settingsComms";
 import { settingsDbid } from "./admin/settingsDbid";
 import { shipping } from "./admin/shipping";
 import { wholesale } from "./admin/wholesale";
+import { tasks } from "./admin/tasks";
+import { leads } from "./admin/leads";
 
 export const admin = {
   products,
+  tasks,
+  leads,
   customers,
   collections,
   discounts,
@@ -48,6 +52,8 @@ export const admin = {
     orders: "Orders",
     products: "Products",
     customers: "Customers",
+    tasks: "Tasks",
+    leads: "Leads",
     more: "More",
     wholesale: "Wholesale",
     purchaseRequests: "Purchase Requests",

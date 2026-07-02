@@ -3,12 +3,14 @@ import { requireSession } from "@/lib/auth/requireSession";
 import { StatusBadge } from "@hybrid/ui";
 import { getActiveTenantId } from "@/lib/admin/data";
 import { getDashboard } from "@/lib/admin/dashboard";
+import { getTaskSummary } from "@/lib/admin/tasks";
 import { timeAgo } from "@/lib/admin/format";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { TrendChart, StatusBars } from "./DashboardCharts";
 import { WeeklyComparison, TopProducts, ActivityFeed } from "./DashboardWidgets";
 import { MobileQuickStats } from "./MobileQuickStats";
+import { TasksTodayWidget } from "./TasksWidget";
 import { PageHeader, StatStrip, StatCard } from "./_ui";
 
 // Admin dashboard (DESIGN §P2.3), reference layout: KPI row → trend chart +
@@ -23,6 +25,7 @@ export default async function AdminDashboardPage() {
   const { locale, d } = await getDict();
   const t = d.admin.dashboard;
   const data = await getDashboard(tenantId, session.userId);
+  const taskSummary = await getTaskSummary(tenantId, session.userId);
   const delta = data.todayOrders - data.yesterdayOrders;
   const deltaStr = `${delta >= 0 ? "+" : "−"}${formatNumber(Math.abs(delta), locale)}`;
   const codTotal = data.codCollectedAmount + data.codPendingAmount;
@@ -92,6 +95,9 @@ export default async function AdminDashboardPage() {
           <span aria-hidden>→</span>
         </a>
       )}
+
+      {/* Today's CRM tasks — overdue + soonest-due follow-ups (hidden when none) */}
+      <TasksTodayWidget summary={taskSummary} t={d.admin.tasks} locale={locale} />
 
       {/* Trend chart (2/3) + month-revenue highlight (1/3) */}
       <section className="grid gap-4 lg:grid-cols-3">

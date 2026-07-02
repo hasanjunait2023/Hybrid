@@ -44,6 +44,27 @@ export const customers = {
     addresses: "Addresses",
     noAddresses: "No addresses.",
     defaultBadge: "Default",
+    statAov: "Avg order value",
+    lastOrder: "Last order",
+    never: "—",
+    dueLabel: "Outstanding due",
+    timeline: {
+      heading: "Activity timeline",
+      empty: "No activity yet.",
+      order: "Order",
+      payment: "Payment",
+      ledger: "Ledger",
+      note: "Note",
+      return: "Return",
+    },
+    rfm: {
+      new: "New",
+      champion: "Champion",
+      loyal: "Loyal",
+      active: "Active",
+      at_risk: "At risk",
+      lost: "Lost",
+    },
   },
 
   notes: {
