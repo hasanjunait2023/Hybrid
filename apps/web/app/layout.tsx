@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import "@hybrid/ui/globals.css";
+import { headers } from "next/headers";
 import { fontVariables } from "./fonts";
 import { getLocale } from "@/lib/i18n/server";
 import { CookieConsent } from "@/lib/consent/CookieConsent";
@@ -13,9 +14,6 @@ export const metadata: Metadata = {
     icon: "/favicon-32.png",
     apple: "/apple-touch-icon.png",
   },
-  verification: {
-    google: "jfegcQr5aSi9_cxMZ7rCq3teT3f2iWN0FzPAz8xez98",
-  },
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -25,8 +23,19 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // marketing) inherits the Hind Siliguri stack; --font-* resolve in
   // @hybrid/ui globals.css.
   const locale = await getLocale();
+  const host = (await headers()).get("host") ?? "";
+  const isEcomexCloud = host.includes(".ecomex.cloud");
+
   return (
     <html lang={locale} className={fontVariables}>
+      <head>
+        {isEcomexCloud ? (
+          <meta
+            name="google-site-verification"
+            content="jfegcQr5aSi9_cxMZ7rCq3teT3f2iWN0FzPAz8xez98"
+          />
+        ) : null}
+      </head>
       <body>
         {children}
         <CookieConsent />
