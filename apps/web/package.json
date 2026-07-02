@@ -18,6 +18,7 @@
     "@hybrid/payments": "workspace:*",
     "@hybrid/ui": "workspace:*",
     "@node-rs/argon2": "^2.0.2",
+    "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.45.4",
     "bangladesh-location-data": "^1.0.6",
     "bwip-js": "^4.11.1",
