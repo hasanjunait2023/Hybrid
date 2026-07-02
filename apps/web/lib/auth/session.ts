@@ -22,7 +22,7 @@
 // We SHA-256 it and look up user_session by token_hash; the raw token is never
 // stored. HttpOnly + Secure + SameSite=Lax (Lax required so the cookie rides
 // admin.* / app.* subdomain navigation; Strict would break it).
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 
 export interface Session {

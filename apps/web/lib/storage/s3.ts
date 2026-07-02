@@ -12,7 +12,7 @@
 // the 5MB cap + mime/filename validation is reused verbatim (validate /
 // assertTenantId from ./index), so every caller stays protected by construction.
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { randomUUID } from "crypto";
 import {
   S3Client,
   PutObjectCommand,

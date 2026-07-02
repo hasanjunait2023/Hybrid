@@ -1,3 +1,6 @@
+# Hybrid — production stack (single VPS, IP:port access).
+# Postgres + Redis internal; web exposed on :3000.
+# Secrets come from a sibling `.env.deploy` file (compose --env-file).
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,28 +10,43 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: hybrid
     volumes:
-    - hybrid_pgdata:/var/lib/postgresql/data
-    - ./packages/db/sql:/docker-entrypoint-initdb.d:ro
+      - hybrid_pgdata:/var/lib/postgresql/data
+      - ./packages/db/sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test:
-      - CMD-SHELL
-      - pg_isready -U postgres -d hybrid
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hybrid"]
       interval: 5s
       timeout: 5s
       retries: 20
     restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: hybrid-redis
     healthcheck:
-      test:
-      - CMD
-      - redis-cli
-      - ping
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
     restart: unless-stopped
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: hybrid-pgbouncer
+    volumes:
+      - /opt/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - /opt/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    ports:
+      - "6432:6432"
+    command: pgbouncer /etc/pgbouncer/pgbouncer.ini
+    networks:
+      - hybrid_default
+      - pe9o2li2n3bns3wnofob49uw
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=app_runtime_local_pw psql -h 127.0.0.1 -p 6432 -U app_runtime_login -d postgres -tAc 'SELECT 1' | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   web:
     container_name: hybrid-web
     build:
@@ -43,110 +61,101 @@ services:
         SESSION_SECRET: ${SESSION_SECRET}
         REDIS_URL: ${REDIS_URL}
         CRON_SECRET: ${CRON_SECRET}
+        SUPABASE_URL: ${SUPABASE_URL}
+        SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+        SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_ROOT_DOMAIN: ${NEXT_PUBLIC_ROOT_DOMAIN}
       DATABASE_URL: ${DATABASE_URL}
       DIRECT_URL: ${DIRECT_URL}
+      READ_DATABASE_URL: ${READ_DATABASE_URL}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
       DEV_SESSION_SECRET: ${DEV_SESSION_SECRET}
       SESSION_SECRET: ${SESSION_SECRET}
       REDIS_URL: ${REDIS_URL}
       CRON_SECRET: ${CRON_SECRET}
-      AUTH_PROVIDER: ${AUTH_PROVIDER:-dev}
-      BLOB_DRIVER: ${BLOB_DRIVER:-local}
-      HYBRIDPAY_BASE_URL: ${HYBRIDPAY_BASE_URL:-https://pay.hybrid.ecomex.cloud}
-      SMS_LIVE: 'false'
-      ALLOW_DEV_LOGIN: 'false'
+      AUTH_PROVIDER: ${AUTH_PROVIDER}
+      BLOB_DRIVER: ${BLOB_DRIVER}
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      S3_BUCKET: ${S3_BUCKET}
-      S3_ENDPOINT: ${S3_ENDPOINT}
-      S3_REGION: ${S3_REGION}
-      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
-      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL}
-    expose:
-    - '3000'
+      SMS_LIVE: "false"
+      GLITCHTIP_DSN: 
+      GLITCHTIP_PUBLIC_URL: 
+      HYBRID_ENABLE_TEST_ROUTES: ${HYBRID_ENABLE_TEST_ROUTES}
+    ports:
+      - "3000:3000"
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
-    restart: unless-stopped
     networks:
-    - default
-    - supabasenet
-  caddy:
-    image: caddy:2-alpine
-    container_name: hybrid-caddy
-    ports:
-    - 80:80
-    - 443:443
-    volumes:
-    - ./Caddyfile:/etc/caddy/Caddyfile:ro
-    - caddy_data:/data
-    - caddy_config:/config
-    depends_on:
-    - web
-    restart: unless-stopped
-    networks:
-    - default
-    - supabasenet
-  # ---- Hybrid Pay engine (self-hosted PipraPay, AGPL-3.0) --------------------
-  # Opt-in via `docker compose --profile hybridpay up -d`. PipraPay is a PHP app
-  # served from source cloned to ./piprapay (see docs/INFRA_HYBRIDPAY.md). It is
-  # on the same `default` network as Caddy, so the pay.hybrid.ecomex.cloud block
-  # reaches it as hybrid-piprapay:80. Founder = super admin; each tenant is a
-  # "brand" with its own API key (what they paste into Hybrid Pay settings).
-  piprapay:
-    build:
-      context: .
-      dockerfile: piprapay.Dockerfile
-    image: hybrid-piprapay:local
-    container_name: hybrid-piprapay
-    profiles:
-    - hybridpay
-    working_dir: /var/www/html
-    volumes:
-    - ./piprapay:/var/www/html
-    depends_on:
-      piprapay-db:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-    - default
-  piprapay-db:
-    image: mysql:8
-    container_name: hybrid-piprapay-db
-    profiles:
-    - hybridpay
-    environment:
-      MYSQL_ROOT_PASSWORD: ${PIPRAPAY_DB_ROOT_PASSWORD:-change_me}
-      MYSQL_DATABASE: ${PIPRAPAY_DB_NAME:-piprapay}
-      MYSQL_USER: ${PIPRAPAY_DB_USER:-piprapay}
-      MYSQL_PASSWORD: ${PIPRAPAY_DB_PASSWORD:-change_me}
-    volumes:
-    - hybrid_piprapay_dbdata:/var/lib/mysql
+      - hybrid_default
+      - pe9o2li2n3bns3wnofob49uw
     healthcheck:
-      test:
-      - CMD
-      - mysqladmin
-      - ping
-      - -h
-      - localhost
+      test: ["CMD-SHELL", "node scripts/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # --- Error tracking (GlitchTip, Sentry-API compatible) ---
+  glitchtip-db:
+    image: postgres:15-alpine
+    container_name: glitchtip-db
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: glitchtip_local_secret_2026
+      POSTGRES_DB: glitchtip
+    volumes:
+      - glitchtip_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glitchtip -d glitchtip"]
       interval: 5s
       timeout: 5s
       retries: 20
     restart: unless-stopped
+
+  glitchtip-web:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip-web
+    depends_on:
+      glitchtip-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://glitchtip:glitchtip_local_secret_2026@glitchtip-db:5432/glitchtip
+      REDIS_URL: redis://redis:6379/1
+      SECRET_KEY: change_me_in_env_2026_production
+      GLITCHTIP_EMBED_WORKER: "true"
+      EMAIL_HOST: ""
+      DEBUG: "False"
+      ALLOWED_HOSTS: "*"
+      ENABLE_SOCIAL_AUTH: "False"
+      ENABLE_USER_REGISTRATION: "false"
+      GLITCHTIP_DOMAIN: https://errors.hybrid.ecomex.cloud
+      SITE_URL: https://errors.hybrid.ecomex.cloud
+      ENABLE_TELEMETRY: "False"
+    ports:
+      - "8000:8000"
     networks:
-    - default
+      - hybrid_default
+    restart: unless-stopped
+
 volumes:
-  hybrid_pgdata: null
-  hybrid_piprapay_dbdata: null
-  caddy_data: null
-  caddy_config: null
+  hybrid_pgdata:
+  glitchtip_pgdata:
+
+
+
 networks:
-  supabasenet:
+  hybrid_default:
+    name: hybrid_default
+    external: true
+  pe9o2li2n3bns3wnofob49uw:
     name: pe9o2li2n3bns3wnofob49uw
     external: true

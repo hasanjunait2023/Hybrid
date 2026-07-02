@@ -9,9 +9,9 @@
 // URLs are opaque and stored verbatim in product_image.url. Validation
 // (mime image/*, size cap, filename sanitize / no path traversal) happens here
 // so every caller is protected by construction.
-import { randomUUID } from "node:crypto";
-import { mkdir, writeFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { randomUUID } from "crypto";
+import { mkdir, writeFile, rm } from "fs/promises";
+import { join } from "path";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB cap — 3G upload budget.
 

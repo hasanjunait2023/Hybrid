@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import { asPlatformAdmin } from "../src/index";
 import { upsertBuyerByPhone } from "@/lib/marketplace/session";
 import { placeMarketplaceOrder } from "@/lib/marketplace/placeMarketplaceOrder";
+import { backfillMissingSuborders, recoverStalledOrders } from "@/lib/marketplace/reconcile";
 
 const TENANT_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa000a";
 const TENANT_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb000b";
@@ -204,5 +205,67 @@ describe("Marketplace split-cart checkout", () => {
       `,
     );
     expect(dupes[0]?.n).toBe(1);
+  });
+
+  it("4. reconcile backfills orphaned sub-orders when the bridge crashed mid-saga", async () => {
+    // A clean 2-vendor order, then simulate the orchestrator crashing in step 3
+    // (the asPlatformAdmin bridge) AFTER both tenant orders committed: drop the
+    // sub-order + commission rows and strand the parent in 'pending'.
+    const placed = await placeMarketplaceOrder({
+      buyerId,
+      contact,
+      shipTo,
+      lines: [
+        { tenantId: TENANT_A, variantId: variantA, quantity: 1 },
+        { tenantId: TENANT_B, variantId: variantB, quantity: 1 },
+      ],
+    });
+    const mpId = placed.marketplaceOrderId;
+
+    await asPlatformAdmin(async (tx) => {
+      await tx`delete from marketplace_commission where marketplace_order_id = ${mpId}`;
+      await tx`delete from marketplace_suborder where marketplace_order_id = ${mpId}`;
+      await tx`
+        update marketplace_order
+           set status = 'pending', created_at = now() - interval '16 minutes'
+         where id = ${mpId}
+      `;
+    });
+
+    // Backfill recreates exactly the two missing sub-orders (the tenant orders
+    // were never deleted) and their commission rows.
+    const recreated = await backfillMissingSuborders();
+    expect(recreated).toBe(2);
+
+    const after = await asPlatformAdmin((tx) =>
+      tx<{ subs: number; comms: number }[]>`
+        select
+          (select count(*)::int from marketplace_suborder where marketplace_order_id = ${mpId})  as subs,
+          (select count(*)::int from marketplace_commission where marketplace_order_id = ${mpId}) as comms
+      `,
+    );
+    expect(after[0]?.subs).toBe(2);
+    expect(after[0]?.comms).toBe(2);
+
+    // Sub-orders are value-linked to the real tenant orders.
+    const linked = await asPlatformAdmin((tx) =>
+      tx<{ n: number }[]>`
+        select count(*)::int as n
+          from marketplace_suborder s
+          join orders o on o.id = s.order_id and o.tenant_id = s.tenant_id
+         where s.marketplace_order_id = ${mpId}
+      `,
+    );
+    expect(linked[0]?.n).toBe(2);
+
+    // A second pass is a no-op (keyed on the missing sub-order — no double-write).
+    expect(await backfillMissingSuborders()).toBe(0);
+
+    // Saga recovery now finalizes the parent from the real counts: 2 == vendor_count.
+    await recoverStalledOrders();
+    const parent = await asPlatformAdmin((tx) =>
+      tx<{ status: string }[]>`select status from marketplace_order where id = ${mpId}`,
+    );
+    expect(parent[0]?.status).toBe("confirmed");
   });
 });

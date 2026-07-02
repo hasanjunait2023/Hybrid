@@ -13,9 +13,11 @@ import {
   customerOrderAutoCancelledSms,
   customerOrderEditedSms,
   customerCartRecoverySms,
+  marketplaceBuyerOrderConfirmationSms,
   type OrderNotificationData,
   type OrderStatusNotificationData,
   type StatusChangeKind,
+  type MarketplaceOrderConfirmationData,
 } from "./templates";
 import { notifyOrderPlacedWhatsApp } from "@/lib/whatsapp/notify";
 import { logSms } from "@/lib/comm/log";
@@ -138,6 +140,20 @@ export async function sendOrderStatusNotification(
       error: result.error,
     }).catch((err) => console.error("[sms-log] status log write failed:", err));
   }
+}
+
+// Marketplace buyer confirmation — fires once after the saga finalises at
+// least one successful sub-order. Non-blocking: failures are swallowed; the
+// checkout has already committed.
+export async function sendMarketplaceBuyerConfirmation(
+  phone: string,
+  data: MarketplaceOrderConfirmationData,
+): Promise<void> {
+  const sms = getSmsAdapter();
+  await safeSend(
+    () => sms.send(phone, marketplaceBuyerOrderConfirmationSms(data)),
+    `marketplace buyer ${phone} (${data.vendorCount} vendors ৳${data.grandTotal})`,
+  );
 }
 
 // O22 — Refund notifications. Customer-facing. Same non-blocking contract.

@@ -19,6 +19,18 @@ if [ -d /opt/hybrid/.git ]; then
     || echo "[deploy] git pull skipped (local changes / no auth) — using working tree"
 fi
 
+# Pre-deploy smoke test — blocks deploys if any invariant is broken.
+# This is the safety net for the 2026-07-01 P0 login outage: it catches
+# hardcoded env values, missing SUPABASE_* keys, network attach regressions,
+# and missing hardening source files BEFORE we ship.
+if [[ -f /opt/hybrid/scripts/hybrid-predeploy-check.sh ]]; then
+  bash /opt/hybrid/scripts/hybrid-predeploy-check.sh || {
+    echo "[deploy] pre-deploy smoke test FAILED — refusing to deploy. Fix issues and retry."
+    docker unpause "$STUDIO" "$META" 2>/dev/null || true
+    exit 2
+  }
+fi
+
 docker pause "$STUDIO" "$META" 2>/dev/null || true
 restore_env
 COMPOSE build web || { echo "[deploy] build FAILED — keeping old container"; docker unpause "$STUDIO" "$META" 2>/dev/null || true; exit 1; }

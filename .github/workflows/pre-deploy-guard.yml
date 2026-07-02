@@ -1,0 +1,61 @@
+name: pre-deploy-guard
+
+# Always runs on PRs and pushes to master.
+# This is the safety net for the 2026-07-01 P0 login outage — it blocks any
+# commit that reintroduces hardcoded env values in docker-compose.prod.yml,
+# or removes the preflight/healthcheck files that protect against the bug class.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  guard:
+    name: docker-compose + preflight hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run pre-deploy smoke test
+        # The script is designed to run on a dev machine OR in CI. It uses
+        # .env.deploy if present (it isn't in CI) and falls back to skipping
+        # the env-specific checks. All compose + source-file checks still run.
+        run: bash scripts/hybrid-predeploy-check.sh
+        # If the script exits non-zero, the job fails and the PR cannot merge
+        # (assuming branch protection is configured to require this check).
+
+      - name: Verify hybrid-web has both networks declared
+        run: |
+          python3 - <<'PYEOF'
+          import re, sys
+          with open("docker-compose.prod.yml") as f: s = f.read()
+          for svc in ["web", "pgbouncer"]:
+              sm = re.search(rf"^  {svc}:\s*\n((?:    .+\n)+)", s, re.MULTILINE)
+              if not sm:
+                  print(f"  ERR: {svc} service block not found")
+                  sys.exit(1)
+              block = sm.group(1)
+              if "hybrid_default" not in block or "pe9o2li2n3bns3wnofob49uw" not in block:
+                  print(f"  ERR: {svc} does not declare both networks")
+                  sys.exit(1)
+              print(f"  ok: {svc} declares hybrid_default + pe9o2li2n3bns3wnofob49uw")
+          PYEOF
+
+      - name: Verify Dockerfile CMD invokes preflight
+        run: |
+          if ! grep -q "preflight.mjs" Dockerfile; then
+            echo "::error::Dockerfile CMD does NOT invoke preflight.mjs — startup check disabled"
+            exit 1
+          fi
+          echo "ok: Dockerfile CMD invokes preflight.mjs"
+
+      - name: Verify hardening files exist
+        run: |
+          for f in apps/web/scripts/preflight.mjs apps/web/scripts/healthcheck.mjs apps/web/app/api/healthz/auth/route.ts scripts/hybrid-predeploy-check.sh; do
+            if [[ ! -f "$f" ]]; then
+              echo "::error::missing required hardening file: $f"
+              exit 1
+            fi
+            echo "ok: $f present"
+          done

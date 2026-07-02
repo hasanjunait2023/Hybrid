@@ -1,0 +1,71 @@
+# Hybrid Phase B — Caddy load-balanced upstreams (dynamic Docker DNS).
+#
+# Replace the `reverse_proxy web:3000` lines in /opt/hybrid/Caddyfile with the
+# blocks below. Docker Compose exposes each web replica as an A record for the
+# service name `web`; Caddy's dynamic_upstreams polls the Docker DNS resolver
+# (127.0.0.11) and load balances across all healthy replica IPs.
+#
+# IMPORTANT: keep on_demand TLS and the rest of the site blocks unchanged.
+
+# -----------------------------------------------------------------------------
+# Apex marketing domain
+# -----------------------------------------------------------------------------
+hybrid.ecomex.cloud {
+	encode zstd gzip
+	import app_headers
+	reverse_proxy {
+		dynamic_upstreams {
+			name web
+			port 3000
+			resolvers 127.0.0.11:53
+		}
+		lb_policy round_robin
+		health_uri /api/healthz
+		health_interval 15s
+		health_timeout 5s
+	}
+}
+
+# -----------------------------------------------------------------------------
+# All tenant / admin / platform subdomains
+# -----------------------------------------------------------------------------
+*.hybrid.ecomex.cloud {
+	encode zstd gzip
+	tls {
+		on_demand
+	}
+	import app_headers
+	reverse_proxy {
+		dynamic_upstreams {
+			name web
+			port 3000
+			resolvers 127.0.0.11:53
+		}
+		lb_policy round_robin
+		health_uri /api/healthz
+		health_interval 15s
+		health_timeout 5s
+	}
+}
+
+# -----------------------------------------------------------------------------
+# Custom domains catch-all (keep last)
+# -----------------------------------------------------------------------------
+https:// {
+	encode zstd gzip
+	tls {
+		on_demand
+	}
+	import app_headers
+	reverse_proxy {
+		dynamic_upstreams {
+			name web
+			port 3000
+			resolvers 127.0.0.11:53
+		}
+		lb_policy round_robin
+		health_uri /api/healthz
+		health_interval 15s
+		health_timeout 5s
+	}
+}

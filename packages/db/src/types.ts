@@ -215,6 +215,40 @@ export interface CourierAccount {
   updatedAt: Generated<Timestamp>;
 }
 
+export interface CrmLead {
+  assigneeId: string | null;
+  createdAt: Generated<Timestamp>;
+  createdBy: string | null;
+  customerId: string | null;
+  estValue: Generated<Numeric>;
+  id: Generated<string>;
+  lastActivityAt: Generated<Timestamp>;
+  name: string | null;
+  note: string | null;
+  phone: string | null;
+  source: Generated<string>;
+  stage: Generated<string>;
+  tenantId: string;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface CrmTask {
+  assigneeId: string | null;
+  completedAt: Timestamp | null;
+  createdAt: Generated<Timestamp>;
+  createdBy: string | null;
+  customerId: string | null;
+  dueAt: Timestamp | null;
+  id: Generated<string>;
+  note: string | null;
+  orderId: string | null;
+  priority: Generated<string>;
+  status: Generated<string>;
+  tenantId: string;
+  title: string;
+  updatedAt: Generated<Timestamp>;
+}
+
 export interface Customer {
   binNo: string | null;
   businessName: string | null;
@@ -1181,6 +1215,8 @@ export interface DB {
   codRemittance: CodRemittance;
   collection: Collection;
   courierAccount: CourierAccount;
+  crmLead: CrmLead;
+  crmTask: CrmTask;
   customer: Customer;
   customerAddress: CustomerAddress;
   customerLedger: CustomerLedger;

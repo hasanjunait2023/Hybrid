@@ -13,7 +13,7 @@
 // (logged, not failed) — live Steadfast verification is deferred until merchant
 // creds exist (brief §2: no sandbox). One bad tenant never aborts the sweep.
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "crypto";
 import { asPlatformAdmin, withTenant } from "@hybrid/db";
 import { getSteadfastProvider, readSteadfastCreds } from "@/lib/couriers/steadfast";
 import { syncTenantShipments } from "@/lib/couriers/sync";

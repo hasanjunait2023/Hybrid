@@ -1,5 +1,5 @@
 import type { TransactionSql } from "postgres";
-import { sql } from "./client";
+import { sql, readSql } from "./client";
 
 // The transaction handle postgres.js passes into sql.begin's callback.
 // (Equivalent to the blueprint's Parameters<Parameters<typeof sql.begin>[0]>[0],
@@ -19,6 +19,25 @@ export async function withTenant<T>(
     await tx`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
     await tx`SELECT set_config('app.current_user_id', ${userId ?? ""}, true)`;
     await tx`SELECT set_config('app.is_platform_admin', 'false', true)`;
+    return fn(tx);
+  }) as Promise<T>;
+}
+
+// Read-only replica variant of withTenant.
+// Uses READ_DATABASE_URL (falls back to DATABASE_URL). Safe for SELECT-only
+// traffic; writes inside the callback will be rolled back because we begin a
+// read-only transaction, but we keep the same RLS context contract so callers
+// can swap transparently.
+export async function withReadOnlyTenant<T>(
+  tenantId: string,
+  userId: string | null,
+  fn: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return readSql.begin(async (tx) => {
+    await tx`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
+    await tx`SELECT set_config('app.current_user_id', ${userId ?? ""}, true)`;
+    await tx`SELECT set_config('app.is_platform_admin', 'false', true)`;
+    await tx`SET TRANSACTION READ ONLY`;
     return fn(tx);
   }) as Promise<T>;
 }

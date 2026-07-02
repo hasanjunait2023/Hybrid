@@ -22,6 +22,7 @@ import {
   hasServerFired,
   markServerFired,
 } from "./notify";
+import type { MetaUserData } from "@/lib/analytics/funnel";
 
 export interface ClientPurchaseFire {
   publicIds: PublicAnalyticsIds;
@@ -103,7 +104,13 @@ export async function preparePurchaseFire(
   orderNumber: number,
   phone: string,
   gaCookie: string | null,
-): Promise<ClientPurchaseFire | null> {
+  enhancedMatch?: {
+    userAgent?: string | null;
+    clientIp?: string | null;
+    fbp?: string | null;
+    fbc?: string | null;
+  },
+): Promise<(ClientPurchaseFire & { userData: MetaUserData }) | null> {
   try {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) return null;
@@ -119,6 +126,15 @@ export async function preparePurchaseFire(
       items: order.items,
     };
 
+    const userData: MetaUserData = {
+      fbp: enhancedMatch?.fbp ?? null,
+      fbc: enhancedMatch?.fbc ?? null,
+      clientIp: enhancedMatch?.clientIp ?? null,
+      userAgent: enhancedMatch?.userAgent ?? null,
+      phone: normalizedPhone,
+      externalId: order.customerId,
+    };
+
     // Fire the server half once (gated). Awaited but internally non-blocking.
     const alreadyFired = await hasServerFired(tenantId, order.paymentId);
     if (!alreadyFired) {
@@ -129,20 +145,32 @@ export async function preparePurchaseFire(
         customerId: order.customerId,
         payload,
         gaCookie,
+        userData,
       });
     }
 
     const publicIds = await getPublicAnalyticsIds(tenantId, null);
     if (!publicIds.enabled) return null;
 
-    return { publicIds: { ga4MeasurementId: publicIds.ga4MeasurementId, fbPixelId: publicIds.fbPixelId }, payload };
+    // TRACK-V2-A1: surface the TikTok Pixel ID alongside GA4 + Meta so the
+    // PurchaseTracker client island can fire ttq.track('CompletePayment', ...)
+    // with the same shared event_id.
+    return {
+      publicIds: {
+        ga4MeasurementId: publicIds.ga4MeasurementId,
+        fbPixelId: publicIds.fbPixelId,
+        tiktokPixelId: publicIds.tiktokPixelId,
+      },
+      payload,
+      userData,
+    };
   } catch (error) {
     console.error(`[analytics] preparePurchaseFire failed (order #${orderNumber}):`, error);
     return null;
   }
 }
 
-// Latin-normalize a phone (Bangla or Latin digits), matching the storefront gate.
+// Normalize a phone...
 const BN_TO_LATIN: Record<string, string> = {
   "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
   "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9",

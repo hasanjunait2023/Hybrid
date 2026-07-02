@@ -8,6 +8,10 @@ const STATUS_BN: Record<string, string> = {
   confirmed: "নিশ্চিত",
   partial: "আংশিক",
   failed: "ব্যর্থ",
+  processing: "প্রক্রিয়াধীন",
+  shipped: "শিপড",
+  delivered: "ডেলিভারড",
+  cancelled: "বাতিল",
 };
 
 export default async function AccountOrdersPage() {
@@ -39,14 +43,21 @@ export default async function AccountOrdersPage() {
             </div>
             <ul className="divide-y divide-border">
               {o.suborders.map((s, i) => (
-                <li key={i} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <span>
-                    {s.vendorName}
-                    {s.orderNumber ? ` · #${s.orderNumber}` : ""}
-                  </span>
-                  <span className="text-ink-muted">
-                    {STATUS_BN[s.status] ?? s.status} · {formatBdtBangla(s.grandTotal)}
-                  </span>
+                <li key={i} className="flex flex-col gap-1 px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">
+                      {s.vendorName}
+                      {s.orderNumber ? ` · #${s.orderNumber}` : ""}
+                    </span>
+                    <span className="text-ink-muted">
+                      {STATUS_BN[s.status] ?? s.status} · {formatBdtBangla(s.grandTotal)}
+                    </span>
+                  </div>
+                  {s.trackingCode ? (
+                    <p className="text-xs text-ink-muted">
+                      ট্র্যাকিং: <span className="font-mono text-ink">{s.trackingCode}</span>
+                    </p>
+                  ) : null}
                 </li>
               ))}
             </ul>

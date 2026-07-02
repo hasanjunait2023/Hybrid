@@ -34,6 +34,27 @@ export function AddToCart({ tenantSlug, product }: AddToCartProps) {
 
   function handleAdd() {
     if (!selected || !canAdd) return;
+
+    // Fire the client-side AddToCart pixel event before the cart update so the
+    // event is tied to the click (and, if the user bounces before storage
+    // completes, the event still fired). The global helper is injected by the
+    // storefront layout's StorefrontTracker on hydration.
+    if (typeof window !== "undefined") {
+      const helper = (window as unknown as { __hybridFireAddToCart?: (p: { id: string; name: string; price: number; quantity?: number }) => string }).__hybridFireAddToCart;
+      if (helper) {
+        try {
+          helper({
+            id: selected.id,
+            name: `${product.title}${selected.title ? ` — ${selected.title}` : ""}`,
+            price: selected.price,
+            quantity: 1,
+          });
+        } catch {
+          // Analytics must never block add-to-cart.
+        }
+      }
+    }
+
     cart.add({
       variantId: selected.id,
       productSlug: product.slug,

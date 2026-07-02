@@ -44,7 +44,7 @@ export default async function MarketingHome() {
         <Faq t={t} />
         <ClosingCta t={t} />
       </main>
-      <SiteFooter t={t} locale={locale} />
+      <SiteFooter t={t} />
     </div>
   );
 }
@@ -587,7 +587,7 @@ function ClosingCta({ t }: { t: MarketingMessages }) {
 
 /* ---------- Footer ---------- */
 
-function SiteFooter({ t, locale }: { t: MarketingMessages; locale: Locale }) {
+function SiteFooter({ t }: { t: MarketingMessages }) {
   return (
     <footer className="border-t border-border bg-bg">
       <div className="mx-auto max-w-marketing px-4 py-12 sm:px-6">
@@ -611,8 +611,11 @@ function SiteFooter({ t, locale }: { t: MarketingMessages; locale: Locale }) {
           </div>
         </div>
         <div className="hairline mt-10" aria-hidden="true" />
-        <p className="bn-body mt-6 text-xs text-ink-subtle">
-          © {digits(new Date().getFullYear(), locale)} Hybrid. {t.footer.rights}
+        <p className="bn-body text-sm text-ink-subtle">
+          © {new Date().getFullYear()} Hybrid.{" "}
+          <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>
+          {" · "}
+          <Link href="/terms" className="hover:text-primary">Terms of Service</Link>
         </p>
       </div>
     </footer>

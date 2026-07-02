@@ -4,7 +4,7 @@ import { ProductGrid } from "./ProductGrid";
 
 // Marketplace home — category chips + cross-vendor product grid.
 export default async function MarketHome() {
-  const [products, categories] = await Promise.all([
+  const [browse, categories] = await Promise.all([
     listMarketplaceProducts(),
     getMarketplaceCategories(),
   ]);
@@ -22,7 +22,7 @@ export default async function MarketHome() {
           </Link>
         ))}
       </nav>
-      <ProductGrid products={products} />
+      <ProductGrid products={browse.items} />
     </div>
   );
 }

@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatBdtBangla } from "@hybrid/ui";
 import { getWholesaleProduct, type WholesaleVariant } from "@/lib/marketplace/wholesaleData";
-import { getBuyerVerifiedType } from "@/lib/marketplace/wholesaleSession";
+import { getBuyerSession } from "@/lib/marketplace/session";
+import { getWishlistProductIds } from "@/lib/marketplace/wishlist";
 import { WholesaleAddToCart } from "./WholesaleAddToCart";
+import { WishlistButton } from "../../../account/wishlist/WishlistButton";
 
 // Wholesale PDP — shows tier price table for verified B2B, login prompt for anonymous.
 export default async function WholesaleProductPage({
@@ -15,11 +17,12 @@ export default async function WholesaleProductPage({
   const product = await getWholesaleProduct(vendor, productSlug);
   if (!product) notFound();
 
-  const buyerType = await getBuyerVerifiedType();
-  const isVerifiedB2B =
-    buyerType === "retailer" ||
-    buyerType === "distributor" ||
-    buyerType === "wholesaler";
+  const session = await getBuyerSession();
+  const showPrice = session !== null;
+  const wishlistIds = session
+    ? await getWishlistProductIds(session.buyerId)
+    : new Set<string>();
+  const isSaved = wishlistIds.has(product.productId);
 
   return (
     <div className="flex flex-col gap-5">
@@ -34,7 +37,7 @@ export default async function WholesaleProductPage({
         {/* Details */}
         <div className="flex flex-col gap-3">
           <h1 className="text-xl font-bold text-ink">{product.title}</h1>
-          <Link href={`/wholesale`} className="text-sm text-ink-muted">
+          <Link href={`/wholesale/${product.vendorSlug}`} className="text-sm text-ink-muted">
             বিক্রেতা: {product.vendorName}
           </Link>
 
@@ -46,7 +49,7 @@ export default async function WholesaleProductPage({
           ) : null}
 
           {/* Pricing section */}
-          {isVerifiedB2B ? (
+          {showPrice ? (
             <>
               <p className="text-2xl font-bold text-primary">
                 {formatBdtBangla(product.priceFrom)}
@@ -62,7 +65,14 @@ export default async function WholesaleProductPage({
                 <TierPriceTable variants={product.wholesaleVariants} />
               )}
 
-              <WholesaleAddToCart product={product} />
+              <div className="flex items-center gap-2">
+                <WholesaleAddToCart product={product} />
+                <WishlistButton
+                  productId={product.productId}
+                  listingId={product.listingId}
+                  initialSaved={isSaved}
+                />
+              </div>
             </>
           ) : (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-4">

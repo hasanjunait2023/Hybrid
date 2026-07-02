@@ -37,5 +37,6 @@ RUN pnpm build
 
 WORKDIR /app/apps/web
 EXPOSE 3000
-# next start binds 0.0.0.0:3000 by default
-CMD ["pnpm", "start"]
+# Pre-flight check runs first; exits non-zero if env/DNS/GoTrue are broken.
+# See apps/web/scripts/preflight.mjs for what it checks and why.
+CMD ["sh", "-c", "node scripts/preflight.mjs && pnpm start"]

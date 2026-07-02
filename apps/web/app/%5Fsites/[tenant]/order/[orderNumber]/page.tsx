@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import {
   CheckCircleIcon,
   PhoneIcon,
@@ -7,6 +7,7 @@ import {
 } from "@hybrid/ui";
 import { getStorefrontOrder, getTenantContextBySlug } from "@/lib/storefront/data";
 import { preparePurchaseFire } from "@/lib/analytics/purchase";
+import { parseCookieHeader } from "@/lib/analytics/utm";
 import { getDict } from "@/lib/i18n/server";
 import { formatMoney, formatNumber } from "@/lib/i18n/format";
 import { OrderLookup } from "./OrderLookup";
@@ -51,10 +52,22 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
   // internal order.placed) once — gated on payment.payload.analytics.serverFired
   // so revisiting this page never double-fires — and returns the client bundle so
   // the PurchaseTracker island fires the BROWSER half (Pixel + gtag) with the same
-  // event_id. Forward the _ga cookie for GA4 client_id attribution. Returns null
-  // when the tenant has no analytics configured / enabled.
-  const gaCookie = (await cookies()).get("_ga")?.value ?? null;
-  const purchaseFire = await preparePurchaseFire(ctx.id, orderNumber, phone, gaCookie);
+  // event_id. Forward the _ga cookie for GA4 client_id attribution + collect
+  // enhanced-match parameters for Meta/TikTok/GA4. Returns null when the tenant
+  // has no analytics configured / enabled.
+  const headerStore = await headers();
+  const cookieHeader = headerStore.get("cookie") ?? "";
+  const gaCookie = parseCookieHeader(cookieHeader)["_ga"] ?? null;
+  const userAgent = headerStore.get("user-agent") ?? null;
+  const clientIp = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  const fbp = parseCookieHeader(cookieHeader)["_fbp"] ?? null;
+  const fbc = parseCookieHeader(cookieHeader)["_fbc"] ?? null;
+  const purchaseFire = await preparePurchaseFire(ctx.id, orderNumber, phone, gaCookie, {
+    userAgent,
+    clientIp,
+    fbp,
+    fbc,
+  });
 
   return (
     <div className="mx-auto max-w-[480px] px-4 py-8">
@@ -62,7 +75,9 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
         <PurchaseTracker
           ga4MeasurementId={purchaseFire.publicIds.ga4MeasurementId}
           fbPixelId={purchaseFire.publicIds.fbPixelId}
+          tiktokPixelId={purchaseFire.publicIds.tiktokPixelId}
           payload={purchaseFire.payload}
+          userData={purchaseFire.userData}
         />
       )}
       {/* Hero confirmation. */}

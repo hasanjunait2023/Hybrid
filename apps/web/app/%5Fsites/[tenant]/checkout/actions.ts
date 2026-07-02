@@ -52,10 +52,10 @@ const checkoutSchema = z.object({
   // re-validates and computes the amount server-side under a row lock.
   discountCode: z.string().trim().max(40).optional(),
   items: z.array(itemSchema).min(1).max(50),
-  // NOTE: the bKash callbackURL is derived SERVER-SIDE from the tenant's
-  // verified primary domain + request scheme — never from a client-supplied
-  // origin (open-redirect / phishing aid). Any `origin` the client sends is
-  // ignored; the schema accepts unknown extra keys by default.
+  // Shared purchase-event dedup id minted client-side and forwarded through the
+  // checkout action so the browser Pixel event and the server CAPI/GA4-MP fire
+  // share the same event_id. Optional so older clients / tests still work.
+  analyticsEventId: z.string().uuid().optional(),
 });
 
 // Per-IP / per-phone abuse dampener thresholds for checkout submission. Fails
@@ -172,6 +172,7 @@ export async function submitCheckout(
       source: "storefront",
       discountCode: input.discountCode ?? null,
       shippingTotal: shipQuote.amount ?? 0,
+      analyticsEventId: input.analyticsEventId,
     });
   } catch (error) {
     if (error instanceof InsufficientStockError) {

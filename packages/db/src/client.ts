@@ -12,6 +12,14 @@ export const sql = postgres(process.env.DATABASE_URL!, {
   prepare: false,
 });
 
+// Read-replica connection for SELECT-heavy, read-only traffic.
+// Falls back to the primary DATABASE_URL when no replica is configured.
+export const readSql = postgres(process.env.READ_DATABASE_URL || process.env.DATABASE_URL!, {
+  max: 10,
+  idle_timeout: 20,
+  prepare: false,
+});
+
 // Direct/superuser connection — postgres -> bypasses RLS.
 // Used only for migrations, seed, type generation, and host lookups.
 export const adminSql = postgres(process.env.DIRECT_URL!, {

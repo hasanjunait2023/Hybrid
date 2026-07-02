@@ -3,8 +3,11 @@ import Link from "next/link";
 import { formatBdtBangla } from "@hybrid/ui";
 import { getMarketplaceProduct } from "@/lib/marketplace/data";
 import { getProductReviews } from "@/lib/marketplace/reviews";
+import { getBuyerSession } from "@/lib/marketplace/session";
+import { getWishlistProductIds } from "@/lib/marketplace/wishlist";
 import { AddToCart } from "./AddToCart";
 import { ReviewForm } from "./ReviewForm";
+import { WishlistButton } from "../../account/wishlist/WishlistButton";
 
 export default async function MarketProductPage({
   params,
@@ -15,7 +18,14 @@ export default async function MarketProductPage({
   const product = await getMarketplaceProduct(vendor, productSlug);
   if (!product) notFound();
 
-  const reviews = await getProductReviews(product.productId);
+  const [reviews, session] = await Promise.all([
+    getProductReviews(product.productId),
+    getBuyerSession(),
+  ]);
+  const wishlistIds = session
+    ? await getWishlistProductIds(session.buyerId)
+    : new Set<string>();
+  const isSaved = wishlistIds.has(product.productId);
 
   return (
     <div className="flex flex-col gap-5">
@@ -27,7 +37,7 @@ export default async function MarketProductPage({
         </div>
         <div className="flex flex-col gap-3">
           <h1 className="text-xl font-bold text-ink">{product.title}</h1>
-          <Link href={`/category`} className="text-sm text-ink-muted">
+          <Link href={`/${product.vendorSlug}`} className="text-sm text-ink-muted">
             বিক্রেতা: {product.vendorName}
           </Link>
           <p className="text-2xl font-bold text-primary">{formatBdtBangla(product.priceFrom)}</p>
@@ -36,7 +46,14 @@ export default async function MarketProductPage({
               ★ {product.ratingAvg.toFixed(1)} ({product.ratingCount} রিভিউ)
             </p>
           ) : null}
-          <AddToCart product={product} />
+          <div className="flex items-center gap-2">
+            <AddToCart product={product} />
+            <WishlistButton
+              productId={product.productId}
+              listingId={product.listingId}
+              initialSaved={isSaved}
+            />
+          </div>
           {product.description ? (
             <p className="whitespace-pre-line text-sm text-ink-subtle">{product.description}</p>
           ) : null}
