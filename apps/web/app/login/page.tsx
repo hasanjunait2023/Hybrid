@@ -30,7 +30,6 @@ export default async function LoginPage() {
             divider: d.auth.login.divider,
             oauthGoogle: d.auth.login.oauthGoogle,
             oauthFacebook: d.auth.login.oauthFacebook,
-            oauthNotConfigured: d.auth.login.oauthNotConfigured,
             oauthFailed: d.auth.login.oauthFailed,
           }}
         />

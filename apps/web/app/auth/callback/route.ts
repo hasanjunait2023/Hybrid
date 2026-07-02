@@ -6,6 +6,10 @@
 // because they all funnel through Supabase GoTrue's `/auth/v1/callback` →
 // our `/auth/callback` with a `code` query param. Provider-agnostic by
 // construction.
+//
+// The callback always lands on admin.{ROOT} (the registered Google origin).
+// The session cookie is set on .{ROOT}, so it is readable from any Hybrid
+// subdomain. The `next` query param tells us where to send the user afterward.
 
 import { type NextRequest } from "next/server";
 import { supabaseAuthClient } from "@/lib/auth/supabaseAuth";
@@ -16,15 +20,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest): Promise<Response> {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  // Open-redirect guard: only allow same-origin local paths. Reject absolute
-  // URLs ("https://evil.com") and protocol-relative ("//evil.com", "/\evil")
-  // — new URL(next, origin) would otherwise honor an absolute target.
-  const rawNext = url.searchParams.get("next") ?? "/admin";
-  const next =
-    rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\")
-      ? rawNext
-      : "/admin";
+  const rawNext = url.searchParams.get("next") ?? "/";
   const error = url.searchParams.get("error_description");
+
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "hybrid.ecomex.cloud";
+  const next = sanitizeNext(rawNext, root);
 
   if (error) {
     // Send the user back to /login with the error message; never echo raw
@@ -53,6 +53,28 @@ export async function GET(request: NextRequest): Promise<Response> {
     return Response.redirect(back, 302);
   }
 
-  // Authenticated — bounce to the next page (default /admin).
+  // Authenticated — bounce to the next page (default "/").
   return Response.redirect(new URL(next, url.origin), 302);
+}
+
+/** Allow relative paths OR absolute URLs whose host belongs to the root domain.
+ *  Reject everything else to prevent open redirects. */
+function sanitizeNext(raw: string, root: string): string {
+  // Relative path.
+  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\")) {
+    return raw;
+  }
+
+  // Absolute URL — only permit same root domain (or its subdomains).
+  try {
+    const u = new URL(raw);
+    const host = u.hostname;
+    if (host === root || host.endsWith(`.${root}`)) {
+      return raw;
+    }
+  } catch {
+    // fall through to default
+  }
+
+  return "/";
 }

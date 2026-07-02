@@ -12,12 +12,16 @@ export const config = {
 
 // Auth paths must resolve on the admin/app host without the /admin or /platform
 // prefix, so layout redirects to /dev-login or /login land on the real route.
+// OAuth paths are also host-scoped: the Google-registered callback and the
+// OAuth start shim live on admin.{ROOT} as top-level routes.
 function isAuthPath(pathname: string): boolean {
   return (
     pathname === "/dev-login" ||
     pathname.startsWith("/dev-login/") ||
     pathname === "/login" ||
-    pathname.startsWith("/login/")
+    pathname.startsWith("/login/") ||
+    pathname === "/oauth/start" ||
+    pathname === "/auth/callback"
   );
 }
 

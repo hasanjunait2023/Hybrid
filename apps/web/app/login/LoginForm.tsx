@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { supabaseBrowserClient } from "@/lib/auth/supabaseBrowser";
+import { oauthStartUrl, defaultPostLoginNext } from "@/lib/auth/oauthStartUrl";
 
 interface LoginLabels {
   email: string;
@@ -13,11 +13,16 @@ interface LoginLabels {
   divider: string;
   oauthGoogle: string;
   oauthFacebook: string;
-  oauthNotConfigured: string;
   oauthFailed: string;
 }
 
 type OAuthProvider = "google" | "facebook";
+
+interface LoginFormProps {
+  labels: LoginLabels;
+  /** Where to send the user after a successful OAuth login. Defaults to host-aware path. */
+  next?: string;
+}
 
 // Email + password login form. Posts JSON to /api/auth/login (same-origin, so the
 // CSRF Origin check passes). On success the API sets the session cookie on the
@@ -26,15 +31,12 @@ type OAuthProvider = "google" | "facebook";
 // API returns (no field-level disclosure). Labels are resolved server-side and
 // passed in so the form follows the active locale without a client provider.
 //
-// The OAuth buttons sit ABOVE the password form. They use the BROWSER-side
-// Supabase client (lib/auth/supabaseBrowser.ts) to redirect through Supabase
-// GoTrue → provider consent → back to /auth/callback?code=... where the Server
-// Route exchanges the code for a session + mints our opaque hybrid_session.
-//
-// If `supabaseBrowserClient()` returns null (NEXT_PUBLIC_SUPABASE_URL unset,
-// e.g. AUTH_PROVIDER=password or local dev), the OAuth buttons render disabled
-// with the "not configured" message — never silently swallow the click.
-export function LoginForm({ labels }: { labels: LoginLabels }) {
+// The OAuth buttons sit ABOVE the password form. They hard-navigate to a fixed
+// OAuth start page on admin.{ROOT} because Google Cloud Console forbids
+// wildcard Authorized JavaScript origins (https://*.hybrid.ecomex.cloud is
+// rejected). The start page calls Supabase GoTrue from the registered origin,
+// then Google → Supabase → /auth/callback mints the hybrid_session cookie.
+export function LoginForm({ labels, next }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +44,11 @@ export function LoginForm({ labels }: { labels: LoginLabels }) {
   const [oauthPending, setOauthPending] = useState<OAuthProvider | null>(null);
 
   // Surface ?oauth_error=<msg> that /auth/callback sets on failure.
-  // Read on mount only; the page is reloaded by the OAuth redirect anyway.
   const [oauthErrorFromCallback] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const p = new URLSearchParams(window.location.search);
     const e = p.get("oauth_error");
     if (e) {
-      // Strip the param from the URL so a reload doesn't re-show it.
       const url = new URL(window.location.href);
       url.searchParams.delete("oauth_error");
       window.history.replaceState({}, "", url.toString());
@@ -56,30 +56,18 @@ export function LoginForm({ labels }: { labels: LoginLabels }) {
     return e;
   });
 
-  const oauthConfigured = supabaseBrowserClient() !== null;
+  const postLoginNext =
+    next ??
+    (typeof window !== "undefined"
+      ? defaultPostLoginNext(window.location.host)
+      : "/");
 
-  async function startOAuth(provider: OAuthProvider) {
-    if (!oauthConfigured) {
-      setError(labels.oauthNotConfigured);
-      return;
-    }
+  function startOAuth(provider: OAuthProvider) {
     setError(null);
     setOauthPending(provider);
-    try {
-      const supabase = supabaseBrowserClient();
-      if (!supabase) throw new Error("supabase browser client not configured");
-      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/admin`,
-        },
-      });
-      if (oauthErr) throw oauthErr;
-      // Browser navigates away — no further state update here.
-    } catch {
-      setError(labels.oauthFailed);
-      setOauthPending(null);
-    }
+    // Hard-navigate to the fixed OAuth start host. This is the only reliable way
+    // to satisfy Google's exact-origin requirement across all tenant subdomains.
+    window.location.assign(oauthStartUrl(provider, postLoginNext));
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -92,7 +80,10 @@ export function LoginForm({ labels }: { labels: LoginLabels }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
       if (res.ok && data.ok) {
         window.location.assign("/");
         return;
@@ -112,7 +103,7 @@ export function LoginForm({ labels }: { labels: LoginLabels }) {
         <button
           type="button"
           onClick={() => startOAuth("google")}
-          disabled={!oauthConfigured || oauthPending !== null}
+          disabled={oauthPending !== null}
           className="flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 font-semibold text-ink hover:bg-bg disabled:opacity-60"
           aria-label={labels.oauthGoogle}
         >
@@ -122,16 +113,13 @@ export function LoginForm({ labels }: { labels: LoginLabels }) {
         <button
           type="button"
           onClick={() => startOAuth("facebook")}
-          disabled={!oauthConfigured || oauthPending !== null}
+          disabled={oauthPending !== null}
           className="flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 font-semibold text-ink hover:bg-bg disabled:opacity-60"
           aria-label={labels.oauthFacebook}
         >
           <FacebookF size={18} />
           {oauthPending === "facebook" ? labels.submitting : labels.oauthFacebook}
         </button>
-        {!oauthConfigured && (
-          <p className="text-xs text-ink-muted">{labels.oauthNotConfigured}</p>
-        )}
       </div>
 
       <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-ink-muted">
