@@ -15,6 +15,11 @@ export default function OAuthStartPage() {
       return "Invalid provider";
     }
 
+    // Store final destination in a short-lived cookie so the OAuth callback
+    // can read it. GoTrue's redirect URL allow-list rejects query params on the
+    // redirectTo URL, so we cannot pass ?next=... to signInWithOAuth.
+    setOAuthNextCookie(next);
+
     import("@/lib/auth/supabaseBrowser").then(({ supabaseBrowserClient }) => {
       const supabase = supabaseBrowserClient();
       if (!supabase) {
@@ -24,7 +29,7 @@ export default function OAuthStartPage() {
       supabase.auth
         .signInWithOAuth({
           provider,
-          options: { redirectTo: oauthCallbackUrl(next) },
+          options: { redirectTo: oauthCallbackUrl() },
         })
         .then(({ error: oauthErr }) => {
           if (oauthErr) {
@@ -49,14 +54,19 @@ export default function OAuthStartPage() {
   );
 }
 
-function oauthCallbackUrl(next: string): string {
+function setOAuthNextCookie(next: string): void {
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "hybrid.ecomex.cloud";
+  const isProd = process.env.NODE_ENV === "production";
+  const value = encodeURIComponent(next);
+  const attrs = ["path=/", "max-age=600", "SameSite=Lax"];
+  if (isProd) attrs.push("Secure", `domain=.${root}`);
+  document.cookie = `hybrid_oauth_next=${value}; ${attrs.join("; ")}`;
+}
+
+function oauthCallbackUrl(): string {
   const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "hybrid.ecomex.cloud";
   if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
-    const u = new URL("/auth/callback", window.location.origin);
-    u.searchParams.set("next", next);
-    return u.toString();
+    return new URL("/auth/callback", window.location.origin).toString();
   }
-  const u = new URL("/auth/callback", `https://admin.${root}`);
-  u.searchParams.set("next", next);
-  return u.toString();
+  return new URL("/auth/callback", `https://admin.${root}`).toString();
 }

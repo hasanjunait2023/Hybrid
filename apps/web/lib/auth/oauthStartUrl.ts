@@ -8,13 +8,17 @@
 // Flow:
 //   1. User on admin.shop.{ROOT}/login clicks "Continue with Google"
 //   2. We navigate to admin.{ROOT}/oauth/start?provider=google&next=URL
-//   3. Start page calls supabase.auth.signInWithOAuth({
+//   3. Start page saves `next` in a short-lived cookie (hybrid_oauth_next)
+//   4. Start page calls supabase.auth.signInWithOAuth({
 //        provider: "google",
-//        options: { redirectTo: "https://admin.{ROOT}/auth/callback?next=URL" }
+//        options: { redirectTo: "https://admin.{ROOT}/auth/callback" }
 //      })
-//   4. Google redirects to supabase.{ROOT}/auth/v1/callback (registered in Console)
-//   5. Supabase redirects to admin.{ROOT}/auth/callback?code=...&next=URL
-//   6. /auth/callback mints hybrid_session cookie (domain .{ROOT}) and redirects to URL
+//   5. Google redirects to supabase.{ROOT}/auth/v1/callback (registered in Console)
+//   6. Supabase redirects to admin.{ROOT}/auth/callback?code=...
+//   7. /auth/callback reads hybrid_oauth_next cookie, mints hybrid_session,
+//      and redirects to the saved URL
+
+import { type NextRequest } from "next/server";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "hybrid.ecomex.cloud";
 const DEFAULT_OAUTH_HOST = "admin";
@@ -39,18 +43,27 @@ export function oauthStartUrl(provider: "google" | "facebook", next: string): st
   return u.toString();
 }
 
-/** Build the OAuth callback URL used by supabase.auth.signInWithOAuth. */
-export function oauthCallbackUrl(next: string): string {
+/** Build the OAuth callback URL used by supabase.auth.signInWithOAuth.
+ *  Must not contain query params — GoTrue's URI allow-list matches exact URLs. */
+export function oauthCallbackUrl(): string {
   if (!isProduction()) {
     if (typeof window !== "undefined") {
-      const u = new URL("/auth/callback", window.location.origin);
-      u.searchParams.set("next", next);
-      return u.toString();
+      return new URL("/auth/callback", window.location.origin).toString();
     }
   }
-  const u = new URL("/auth/callback", `https://${DEFAULT_OAUTH_HOST}.${ROOT}`);
-  u.searchParams.set("next", next);
-  return u.toString();
+  return new URL("/auth/callback", `https://${DEFAULT_OAUTH_HOST}.${ROOT}`).toString();
+}
+
+/** Read the post-OAuth destination from the short-lived cookie set by
+ *  /oauth/start before calling signInWithOAuth. Falls back to origin. */
+export function getOAuthNextFromCookie(request: NextRequest): string | null {
+  const raw = request.cookies.get("hybrid_oauth_next")?.value;
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
 }
 
 /** Resolve where to send the user after OAuth succeeds. Returns an absolute URL
