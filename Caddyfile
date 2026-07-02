@@ -100,3 +100,19 @@ n8n.ecomex.cloud {
     import app_headers
     reverse_proxy n8n:5678
 }
+
+# Tenant custom domains (e.g. myshop.com). Sellers point their domain's A
+# record at this VPS IP; the TLS handshake triggers on-demand cert issuance
+# gated by the ask endpoint just like the *.hybrid wildcard above. Caddy only
+# obtains a cert when resolveTenantByHost() finds a verified=true row — which
+# only happens after the seller has proven ownership via DNS TXT check
+# (lib/domains/caddy.ts). This block must be LAST so all more-specific blocks
+# above win their routing before this catch-all is consulted.
+https:// {
+	encode zstd gzip
+	tls {
+		on_demand
+	}
+	import app_headers
+	reverse_proxy web:3000
+}

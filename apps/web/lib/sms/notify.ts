@@ -15,7 +15,6 @@ import {
   customerCartRecoverySms,
   marketplaceBuyerOrderConfirmationSms,
   type OrderNotificationData,
-  type OrderStatusNotificationData,
   type StatusChangeKind,
   type MarketplaceOrderConfirmationData,
 } from "./templates";
@@ -450,4 +449,18 @@ export async function sendCartRecoveryNotification(input: {
     status: result.ok ? "sent" : "failed",
     error: result.error,
   }).catch((err) => console.error("[sms-log] cart-recovery log write failed:", err));
+}
+
+// Marketplace buyer confirmation — fires once after the saga finalises at
+// least one successful sub-order. Non-blocking: failures are swallowed; the
+// checkout has already committed.
+export async function sendMarketplaceBuyerConfirmation(
+  phone: string,
+  data: MarketplaceOrderConfirmationData,
+): Promise<void> {
+  const sms = getSmsAdapter();
+  await safeSend(
+    () => sms.send(phone, marketplaceBuyerOrderConfirmationSms(data)),
+    `marketplace buyer ${phone} (${data.vendorCount} vendors ৳${data.grandTotal})`,
+  );
 }

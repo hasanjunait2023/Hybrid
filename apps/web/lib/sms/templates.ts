@@ -292,3 +292,22 @@ export interface MerchantLowStockInput {
 export function merchantLowStockSms(input: MerchantLowStockInput): string {
   return `${input.storeName} — "${input.productTitle}" স্টক কম: ${toBnDigits(input.currentStock)}টি বাকি (থ্রেশহোল্ড ${toBnDigits(input.threshold)})। শীঘ্রই রিস্টক করুন।`;
 }
+
+// =============================================================================
+// Marketplace buyer notifications (Hybrid Bazar multi-vendor checkout)
+// =============================================================================
+
+export interface MarketplaceOrderConfirmationData {
+  buyerName: string;
+  /** Number of successful vendor sub-orders in this checkout. */
+  vendorCount: number;
+  /** Grand total across all confirmed vendors (taka). */
+  grandTotal: number;
+}
+
+export function marketplaceBuyerOrderConfirmationSms(
+  data: MarketplaceOrderConfirmationData,
+): string {
+  const n = toBnDigits(data.vendorCount);
+  return `Hybrid Bazar অর্ডার কনফার্ম হয়েছে। ${n}টি বিক্রেতা, সর্বমোট ৳${toBnDigits(data.grandTotal)}। ধন্যবাদ।`;
+}

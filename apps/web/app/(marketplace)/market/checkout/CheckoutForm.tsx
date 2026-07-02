@@ -18,6 +18,7 @@ export function CheckoutForm() {
     thana: "",
     line: "",
   });
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<CheckoutResult | null>(null);
@@ -48,6 +49,7 @@ export function CheckoutForm() {
         quantity: l.quantity,
       })),
       idempotencyKey: idemKey,
+      paymentMethod,
     });
     setBusy(false);
     if (!res.ok) {
@@ -67,7 +69,8 @@ export function CheckoutForm() {
       <div className="flex flex-col gap-3 py-8 text-center">
         <p className="text-xl font-bold text-cod">অর্ডার নিশ্চিত হয়েছে! ✓</p>
         <p className="text-sm text-ink-muted">
-          {done.result.confirmed.length} টি দোকানে আপনার অর্ডার গেছে (ক্যাশ অন ডেলিভারি)।
+          {done.result.confirmed.length} টি দোকানে আপনার অর্ডার গেছে
+          {paymentMethod === "cod" ? " (ক্যাশ অন ডেলিভারি)" : " (অনলাইন পেমেন্ট)"}.
         </p>
         {done.result.failed.length > 0 ? (
           <p className="text-sm text-danger">
@@ -111,18 +114,45 @@ export function CheckoutForm() {
           className="rounded-md border border-border bg-surface px-3 py-2"
         />
       ))}
-      <div className="flex items-center justify-between border-t border-border pt-3">
-        <span className="text-sm">
-          মোট: <strong>{formatBdtBangla(cart.subtotal)}</strong> + ডেলিভারি
-        </span>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={busy}
-          className="min-h-[44px] rounded-md bg-primary px-6 font-medium text-white hover:bg-primary-hover disabled:opacity-50"
-        >
-          অর্ডার নিশ্চিত করুন (COD)
-        </button>
+      <div className="flex flex-col gap-2 border-t border-border pt-3">
+        <p className="text-sm font-medium text-ink">পেমেন্ট পদ্ধতি</p>
+        <div className="flex gap-3">
+          <label className="flex min-h-[44px] flex-1 cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="cod"
+              checked={paymentMethod === "cod"}
+              onChange={() => setPaymentMethod("cod")}
+              className="accent-primary"
+            />
+            <span>ক্যাশ অন ডেলিভারি</span>
+          </label>
+          <label className="flex min-h-[44px] flex-1 cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="online"
+              checked={paymentMethod === "online"}
+              onChange={() => setPaymentMethod("online")}
+              className="accent-primary"
+            />
+            <span>অনলাইন পেমেন্ট</span>
+          </label>
+        </div>
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-sm">
+            মোট: <strong>{formatBdtBangla(cart.subtotal)}</strong> + ডেলিভারি
+          </span>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy}
+            className="min-h-[44px] rounded-md bg-primary px-6 font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+          >
+            {paymentMethod === "cod" ? "অর্ডার নিশ্চিত করুন (COD)" : "অনলাইনে পেমেন্ট করুন"}
+          </button>
+        </div>
       </div>
     </div>
   );

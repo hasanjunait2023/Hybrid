@@ -27,12 +27,13 @@ interface DomainRow {
   is_primary: boolean;
   verified: boolean;
   ssl_status: SslStatus;
+  verification_token: string | null;
 }
 
 export async function getDomainsView(tenantId: string, userId: string): Promise<DomainsView> {
   const rows = await withTenant(tenantId, userId, (tx) =>
     tx<DomainRow[]>`
-      select id, domain, type, is_primary, verified, ssl_status
+      select id, domain, type, is_primary, verified, ssl_status, verification_token
       from tenant_domain
       order by type asc, created_at asc
     `,
@@ -49,7 +50,11 @@ export async function getDomainsView(tenantId: string, userId: string): Promise<
       domain: r.domain,
       isPrimary: r.is_primary,
       state: deriveDomainState({ verified: r.verified, sslStatus: r.ssl_status }),
-      records: dnsRecordsFor(r.domain),
+      // Show DNS records only when we have a token; for legacy rows without one,
+      // records is empty — the seller will need to remove and re-add the domain.
+      records: r.verification_token
+        ? dnsRecordsFor(r.domain, r.verification_token)
+        : [],
     }));
 
   return { subdomain: subdomain?.domain ?? null, custom };

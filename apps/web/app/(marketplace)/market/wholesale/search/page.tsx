@@ -1,4 +1,5 @@
 import { listWholesaleProducts } from "@/lib/marketplace/wholesaleData";
+import { getBuyerSession } from "@/lib/marketplace/session";
 import { WholesaleProductCard } from "../WholesaleProductCard";
 
 // Wholesale search page.
@@ -9,7 +10,11 @@ export default async function WholesaleSearchPage({
 }) {
   const { q } = await searchParams;
   const query = (q ?? "").trim();
-  const products = query ? await listWholesaleProducts({ q: query }) : [];
+  const [products, session] = await Promise.all([
+    query ? listWholesaleProducts({ q: query }) : Promise.resolve([]),
+    getBuyerSession(),
+  ]);
+  const showPrice = session !== null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -21,7 +26,7 @@ export default async function WholesaleSearchPage({
       {query ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {products.map((p) => (
-            <WholesaleProductCard key={p.productId} product={p} />
+            <WholesaleProductCard key={p.productId} product={p} showPrice={showPrice} />
           ))}
         </div>
       ) : null}

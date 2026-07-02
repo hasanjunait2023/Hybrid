@@ -3,14 +3,14 @@ import { formatBdtBangla } from "@hybrid/ui";
 import type { WholesaleListing } from "@/lib/marketplace/wholesaleData";
 
 // Wholesale product card — shows MOQ + "Login for wholesale price" badge
-// if anonymous, real tier prices if verified B2B.
+// if anonymous, real price if the buyer is logged in.
 // This is a server component; pricing visibility is handled at render time.
 export function WholesaleProductCard({
   product,
-  isVerifiedB2B = false,
+  showPrice = false,
 }: {
   product: WholesaleListing;
-  isVerifiedB2B?: boolean;
+  showPrice?: boolean;
 }) {
   return (
     <Link
@@ -34,7 +34,7 @@ export function WholesaleProductCard({
         ) : null}
 
         <div className="mt-auto flex items-center justify-between">
-          {isVerifiedB2B ? (
+          {showPrice ? (
             <span className="font-semibold text-ink">{formatBdtBangla(product.priceFrom)}</span>
           ) : (
             <span className="text-xs font-medium text-amber-600">
