@@ -81,8 +81,9 @@ services:
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       SMS_LIVE: "false"
-      GLITCHTIP_DSN: 
-      GLITCHTIP_PUBLIC_URL: 
+      HYBRIDPAY_BASE_URL: ${HYBRIDPAY_BASE_URL:-https://pay.hybrid.ecomex.cloud}
+      GLITCHTIP_DSN:
+      GLITCHTIP_PUBLIC_URL:
       HYBRID_ENABLE_TEST_ROUTES: ${HYBRID_ENABLE_TEST_ROUTES}
     ports:
       - "3000:3000"
@@ -146,9 +147,55 @@ services:
       - hybrid_default
     restart: unless-stopped
 
+  # --- Hybrid Pay engine (self-hosted PipraPay; docs/INFRA_HYBRIDPAY.md) ---
+  # Opt-in via `docker compose --profile hybridpay up -d piprapay piprapay-db`.
+  # PHP app served from source cloned to ./piprapay. Caddy's
+  # pay.hybrid.ecomex.cloud block reaches it as hybrid-piprapay:80 on
+  # hybrid_default. Founder = super admin; each tenant is a "brand" whose API
+  # key goes into the tenant's Hybrid Pay settings.
+  piprapay:
+    build:
+      context: .
+      dockerfile: piprapay.Dockerfile
+    image: hybrid-piprapay:local
+    container_name: hybrid-piprapay
+    profiles:
+      - hybridpay
+    working_dir: /var/www/html
+    volumes:
+      - ./piprapay:/var/www/html
+    depends_on:
+      piprapay-db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hybrid_default
+
+  piprapay-db:
+    image: mysql:8
+    container_name: hybrid-piprapay-db
+    profiles:
+      - hybridpay
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PIPRAPAY_DB_ROOT_PASSWORD:-change_me}
+      MYSQL_DATABASE: ${PIPRAPAY_DB_NAME:-piprapay}
+      MYSQL_USER: ${PIPRAPAY_DB_USER:-piprapay}
+      MYSQL_PASSWORD: ${PIPRAPAY_DB_PASSWORD:-change_me}
+    volumes:
+      - hybrid_piprapay_dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - hybrid_default
+
 volumes:
   hybrid_pgdata:
   glitchtip_pgdata:
+  hybrid_piprapay_dbdata:
 
 
 

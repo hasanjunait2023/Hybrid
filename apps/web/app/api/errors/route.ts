@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { asPlatformAdmin } from "@hybrid/db";
-import { getSession } from "@/lib/auth/session";
+import { getPlatformAdmin } from "@/lib/platform/auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,9 +30,11 @@ interface ErrorRow {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // Platform-admin ONLY — a plain session is not enough (any tenant user has
+  // one); error_log is cross-tenant and read via asPlatformAdmin below.
+  const admin = await getPlatformAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const url = new URL(req.url);
@@ -68,9 +70,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       modules: counts.map((c) => `${c.module} (${c.count})`),
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: "query_failed", detail: err instanceof Error ? err.message : String(err) },
-      { status: 500 },
-    );
+    // Log server-side only — Postgres error text can echo query fragments.
+    console.error("[api/errors] query failed:", err);
+    return NextResponse.json({ error: "query_failed" }, { status: 500 });
   }
 }
