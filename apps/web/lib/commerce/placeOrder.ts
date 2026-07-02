@@ -582,7 +582,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         ${orderModeValue}, ${creditDue}, ${isCreditSale},
         ${input.note ?? null},
         ${sla.zone}, ${sla.handover.toISOString()}, ${sla.delivery.toISOString()},
-        ${input.cancelAfterAt?.toISOString() ?? null},
+        ${cancelAfterAt?.toISOString() ?? null},
         ${input.deliveryDate ?? null}::date, ${input.deliveryTimeSlot ?? null},
         ${input.fulfillmentMethod ?? "delivery"}::fulfillment_method, ${input.pickupLocation ?? null}
       )

@@ -35,6 +35,7 @@ const TILES: NavItem[] = [
   { href: "/platform/finance", labelKey: "finance", Icon: ReceiptIcon },
   { href: "/platform/plans", labelKey: "plans", Icon: ShieldIcon },
   { href: "/platform/billing", labelKey: "billing", Icon: CheckCircleIcon },
+  { href: "/platform/hybridpay", labelKey: "hybridPay", Icon: ReceiptIcon },
   { href: "/platform/team", labelKey: "team", Icon: UsersIcon },
 ];
 
@@ -98,7 +99,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
 
       {/* Pinned shortcuts */}
       <div>
-        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--pf-subtle)]">
+        <p className="mb-2 px-1 text-[9.5px] font-bold uppercase tracking-widest text-[var(--pf-subtle)]">
           {n.favorite}
         </p>
         <ul className="space-y-0.5">
@@ -118,7 +119,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
 
       {/* Roadmap modules */}
       <div>
-        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--pf-subtle)]">
+        <p className="mb-2 px-1 text-[9.5px] font-bold uppercase tracking-widest text-[var(--pf-subtle)]">
           {n.manage}
         </p>
         <ul className="space-y-0.5">
@@ -159,14 +160,18 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
 
       {/* User card */}
       <div className="mt-auto flex items-center gap-2.5 rounded-xl bg-[var(--pf-black)] px-3 py-2.5 text-[var(--pf-on-black)]">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--pf-yellow)] text-[13px] font-bold text-[var(--pf-black)]">
           {adminName.slice(0, 1).toUpperCase()}
         </span>
-        <span className="min-w-0">
+        <span className="min-w-0 flex-1">
           <span className="block truncate text-[12.5px] font-semibold leading-tight">{adminName}</span>
-          <span className="block text-[10px] text-white/55">Super Admin</span>
+          <span className="flex items-center gap-1 text-[10px] text-white/55">
+            {/* ponytail: inline pulse dot for "live / platform active" — CSS animation via Tailwind animate-pulse */}
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#1f9d6b]" aria-hidden="true" />
+            Super Admin · Live
+          </span>
         </span>
-        <BellIcon className="ml-auto h-4 w-4 text-white/60" />
+        <BellIcon className="ml-auto h-4 w-4 shrink-0 text-white/60" />
       </div>
     </aside>
   );

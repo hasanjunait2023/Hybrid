@@ -13,6 +13,7 @@ export const platform = {
     billing: "Billing",
     plans: "Plans",
     finance: "Finance",
+    hybridPay: "Hybrid Pay",
     team: "Team",
     searchPlaceholder: "Search here",
     favorite: "Favorite",
@@ -88,6 +89,45 @@ export const platform = {
     ordersThisMonth: "Orders (this month)",
     staff: "Staff",
     customDomain: "Custom domains",
+  },
+
+  hybridpay: {
+    title: "Hybrid Pay",
+    subtitle: "White-label gateway — tenant onboarding & money flow.",
+    openEngine: "Open engine admin",
+    enabledTenants: "Enabled / Configured",
+    awaitingOnboarding: "Awaiting onboarding",
+    volume30d: "Received (30 days)",
+    failed30d: "Failed (30 days)",
+    roster: "Tenant onboarding",
+    rosterHint:
+      "“Not onboarded” needs a brand + API key in the engine admin, and the store's domain whitelisted under the brand's Domains.",
+    noTenants: "No live stores yet.",
+    store: "Store",
+    onboarding: "Hybrid Pay",
+    whitelistDomain: "Whitelist domain",
+    noDomain: "no verified domain",
+    received: "Received",
+    pendingFailed: "Pending / Failed",
+    lastPaid: "Last paid",
+    stateEnabled: "Enabled",
+    stateDisabled: "Configured (off)",
+    stateNotOnboarded: "Not onboarded",
+    recentPayments: "Recent payments",
+    noPayments: "No Hybrid Pay payments yet.",
+    order: "Order",
+    amount: "Amount",
+    status: "Status",
+    date: "Date",
+    runbookTitle: "Onboarding runbook (per store)",
+    runbook1:
+      "Engine admin → Brands: create a brand for the store; generate an API key with create_payment + verify_payment scopes.",
+    runbook2:
+      "Engine admin → the brand's Domains: whitelist + activate the store's domain (the “Whitelist domain” column here).",
+    runbook3:
+      "Seller (self-serve): Settings → Payments → Hybrid Pay — install the companion app, enter MFS number, paste the API key, enable.",
+    runbook4:
+      "Verify: place a test order with Hybrid Pay at the storefront — the payment must appear here as success (paisa-exact, webhook-verified).",
   },
 
   billing: {

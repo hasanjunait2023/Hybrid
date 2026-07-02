@@ -14,6 +14,7 @@ export const platform: typeof EnPlatform = {
     billing: "বিলিং",
     plans: "প্ল্যান",
     finance: "আয়-ব্যয়",
+    hybridPay: "হাইব্রিড পে",
     team: "টিম",
     searchPlaceholder: "অনুসন্ধান করুন",
     favorite: "প্রিয়",
@@ -88,6 +89,45 @@ export const platform: typeof EnPlatform = {
     ordersThisMonth: "অর্ডার (এ মাসে)",
     staff: "স্টাফ",
     customDomain: "কাস্টম ডোমেইন",
+  },
+
+  hybridpay: {
+    title: "হাইব্রিড পে",
+    subtitle: "হোয়াইট-লেবেল গেটওয়ে — টেন্যান্ট অনবোর্ডিং ও পেমেন্ট প্রবাহ।",
+    openEngine: "ইঞ্জিন অ্যাডমিন খুলুন",
+    enabledTenants: "সক্রিয় / কনফিগারড",
+    awaitingOnboarding: "অনবোর্ডিং বাকি",
+    volume30d: "গৃহীত (৩০ দিন)",
+    failed30d: "ব্যর্থ (৩০ দিন)",
+    roster: "টেন্যান্ট অনবোর্ডিং",
+    rosterHint:
+      "“অনবোর্ড হয়নি” হলে ইঞ্জিন অ্যাডমিনে ব্র্যান্ড + API কী তৈরি করুন, এবং ব্র্যান্ডের Domains-এ স্টোরের ডোমেইন হোয়াইটলিস্ট করুন।",
+    noTenants: "এখনো কোনো লাইভ স্টোর নেই।",
+    store: "স্টোর",
+    onboarding: "হাইব্রিড পে",
+    whitelistDomain: "হোয়াইটলিস্ট ডোমেইন",
+    noDomain: "যাচাইকৃত ডোমেইন নেই",
+    received: "গৃহীত",
+    pendingFailed: "পেন্ডিং / ব্যর্থ",
+    lastPaid: "সর্বশেষ পেমেন্ট",
+    stateEnabled: "সক্রিয়",
+    stateDisabled: "কনফিগারড (বন্ধ)",
+    stateNotOnboarded: "অনবোর্ড হয়নি",
+    recentPayments: "সাম্প্রতিক পেমেন্ট",
+    noPayments: "এখনো কোনো হাইব্রিড পে পেমেন্ট নেই।",
+    order: "অর্ডার",
+    amount: "পরিমাণ",
+    status: "স্ট্যাটাস",
+    date: "তারিখ",
+    runbookTitle: "অনবোর্ডিং রানবুক (প্রতি স্টোর)",
+    runbook1:
+      "ইঞ্জিন অ্যাডমিন → Brands: স্টোরের জন্য ব্র্যান্ড তৈরি করুন; create_payment + verify_payment স্কোপসহ API কী জেনারেট করুন।",
+    runbook2:
+      "ইঞ্জিন অ্যাডমিন → ব্র্যান্ডের Domains: স্টোরের ডোমেইন হোয়াইটলিস্ট + অ্যাক্টিভেট করুন (এখানের “হোয়াইটলিস্ট ডোমেইন” কলাম)।",
+    runbook3:
+      "বিক্রেতা (সেলফ-সার্ভ): Settings → Payments → Hybrid Pay — কম্প্যানিয়ন অ্যাপ ইনস্টল, MFS নম্বর দিন, API কী পেস্ট করে সক্রিয় করুন।",
+    runbook4:
+      "যাচাই: স্টোরফ্রন্টে হাইব্রিড পে দিয়ে টেস্ট অর্ডার দিন — পেমেন্টটি এখানে success হিসেবে দেখা যেতে হবে (পয়সা-নিখুঁত, ওয়েবহুক-যাচাইকৃত)।",
   },
 
   billing: {
