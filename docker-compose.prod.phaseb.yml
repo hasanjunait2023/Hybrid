@@ -1,0 +1,69 @@
+# Hybrid — Phase B production stack.
+# Extends the single-instance compose with web service replicas and Caddy
+# upstream load balancing. Same secrets (.env.deploy) as Phase A.
+#
+# Deployment:
+#   docker compose --env-file .env.deploy -f docker-compose.prod.phaseb.yml up -d
+#
+# Caddy must be updated to use `web:3000` as a load-balanced upstream with
+# health checks. The Caddyfile snippet is in infra/phaseb/Caddyfile.upstreams.
+
+services:
+  postgres:
+    extends:
+      file: docker-compose.prod.yml
+      service: postgres
+
+  redis:
+    extends:
+      file: docker-compose.prod.yml
+      service: redis
+
+  pgbouncer:
+    extends:
+      file: docker-compose.prod.yml
+      service: pgbouncer
+
+  web:
+    extends:
+      file: docker-compose.prod.yml
+      service: web
+    # Remove the explicit name so compose can spin N replicas.
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+    healthcheck:
+      test: ["CMD-SHELL", "node scripts/healthcheck.mjs"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  glitchtip-db:
+    extends:
+      file: docker-compose.prod.yml
+      service: glitchtip-db
+
+  glitchtip-web:
+    extends:
+      file: docker-compose.prod.yml
+      service: glitchtip-web
+
+volumes:
+  hybrid_pgdata:
+  glitchtip_pgdata:
+
+networks:
+  hybrid_default:
+    name: hybrid_default
+    external: true
+  pe9o2li2n3bns3wnofob49uw:
+    name: pe9o2li2n3bns3wnofob49uw
+    external: true
