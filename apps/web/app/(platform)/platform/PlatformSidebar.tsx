@@ -167,7 +167,7 @@ export function PlatformSidebar({ adminName }: { adminName: string }) {
           <span className="block truncate text-[12.5px] font-semibold leading-tight">{adminName}</span>
           <span className="flex items-center gap-1 text-[10px] text-white/55">
             {/* ponytail: inline pulse dot for "live / platform active" — CSS animation via Tailwind animate-pulse */}
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#1f9d6b]" aria-hidden="true" />
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--pf-success)]" aria-hidden="true" />
             Super Admin · Live
           </span>
         </span>
