@@ -1,16 +1,20 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import "@hybrid/ui/globals.css";
 import { fontVariables } from "./fonts";
 import { getLocale } from "@/lib/i18n/server";
 import { CookieConsent } from "@/lib/consent/CookieConsent";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Hybrid",
   description: "Multi-tenant commerce for Bangladesh.",
   icons: {
     icon: "/favicon-32.png",
     apple: "/apple-touch-icon.png",
+  },
+  verification: {
+    google: "jfegcQr5aSi9_cxMZ7rCq3teT3f2iWN0FzPAz8xez98",
   },
 };
 
