@@ -24,13 +24,10 @@ https://app.hybrid.ecomex.cloud
 ```text
 https://supabase.ecomex.cloud/auth/v1/callback
 ```
-
-> ⚠️ The downloaded `client_secret_*.json` currently lists `redirect_uris` as
-> `https://whatapp.ecomex.cloud`. That is **wrong** for this setup. You must
-> open Google Cloud Console and change the redirect URI to the value above.
-> The Supabase GoTrue `GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI` env var already
-> points to `https://supabase.ecomex.cloud/auth/v1/callback`; the Console must
-> match it exactly.
+> ✅ The correct `client_secret_*.json` (project `hybrid-ecomex`, client
+> `932560842300-c2ph16dpvda3flfg07h5pj86pcrlplhc.apps.googleusercontent.com`) already
+> lists the redirect URI and JS origins shown above. If Google still reports a
+> mismatch, open Console and verify the values are exactly as shown.
 
 ### Supabase GoTrue environment
 
@@ -42,7 +39,7 @@ uploaded):
 
 ```env
 GOTRUE_EXTERNAL_GOOGLE_ENABLED=true
-GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID=510336060774-4sp2p9mbdnot81gfid29gkpapet3ulo7.apps.googleusercontent.com
+GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID=932560842300-c2ph16dpvda3flfg07h5pj86pcrlplhc.apps.googleusercontent.com
 GOTRUE_EXTERNAL_GOOGLE_SECRET=***set-on-vps***
 GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI=https://supabase.ecomex.cloud/auth/v1/callback
 
@@ -97,11 +94,10 @@ Google Search Console verification tag is live on `.ecomex.cloud` hosts only:
 
 Only **you** can do this from the Google Cloud Console web UI:
 
-1. Open https://console.cloud.google.com/apis/credentials
-2. Find the **ecomex-501208** project OAuth 2.0 client.
-3. Under **Authorized redirect URIs**, replace `https://whatapp.ecomex.cloud` with:
-   `https://supabase.ecomex.cloud/auth/v1/callback`
-4. Under **Authorized JavaScript origins**, add the three exact origins listed above.
+1. Go to https://console.cloud.google.com/apis/credentials.
+2. Find the **hybrid-ecomex** project OAuth 2.0 client (`932560842300-c2ph16dpvda3flfg07h5pj86pcrlplhc`).
+3. Confirm **Authorized JavaScript origins** contains the three exact origins above.
+4. Confirm **Authorized redirect URIs** contains `https://supabase.ecomex.cloud/auth/v1/callback`.
 5. Save.
 
 After that, Google sign-in will work end-to-end.
