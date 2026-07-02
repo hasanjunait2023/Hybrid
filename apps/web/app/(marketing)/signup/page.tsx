@@ -89,6 +89,9 @@ export default async function SignupPage() {
                 submit: d.auth.signup.submit,
                 submitting: d.auth.signup.submitting,
                 trialNote: d.auth.signup.trialNote,
+                oauthGoogle: d.auth.login.oauthGoogle,
+                oauthFacebook: d.auth.login.oauthFacebook,
+                oauthDivider: d.auth.login.divider,
               }}
             />
           </div>

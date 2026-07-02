@@ -1,124 +1,89 @@
-# Hybrid — Google OAuth Setup Guide (`.ecomex.cloud` only)
+# Google OAuth for .ecomex.cloud
 
-This guide wires Google sign-in for the Hybrid platform on the
-`.ecomex.cloud` domain stack. **Nothing here touches `junno.qzz.io`.**
+## TL;DR
 
-## What we already did on the VPS
+OAuth UI is now wired. Google Cloud Console only needs **exact** Authorized
+JavaScript origins; wildcards like `https://*.hybrid.ecomex.cloud` are rejected.
+To fix this, all OAuth (Google/Facebook) starts on the fixed host
+`admin.hybrid.ecomex.cloud` regardless of which tenant subdomain the user is on.
 
-1. Supabase GoTrue auth service configured to accept Google OAuth:
-   - File: `/data/coolify/services/pe9o2li2n3bns3wnofob49uw/.env`
-   - File: `/data/coolify/services/pe9o2li2n3bns3wnofob49uw/docker-compose.yml`
-2. Hybrid app web container will receive public Supabase env vars via
-   `/root/hybrid.env`:
-   - `NEXT_PUBLIC_SUPABASE_URL=https://supabase.ecomex.cloud`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon JWT>`
-3. Hybrid login page already has a "Continue with Google" button.
+## Console configuration
 
-## What YOU must do in Google Cloud Console
+### Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 client
 
-### 1. Create / pick a Google Cloud project
-- URL: https://console.cloud.google.com/
-- Use a project you control (e.g. `ecomex-hybrid-prod`).
+**Authorized JavaScript origins (must be exact — no wildcards):**
 
-### 2. Configure the OAuth consent screen
-- Go to **APIs & Services → OAuth consent screen**
-- Choose **External** (so any user can sign in)
-- Fill in:
-  - App name: `Hybrid` (or your brand name)
-  - User support email: your email
-  - Authorized domains: `ecomex.cloud`
-  - Developer contact email: your email
-- **Scopes**: add at minimum
-  - `.../auth/userinfo.email`
-  - `.../auth/userinfo.profile`
-  - `openid`
-- Save and continue through the test-user step.
-
-### 3. Create OAuth 2.0 credentials
-- Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
-- Application type: **Web application**
-- Name: `Hybrid Supabase Auth`
-- **Authorized JavaScript origins**:
-  - `https://admin.hybrid.ecomex.cloud`
-  - `https://app.hybrid.ecomex.cloud`
-  - `https://*.hybrid.ecomex.cloud`
-- **Authorized redirect URIs**:
-  - `https://supabase.ecomex.cloud/auth/v1/callback`
-
-> ⚠️ Google does **not** allow wildcard redirect URIs. The single Supabase
-> callback URL is the correct pattern because Supabase GoTrue handles all
-> provider redirects and then forwards back to your app.
-
-### 4. Copy Client ID and Secret
-- Click **Download JSON** or copy the values.
-- You need:
-  - Client ID
-  - Client Secret
-
-## How to apply the credentials
-
-SSH into the VPS and edit the Supabase `.env`:
-
-```bash
-ssh mt5vps
-nano /data/coolify/services/pe9o2li2n3bns3wnofob49uw/.env
+```text
+https://hybrid.ecomex.cloud
+https://admin.hybrid.ecomex.cloud
+https://app.hybrid.ecomex.cloud
 ```
 
-Replace the empty Google OAuth lines:
+**Authorized redirect URI (one exact URI):**
 
-```bash
+```text
+https://supabase.ecomex.cloud/auth/v1/callback
+```
+
+### Supabase GoTrue environment
+
+File on VPS:
+`/data/coolify/services/pe9o2li2n3bns3wnofob49uw/.env`
+
+Required keys (fill in the two empty values):
+
+```env
 GOTRUE_EXTERNAL_GOOGLE_ENABLED=true
-GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID=< paste client id here >
-GOTRUE_EXTERNAL_GOOGLE_SECRET=< paste client secret here >
+GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
+GOTRUE_EXTERNAL_GOOGLE_SECRET=YOUR_CLIENT_SECRET
 GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI=https://supabase.ecomex.cloud/auth/v1/callback
+
+# Allow the fixed callback host + the app/admin/tenant hosts to be used as
+# final redirect targets. Wildcards are OK here (Supabase is doing the check,
+# not Google).
+GOTRUE_URI_ALLOW_LIST=https://admin.hybrid.ecomex.cloud/**,https://app.hybrid.ecomex.cloud/**,https://*.hybrid.ecomex.cloud/**
+ADDITIONAL_REDIRECT_URLS=https://admin.hybrid.ecomex.cloud/auth/callback,https://app.hybrid.ecomex.cloud/auth/callback,https://*.hybrid.ecomex.cloud/auth/callback
 ```
 
-Save, then restart the Supabase auth container:
+After editing the env file, restart the auth container:
 
 ```bash
-cd /data/coolify/services/pe9o2li2n3bns3wnofob49uw
-docker compose up -d --force-recreate supabase-auth
+ssh mt5vps 'cd /data/coolify/services/pe9o2li2n3bns3wnofob49uw && docker compose restart supabase-auth'
 ```
 
-Then redeploy Hybrid web (so the public Supabase env vars are picked up):
+## User flow
 
-```bash
-cd /opt/hybrid
-bash deploy.sh
-```
+1. User is on any tenant admin host, e.g. `https://admin.shop.hybrid.ecomex.cloud/login`.
+2. They click **Continue with Google**.
+3. We hard-navigate to `https://admin.hybrid.ecomex.cloud/oauth/start?provider=google&next=/`.
+4. The start page calls `supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: "https://admin.hybrid.ecomex.cloud/auth/callback?next=/" } })` from the registered origin.
+5. Google approves the origin, redirects to Supabase at `https://supabase.ecomex.cloud/auth/v1/callback`.
+6. Supabase GoTrue redirects to `https://admin.hybrid.ecomex.cloud/auth/callback?code=...&next=/`.
+7. `/auth/callback` mints the `hybrid_session` cookie and redirects to `next`.
 
-## Verify the flow
+## Pages with Google auth UI
 
-1. Open `https://admin.hybrid.ecomex.cloud/login`
-2. Click **Continue with Google**
-3. You should be redirected to Google consent, then back to
-   `https://supabase.ecomex.cloud/auth/v1/callback`, then finally to
-   `https://admin.hybrid.ecomex.cloud/auth/callback?next=/admin`
-4. You land on `/admin` logged in.
+| Page | File | Button text |
+|------|------|-------------|
+| Universal login | `apps/web/app/login/LoginForm.tsx` | Continue with Google / Facebook |
+| Signup (apex) | `apps/web/app/(marketing)/signup/SignupForm.tsx` | Continue with Google / Facebook |
+| OAuth start shim | `apps/web/app/oauth/start/page.tsx` | Redirecting to sign-in… |
+| OAuth callback | `apps/web/app/auth/callback/route.ts` | (no UI; mints cookie) |
 
-## Security notes
+## Notes
 
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` is safe in browser JS; it is a public anon
-  token by design.
-- `SUPABASE_SERVICE_ROLE_KEY` stays server-only and is already configured.
-- The Google OAuth `Client Secret` lives only in the Supabase `.env` file,
-  never in Hybrid source code or browser bundles.
-- Hybrid app mints its own opaque `hybrid_session` cookie after the OAuth
-  callback, so the Google token is not used for session state.
+- `NEXT_PUBLIC_SUPABASE_URL` must be set to `https://supabase.ecomex.cloud` in the
+  public env so the browser client talks to the public GoTrue endpoint.
+- `oauthStartUrl()` and `oauthCallbackUrl()` in `apps/web/lib/auth/oauthStartUrl.ts`
+  centralize the fixed origin logic. In non-production builds they fall back to
+  the current origin so local dev still works.
+- The existing marketplace login (`market/login`) uses a separate, simpler form. If
+  you want Google there too, the same `oauthStartUrl()` helper can be dropped in.
 
-## Troubleshooting
+## Verification pages
 
-| Symptom | Fix |
-|---|---|
-| "OAuth provider not configured" button disabled | `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` missing in `/root/hybrid.env` or not passed to web container |
-| Google error: redirect_uri_mismatch | Add exactly `https://supabase.ecomex.cloud/auth/v1/callback` in Google Console credentials |
-| "Error getting user email from external provider" | Make sure Google Console scopes include `userinfo.email` and `userinfo.profile` |
-| Final redirect fails / 400 from `/auth/callback` | Check `ADDITIONAL_REDIRECT_URLS` includes `https://admin.hybrid.ecomex.cloud/auth/callback` and `https://*.hybrid.ecomex.cloud/auth/callback` |
+Google Search Console verification tag is live on `.ecomex.cloud` hosts only:
 
-## Files changed by this setup
-
-- `/data/coolify/services/pe9o2li2n3bns3wnofob49uw/.env`
-- `/data/coolify/services/pe9o2li2n3bns3wnofob49uw/docker-compose.yml`
-- `/root/hybrid.env`
-- `/root/Hybrid/.env.example`
-- `/root/Hybrid/infra/oauth/google/README.md`
+- `/privacy` and `/terms` pages exist.
+- Meta tag: `google-site-verification=jfegcQr5aSi9_cxMZ7rCq3teT3f2iWN0FzPAz8xez98`
+- `junno.qzz.io` is not touched.
