@@ -9,7 +9,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSession } from "@/lib/auth/session";
-import { isAllowedPostLoginUrl } from "@/lib/auth/oauthStartUrl";
+import { getOAuthNextFromCookie, isAllowedPostLoginUrl } from "@/lib/auth/oauthStartUrl";
 
 function need(name: string): string {
   const v = process.env[name];
@@ -17,17 +17,29 @@ function need(name: string): string {
   return v;
 }
 
+function redirectWithClearedCookie(origin: string, path: string): NextResponse {
+  const url = new URL(path, origin);
+  const res = NextResponse.redirect(url);
+  res.cookies.set("hybrid_oauth_next", "", {
+    path: "/",
+    maxAge: 0,
+    sameSite: "lax",
+  });
+  return res;
+}
+
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
-  const nextRaw = searchParams.get("next");
+  const { origin } = new URL(request.url);
+  const code = new URL(request.url).searchParams.get("code");
 
   const fallback = `${origin}/`;
+  const nextRaw = getOAuthNextFromCookie(request);
   const next = nextRaw && isAllowedPostLoginUrl(nextRaw) ? nextRaw : fallback;
 
   if (!code) {
-    return NextResponse.redirect(
-      new URL(`/login?oauth_error=${encodeURIComponent("No OAuth code received")}`, origin),
+    return redirectWithClearedCookie(
+      origin,
+      `/login?oauth_error=${encodeURIComponent("No OAuth code received")}`,
     );
   }
 
@@ -40,8 +52,9 @@ export async function GET(request: NextRequest) {
   const { error, data } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data.user?.id) {
     const msg = error?.message ?? "OAuth session exchange failed";
-    return NextResponse.redirect(
-      new URL(`/login?oauth_error=${encodeURIComponent(msg)}`, origin),
+    return redirectWithClearedCookie(
+      origin,
+      `/login?oauth_error=${encodeURIComponent(msg)}`,
     );
   }
 
@@ -50,5 +63,5 @@ export async function GET(request: NextRequest) {
     userAgent: request.headers.get("user-agent"),
   });
 
-  return NextResponse.redirect(next);
+  return redirectWithClearedCookie(origin, next);
 }
