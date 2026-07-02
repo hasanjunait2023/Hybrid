@@ -11,4 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && docker-php-ext-enable imagick \
   && a2enmod rewrite \
   && rm -rf /var/lib/apt/lists/*
+
+# Caddy terminates TLS and proxies plain HTTP, so PHP never sees HTTPS on its
+# own. PipraPay's pp_site_url() reads $_SERVER['HTTPS'] to pick the scheme for
+# every asset/redirect URL — without this, pages render http:// asset links
+# that browsers block as mixed content (the unstyled login page). Honoring the
+# proxy's X-Forwarded-Proto restores https; server config only, app untouched.
+RUN printf 'SetEnvIf X-Forwarded-Proto "^https$" HTTPS=on\n' \
+      > /etc/apache2/conf-available/forwarded-proto.conf \
+  && a2enconf forwarded-proto
 # ponytail: keep -dev libs (runtime .so deps); slim with a multi-stage build only if image size bites.
